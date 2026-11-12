@@ -28,10 +28,16 @@ zgodności brzmienia 1:1. [Zakres, skale i różnice](docs/IMPLEMENTATION.md).
 
 ## Pobieranie
 
-[Gotowe pliki logisth 0.2.0](https://github.com/logik93/testoren/tree/master/releases/logisth-0.2.0): paczka Linux,
-źródła, WAV i obrazy interfejsu. [Wydanie GitHub](https://github.com/logik93/testoren/releases/tag/v0.2.0)
-jest tworzone przez workflow Publish release po wysłaniu tagu. Kompilacje Windows
-oraz macOS i ich wyniki znajdziesz w [GitHub Actions](https://github.com/logik93/testoren/actions).
+[Wydanie logisth 0.2.0](https://github.com/logik93/testoren/releases/tag/v0.2.0)
+zawiera gotowe paczki Linux x64, Windows x64 oraz macOS Universal (Intel i Apple
+Silicon). Każda zawiera VST3, CLAP i Standalone. Wszystkie kompilacje przeszły
+testy: Linux 6/6, Windows 4/4, macOS 4/4 na runnerze Intel. macOS jest podpisane
+ad-hoc i wymaga macOS 11+; Linux wymaga glibc ≥2.35. Dołączono źródła, WAV,
+obrazy interfejsu, metadane kompilacji i wspólne SHA256SUMS.
+
+[Weryfikacja GitHub Actions](https://github.com/logik93/testoren/actions/runs/43285093060).
+Starsze lokalne paczki w katalogu releases/ są archiwalne; pobieraj aktualne
+binaria z GitHub Release.
 
 ## Budowanie
 

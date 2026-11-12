@@ -1,6 +1,20 @@
 # Walidacja logisth 0.2.0
 
-12 listopada 2026. Linux x86_64, Debian 13, GCC 14.2, kompilacja Release.
+12 listopada 2026. Natywne paczki opublikowane w wydaniu:
+https://github.com/logik93/testoren/releases/tag/v0.2.0
+
+- Linux x86_64 (Ubuntu 22.04): 6/6 testów zaliczone, wymagane glibc ≥2.35.
+- Windows x86_64 (Windows Server 2022): 4/4 testów zaliczone, statyczny runtime MSVC.
+- macOS Universal (Intel + Apple Silicon): 4/4 testów na runnerze Intel macos-15-intel;
+  wszystkie binaria zawierają x86_64 i arm64. Podpis ad-hoc, bez notarization.
+- Wszystkie paczki zawierają VST3, CLAP i Standalone oraz BUILD_INFO.json.
+- GitHub API potwierdziło obecność i rozmiary przesłanych archiwów. W release są
+  aktualne SHA256SUMS i build-info-*.json z architekturami i rewizjami kodu.
+- Kod Source, CMakeLists.txt i testy mają identyczne identyfikatory Git jak tag v0.2.0.
+
+Weryfikacja publikacji: https://github.com/logik93/testoren/actions/runs/43285093060
+
+Poniżej wyniki pierwotnej lokalnej walidacji na Debianie 13 / GCC 14.2.
 
 - VST3, CLAP i Standalone zbudowane pod nazwą **logisth**.
 - CTest: **6/6 zaliczone**, bez testów pominiętych.
@@ -27,12 +41,12 @@ Test orientacyjny silnika: 1,003 s audio przy 16 nutach, czterech oscylatorach
 po 8 głosów unison wyrenderowano w ok. 0,57 s lokalnego CPU. To pomiar offline
 bez master FX, nie gwarancja opóźnienia ani wydajności w DAW.
 
-Windows/macOS: projekt i workflow przygotowane, binaria nie zostały zbudowane
-w tej sesji. VST2: opcja budowania istnieje, lecz brak licencjonowanego SDK
-użytkownika; binarium VST2 nie powstało. Nie konfigurowano podpisywania.
+Windows i macOS zostały następnie zbudowane i przetestowane w GitHub Actions,
+a paczki dodano do wydania wskazanego powyżej. VST2 nadal wymaga własnego SDK
+i nie jest dołączone. Windows jest bez podpisu wydawcy; macOS ma podpis ad-hoc.
 
-Binaria Linux wymagają glibc co najmniej 2.38.
-Dla starszego systemu kompiluj lokalnie albo użyj workflow Ubuntu 22.04.
+Pierwotne lokalne binaria Linux w repozytorium wymagają glibc ≥2.38.
+Nowsza paczka Linux w GitHub Release pochodzi z Ubuntu 22.04 i wymaga glibc ≥2.35.
 Zależności systemowe nie są pakowane z wtyczkami.
 
 W momencie lokalnej walidacji kod nie był jeszcze wysłany na GitHub. Pliki
