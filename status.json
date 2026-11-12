@@ -3,5 +3,19 @@
   "automation_commit": "0fdaca985163b597d56f7d7784e068770ab3d286",
   "run_id": "43285051093",
   "run_url": "https://github.com/logik93/testoren/actions/runs/43285051093",
-  "phase": "building"
+  "phase": "failed",
+  "jobs": {
+    "started": {
+      "result": "success",
+      "outputs": {}
+    },
+    "plugins": {
+      "result": "failure",
+      "outputs": {}
+    },
+    "publish": {
+      "result": "skipped",
+      "outputs": {}
+    }
+  }
 }
