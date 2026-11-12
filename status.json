@@ -1,21 +1,7 @@
 {
   "tag": "v0.2.0",
-  "automation_commit": "0fdaca985163b597d56f7d7784e068770ab3d286",
-  "run_id": "43285051093",
-  "run_url": "https://github.com/logik93/testoren/actions/runs/43285051093",
-  "phase": "failed",
-  "jobs": {
-    "started": {
-      "result": "success",
-      "outputs": {}
-    },
-    "plugins": {
-      "result": "failure",
-      "outputs": {}
-    },
-    "publish": {
-      "result": "skipped",
-      "outputs": {}
-    }
-  }
+  "automation_commit": "6475cdcba72b5ac930a1aa2b7e17a2bdb93da01b",
+  "run_id": "43285093060",
+  "run_url": "https://github.com/logik93/testoren/actions/runs/43285093060",
+  "phase": "building"
 }
