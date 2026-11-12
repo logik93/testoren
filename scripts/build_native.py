@@ -92,6 +92,7 @@ def main():
     parser.add_argument('--dependencies', type=Path)
     parser.add_argument('--cmake', default='cmake')
     parser.add_argument('--parallel', type=int, default=2)
+    parser.add_argument('--reuse', action='store_true')
     args = parser.parse_args()
     source, build, output = args.source.resolve(), args.build.resolve(), args.output.resolve()
     output.mkdir(parents=True, exist_ok=True)
