@@ -32,6 +32,8 @@ def main():
                 messages.append(line[:400])
         if messages:failures.append({'log':str(log),'errors':messages[-12:]})
     if failures:report['failures']=failures
+    diagnostic = Path('ci-diagnostics.json')
+    if diagnostic.is_file():report['diagnostics']=json.loads(diagnostic.read_text())
     result = Path('native-release-result.json')
     if result.is_file():
         report.update(json.loads(result.read_text()))

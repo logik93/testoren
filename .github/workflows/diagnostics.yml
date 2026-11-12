@@ -1,0 +1,24 @@
+name: Inspect native build cancellation
+on:
+  push:
+    branches: [ci-diagnostics]
+permissions:
+  contents: write
+  actions: read
+  checks: read
+jobs:
+  inspect:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read run and job metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/inspect_ci.py 43282683578
+      - name: Publish diagnostic receipt
+        env:
+          RELEASE_TAG: v0.2.0
+          REPORT_PHASE: diagnosed
+          LOGISTH_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: python3 scripts/write_ci_status.py
