@@ -15,7 +15,9 @@ def main():
     tag = os.environ['RELEASE_TAG']
     if not re.fullmatch(r'v\d+\.\d+\.\d+', tag):
         raise ValueError('Invalid tag')
-    branch = 'ci-release-' + tag
+    branch = os.environ.get('REPORT_BRANCH', 'ci-release-' + tag)
+    if not re.fullmatch(r'ci-(release|inspect)-v\d+\.\d+\.\d+', branch):
+        raise ValueError('Invalid report branch')
     report = {'tag': tag, 'automation_commit': os.environ['GITHUB_SHA'],
               'run_id': os.environ['GITHUB_RUN_ID'],
               'run_url': os.environ['LOGISTH_RUN_URL'],

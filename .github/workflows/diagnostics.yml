@@ -15,10 +15,11 @@ jobs:
       - name: Read run and job metadata
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 scripts/inspect_ci.py 43282683578
+        run: python3 scripts/inspect_ci.py 43285093060
       - name: Publish diagnostic receipt
         env:
           RELEASE_TAG: v0.2.0
-          REPORT_PHASE: diagnosed
+          REPORT_PHASE: inspection
+          REPORT_BRANCH: ci-inspect-v0.2.0
           LOGISTH_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: python3 scripts/write_ci_status.py
