@@ -1,0 +1,5 @@
+Open Sans font family
+Digitized data copyright (c) 2010-2011, Google Corporation.
+Licensed under the Apache License, Version 2.0; see LICENSE.txt.
+Unmodified Regular and Semibold fonts from the Debian fonts-open-sans package.
+Upstream: https://www.opensans.com/

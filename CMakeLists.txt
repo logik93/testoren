@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(Logisth VERSION 0.2.0 LANGUAGES C CXX)
+project(Logisth VERSION 0.3.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include(CTest)
@@ -36,7 +36,10 @@ juce_add_plugin(Logisth COMPANY_NAME "Testoren" BUNDLE_ID "com.testoren.logisth"
   IS_SYNTH TRUE NEEDS_MIDI_INPUT TRUE NEEDS_MIDI_OUTPUT FALSE
   IS_MIDI_EFFECT FALSE EDITOR_WANTS_KEYBOARD_FOCUS FALSE
   COPY_PLUGIN_AFTER_BUILD FALSE VST3_CATEGORIES Instrument Synth)
+juce_add_binary_data(LogisthFonts SOURCES
+  assets/fonts/OpenSans-Regular.ttf assets/fonts/OpenSans-Semibold.ttf)
 target_sources(Logisth PRIVATE Source/PluginProcessor.cpp Source/PluginEditor.cpp)
+target_link_libraries(Logisth PRIVATE LogisthFonts)
 target_compile_definitions(Logisth PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_VST3_CAN_REPLACE_VST2=0)
 target_link_libraries(Logisth PRIVATE juce::juce_audio_utils juce::juce_dsp PUBLIC juce::juce_recommended_config_flags)
 FetchContent_Declare(clap_juce_extensions GIT_REPOSITORY https://github.com/free-audio/clap-juce-extensions.git GIT_TAG 6bde108329ff9fc24404b79b8b397261a75cf6a8)

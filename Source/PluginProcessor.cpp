@@ -341,6 +341,8 @@ void LogisthProcessor::setStateInformation(const void *data, int size) {
     auto restore = [&](const ValueTree &source) {
         ValueTree safe("LogisthState");
         safe.setProperty("schema", 2, nullptr);
+        if (source.hasProperty("uiDark"))
+            safe.setProperty("uiDark", int(source["uiDark"]) != 0, nullptr);
         for (const auto &spec : parameterSpecs) {
             float value = spec.initial;
             for (auto child : source)

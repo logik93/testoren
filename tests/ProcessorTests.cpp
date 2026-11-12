@@ -174,6 +174,85 @@ int main(int argc, char **argv) {
             }
             check(maximum > .001f, "preset sounds");
         }
+        juce::MemoryBlock uiState;
+        p.getStateInformation(uiState);
+        {
+            std::array<float, logisth::parameterCount> before{};
+            for (size_t i = 0; i < before.size(); ++i)
+                before[i] = p.state.getRawParameterValue(logisth::parameterSpecs[i].id)->load();
+            std::unique_ptr<juce::AudioProcessorEditor> ui(p.createEditor());
+            auto *compact = dynamic_cast<LogisthEditor *>(ui.get());
+            check(compact != nullptr, "compact editor exists");
+            auto error = compact->validateLayout();
+            if (error.isNotEmpty())
+                throw std::runtime_error(error.toStdString());
+            compact->setDarkTheme(true);
+            check(compact->isDarkTheme(), "dark theme selected");
+            check(compact->validateLayout().isEmpty(), "dark theme layout");
+            juce::MemoryBlock darkState;
+            p.getStateInformation(darkState);
+            restored.setStateInformation(darkState.getData(), int(darkState.getSize()));
+            check(int(restored.state.state.getProperty("uiDark", 0)) == 1,
+                  "theme is saved in plugin state");
+            {
+                std::unique_ptr<juce::AudioProcessorEditor> second(restored.createEditor());
+                auto *other = dynamic_cast<LogisthEditor *>(second.get());
+                check(other && other->isDarkTheme(), "restored editor opens in dark theme");
+                compact->setDarkTheme(false);
+                check(!compact->isDarkTheme() && other->isDarkTheme(),
+                      "themes are independent across plugin instances");
+            }
+            check(compact->validateLayout().isEmpty(), "light theme layout after switching");
+            ui->setSize(992, 688);
+            check(compact->validateLayout().isEmpty(), "compact layout at 80 percent");
+            ui->setSize(1550, 1075);
+            check(compact->validateLayout().isEmpty(), "compact layout at 125 percent");
+            for (size_t i = 0; i < before.size(); ++i)
+                check(before[i] ==
+                          p.state.getRawParameterValue(logisth::parameterSpecs[i].id)->load(),
+                      "changing UI views preserves every parameter");
+            auto findWidget = [&](const char *id) -> juce::Component * {
+                auto *field = ui->getChildComponent(0)->findChildWithID(id);
+                check(field != nullptr, "parameter component exists");
+                for (auto *child : field->getChildren())
+                    if (child->isVisible() && (dynamic_cast<juce::Slider *>(child) ||
+                                               dynamic_cast<juce::ComboBox *>(child) ||
+                                               dynamic_cast<juce::ToggleButton *>(child)))
+                        return child;
+                throw std::runtime_error("missing parameter widget");
+            };
+            auto *cutoff = dynamic_cast<juce::Slider *>(findWidget("p1cutoff"));
+            check(cutoff != nullptr, "cutoff widget");
+            cutoff->setValue(cutoff->getValueFromText("2.5k"), juce::sendNotificationSync);
+            check(std::abs(p.state.getRawParameterValue("p1cutoff")->load() - 2500) < .01f,
+                  "frequency editing controls parameter");
+            auto *mix = dynamic_cast<juce::Slider *>(findWidget("mixA"));
+            check(mix != nullptr, "mix widget");
+            mix->setValue(mix->getValueFromText("42%"), juce::sendNotificationSync);
+            check(std::abs(p.state.getRawParameterValue("mixA")->load() - .42f) < .00001f,
+                  "percentage editing controls parameter");
+            auto *chorusTime = dynamic_cast<juce::Slider *>(findWidget("chorusdelay"));
+            check(chorusTime != nullptr, "effect delay widget");
+            chorusTime->setValue(chorusTime->getValueFromText("12ms"), juce::sendNotificationSync);
+            check(std::abs(p.state.getRawParameterValue("chorusdelay")->load() - 12) < .0001f,
+                  "millisecond parameter editing preserves units");
+            check(std::abs(chorusTime->getValueFromText("0.012s") - 12) < .0001f,
+                  "seconds converted to stored milliseconds");
+            auto *ampTime = dynamic_cast<juce::Slider *>(findWidget("p1ampa"));
+            check(ampTime != nullptr, "envelope attack widget");
+            check(std::abs(ampTime->getValueFromText("8ms") - .008) < .00001f,
+                  "millisecond editing converted to envelope seconds");
+            auto *type = dynamic_cast<juce::ComboBox *>(findWidget("p1type"));
+            check(type != nullptr, "filter menu");
+            type->setSelectedId(3, juce::sendNotificationSync);
+            check(p.state.getRawParameterValue("p1type")->load() == 2,
+                  "filter menu controls parameter");
+            auto *sync = dynamic_cast<juce::ToggleButton *>(findWidget("sync"));
+            check(sync != nullptr, "sync switch");
+            sync->setToggleState(false, juce::sendNotificationSync);
+            check(p.state.getRawParameterValue("sync")->load() == 0, "toggle controls parameter");
+        }
+        p.setStateInformation(uiState.getData(), int(uiState.getSize()));
         if (argc > 1) {
             juce::File folder(juce::String::fromUTF8(argv[1]));
             folder.createDirectory();
@@ -181,7 +260,7 @@ int main(int argc, char **argv) {
             auto image = editor->createComponentSnapshot(editor->getLocalBounds());
             auto *logisthEditor = dynamic_cast<LogisthEditor *>(editor.get());
             check(logisthEditor != nullptr, "editor type");
-            for (int page = 0; page < 4; ++page) {
+            for (int page = 0; page < 6; ++page) {
                 auto full = logisthEditor->snapshotPage(page);
                 juce::FileOutputStream out(
                     folder.getChildFile("logisth-page-" + juce::String(page + 1) + ".png"));
@@ -189,6 +268,14 @@ int main(int argc, char **argv) {
                 out.truncate();
                 juce::PNGImageFormat format;
                 check(format.writeImageToStream(full, out), "full page image");
+            }
+            {
+                auto dark = logisthEditor->snapshotPage(4);
+                juce::FileOutputStream out(folder.getChildFile("logisth-dark.png"));
+                out.setPosition(0);
+                out.truncate();
+                juce::PNGImageFormat format;
+                check(format.writeImageToStream(dark, out), "dark theme image");
             }
             juce::FileOutputStream imageOut(folder.getChildFile("logisth.png"));
             check(imageOut.openedOk(), "image file");
@@ -224,6 +311,9 @@ int main(int argc, char **argv) {
             stream.release();
             check(writer->writeFromAudioSampleBuffer(demo, 0, demo.getNumSamples()), "WAV render");
         }
+        std::cout << "PASS compact UI: 248 parameters reachable, no overlaps, clickable controls, "
+                     "80-125% scale, view state preserved, parameter bindings, independent "
+                     "light/dark themes saved in state\n";
         std::cout << "PASS processor: MIDI offsets, state, malformed state, six presets and FX\n";
         return 0;
     } catch (const std::exception &e) {

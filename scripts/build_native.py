@@ -32,6 +32,13 @@ def git(root, *args):
     return subprocess.check_output(['git', '-C', str(root), *args], text=True).strip()
 
 
+def source_fingerprint(root, revision='HEAD'):
+    names = ['Source', 'CMakeLists.txt', 'tests']
+    if git(root, 'ls-tree', '--name-only', revision, 'assets'):
+        names.append('assets')
+    return {name: git(root, 'rev-parse', f'{revision}:{name}') for name in names}
+
+
 def dependencies(folder, logs):
     specs = [('JUCE', 'https://github.com/juce-framework/JUCE.git',
               '51a8a6d7aeae7326956d747737ccf1575e61e209', '8.0.6'),
@@ -98,15 +105,14 @@ def main():
     output.mkdir(parents=True, exist_ok=True)
     logs = output / 'logs'
     logs.mkdir(exist_ok=True)
-    if git(source, 'status', '--porcelain', '--', 'Source', 'CMakeLists.txt', 'tests'):
+    if git(source, 'status', '--porcelain', '--', 'Source', 'CMakeLists.txt', 'tests', 'assets'):
         raise ValueError('Compiled source or tests differ from the recorded Git revision')
     version = re.search(r'project\(Logisth VERSION ([\d.]+)',
                         (source / 'CMakeLists.txt').read_text()).group(1)
     existing = output / f'build-info-{args.platform}.json'
     if args.reuse and existing.is_file():
         record = json.loads(existing.read_text())
-        fingerprint = {name: git(source, 'rev-parse', f'HEAD:{name}')
-                       for name in ['Source', 'CMakeLists.txt', 'tests']}
+        fingerprint = source_fingerprint(source)
         name = record.get('archive', '')
         expected_tests = 6 if args.platform.startswith('linux') else 4
         valid = (record.get('version') == version and record.get('platform') == args.platform
@@ -178,8 +184,7 @@ def main():
         binaries += found
     info = {'version': version, 'platform': args.platform,
             'source_commit': git(source, 'rev-parse', 'HEAD'),
-            'source_fingerprint': {name: git(source, 'rev-parse', f'HEAD:{name}')
-                                   for name in ['Source', 'CMakeLists.txt', 'tests']},
+            'source_fingerprint': source_fingerprint(source),
             'tests': {'passed': count, 'failed': 0, 'skipped': 0}, 'binaries': binaries,
             'formats': ['VST3', 'CLAP', 'Standalone'],
             'run_url': os.environ.get('LOGISTH_RUN_URL', ''),
@@ -193,9 +198,12 @@ def main():
     metadata = json.dumps(info, indent=2) + '\n'
     (stage / 'BUILD_INFO.json').write_text(metadata)
     (output / f'build-info-{args.platform}.json').write_text(metadata)
-    for name in ['README.md', 'docs/IMPLEMENTATION.md']:
+    for name in ['README.md', 'docs/IMPLEMENTATION.md', 'docs/INTERFACE.md', 'docs/MANUAL.md', 'docs/logisth-Manual-English.pdf',
+                 'assets/fonts/LICENSE.txt', 'assets/fonts/NOTICE.txt']:
+        if not (source / name).is_file():
+            continue
         destination = stage / name
-        destination.parent.mkdir(exist_ok=True)
+        destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source / name, destination)
     name = f'logisth-{version}-{args.platform}'
     if args.platform == 'linux-x86_64':

@@ -111,8 +111,9 @@ Oscylatory oferują 0–8 voices, octave/note/fine, phase/retrigger, stereo, pan
 oraz invert. Mono Legato ma priorytet ostatniej nuty i powrót do poprzedniej
 trzymanej nuty. Normal Portamento działa przy nakładających się klawiszach,
 Slide także między osobnymi nutami. Dostępne są ekranowe pitch/mod wheel,
-Bend Range, Solo A/B i polifonia do 16 nut. Obie warstwy są widoczne jednocześnie,
-więc nie trzeba przełączać widoku Part A/B.
+Bend Range, Solo A/B i polifonia do 16 nut. Przełącznik A/B wybiera edytowaną
+warstwę wewnątrz jednego okna; zmiana widoku nie zmienia parametrów ani brzmienia.
+THEME wybiera jasny lub ciemny motyw zapisany w stanie danej instancji.
 
 Nie ma importu banków/presetów Sylenth1 ani jego oryginalnych grafik, menu
 zarządzania bankami i MIDI Learn. Własny zapis stanu zawiera wszystkie 248

@@ -31,8 +31,7 @@ def verify(tag: str) -> None:
         names.add(name)
     actual = {p.name for p in folder.iterdir()
               if p.is_file() and p.name not in {"SHA256SUMS", "README.md"}}
-    required = {f"logisth-{version}-linux-x86_64.tar.gz",
-                f"logisth-{version}-source.tar.gz", "logisth-demo.wav", "logisth.png"}
+    required = {f"logisth-{version}-source.tar.gz", "logisth-demo.wav", "logisth.png"}
     if names != actual or not required.issubset(names):
         raise ValueError("Release manifest does not cover all expected assets")
     if not (root / "docs" / f"RELEASE-{tag}.md").is_file():

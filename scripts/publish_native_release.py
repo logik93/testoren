@@ -8,6 +8,8 @@ import re
 import shutil
 import subprocess
 from pathlib import Path
+from build_native import source_fingerprint
+from verify_release import verify
 
 
 def command(*args):
@@ -22,11 +24,11 @@ def main():
     args = parser.parse_args()
     if not re.fullmatch(r'v\d+\.\d+\.\d+', args.tag):
         raise ValueError('Invalid release tag')
+    verify(args.tag)
     version = args.tag[1:]
     repository = os.environ['GITHUB_REPOSITORY']
     commit = command('git', 'rev-parse', f'{args.tag}^{{commit}}')
-    fingerprint = {name: command('git', 'rev-parse', f'{commit}:{name}')
-                   for name in ['Source', 'CMakeLists.txt', 'tests']}
+    fingerprint = source_fingerprint(Path('.'), commit)
     expected = ['linux-x86_64', 'windows-x86_64', 'macos-universal']
     metadata, uploads = [], []
     for platform in expected:
@@ -87,29 +89,16 @@ def main():
     for record in metadata:
         platform = record['platform']
         requirement = ('glibc >= ' + record['minimum_glibc'] if platform.startswith('linux')
-                       else 'macOS 11+, ad-hoc podpis, bez notarization' if platform.startswith('macos')
-                       else 'Windows x64, statyczny runtime MSVC')
-        rows.append(f'| {platform} | {record["tests"]["passed"]} / 0 pominiętych | {requirement} |')
+                       else 'macOS 11+, ad-hoc signed, not notarized' if platform.startswith('macos')
+                       else 'Windows x64, static MSVC runtime')
+        rows.append(f'| {platform} | {record["tests"]["passed"]} / 0 skipped | {requirement} |')
     notes = Path('native-release-notes.md')
-    notes.write_text(f'''# logisth {version}
-
-Gotowe paczki **VST3, CLAP i Standalone** dla trzech systemów:
-
-| System / architektura | Testy zaliczone | Wymagania |
-| --- | --- | --- |
-''' + '\n'.join(rows) + f'''
-
-macOS Universal zawiera x86_64 i arm64 w każdym binarium. Nazwy i architektury
-plików zostały sprawdzone przed pakowaniem. Dołączone są również źródła, próbka
-WAV, podglądy i wspólny plik SHA256SUMS. Szczegóły kompilacji są w build-info-*.json.
-
-Kod instrumentu i testów odpowiada tagowi `{args.tag}` ({commit}).
-Weryfikacja CI: {os.environ.get('LOGISTH_RUN_URL', '')}
-
-VST2 nie jest dołączone: nadal wymaga własnego licencjonowanego SDK. Brak
-podpisu wydawcy Windows i Apple Developer ID/notarization. Nie wykonywano testu
-odsłuchowego na docelowym sprzęcie ani porównania brzmienia 1:1 z Sylenth1.
-''')
+    authored_notes = (Path('docs') / f'RELEASE-{args.tag}.md').read_text()
+    notes.write_text(authored_notes + f"\n## Native build validation\n\n"
+                     + "| Platform | Tests passed | Requirements |\n| --- | --- | --- |\n"
+                     + '\n'.join(rows)
+                     + f"\n\nSource: `{args.tag}` (`{commit}`). "
+                     + f"[Build and validation]({os.environ.get('LOGISTH_RUN_URL', '')}).\n")
     subprocess.run(['gh', 'release', 'edit', args.tag, '--notes-file', str(notes),
                     '--repo', repository], check=True)
     verified = json.loads(command('gh', 'api', f'repos/{repository}/releases/tags/{args.tag}'))
