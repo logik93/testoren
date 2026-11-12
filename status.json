@@ -1,21 +1,330 @@
 {
   "tag": "v0.2.0",
-  "automation_commit": "8729ae8c37b965cbaf062a8c3d8737f022c57997",
-  "run_id": "43282683578",
-  "run_url": "https://github.com/logik93/testoren/actions/runs/43282683578",
-  "phase": "failed",
-  "jobs": {
-    "started": {
-      "result": "success",
-      "outputs": {}
-    },
-    "plugins": {
-      "result": "cancelled",
-      "outputs": {}
-    },
-    "publish": {
-      "result": "skipped",
-      "outputs": {}
-    }
+  "automation_commit": "ca91c1e5250d510980a1500b8b43534404437fab",
+  "run_id": "43284726352",
+  "run_url": "https://github.com/logik93/testoren/actions/runs/43284726352",
+  "phase": "diagnosed",
+  "diagnostics": {
+    "id": 43282683578,
+    "status": "completed",
+    "conclusion": "cancelled",
+    "head_sha": "8729ae8c37b965cbaf062a8c3d8737f022c57997",
+    "event": "push",
+    "run_started_at": "2026-11-12T18:42:47Z",
+    "updated_at": "2026-11-12T18:52:28Z",
+    "html_url": "https://github.com/logik93/testoren/actions/runs/43282683578",
+    "run_attempt": 1,
+    "jobs": [
+      {
+        "id": 131407830113,
+        "name": "Build windows-x86_64",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T18:42:49Z",
+        "completed_at": "2026-11-12T18:49:51Z",
+        "runner_name": "GitHub Actions 1000000194",
+        "runner_group_name": "GitHub Actions",
+        "labels": [
+          "windows-2022"
+        ],
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Linux dependencies",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 3
+          },
+          {
+            "name": "Build, test, verify architecture and package",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Retain binaries and diagnostic logs",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 10
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 11
+          }
+        ],
+        "check_output": {
+          "title": "",
+          "summary": "",
+          "text": ""
+        },
+        "annotations": [
+          {
+            "title": "",
+            "message": "Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/",
+            "path": ".github"
+          }
+        ]
+      },
+      {
+        "id": 131407830445,
+        "name": "started",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T18:42:50Z",
+        "completed_at": "2026-11-12T18:42:56Z",
+        "runner_name": "GitHub Actions 1000000193",
+        "runner_group_name": "GitHub Actions",
+        "labels": [
+          "ubuntu-22.04"
+        ],
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Record build start",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 6
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 7
+          }
+        ],
+        "check_output": {
+          "title": "",
+          "summary": "",
+          "text": ""
+        },
+        "annotations": [
+          {
+            "title": "",
+            "message": "Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/",
+            "path": ".github"
+          }
+        ]
+      },
+      {
+        "id": 131407830569,
+        "name": "Build macos-universal",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "started_at": "2026-11-12T18:42:48Z",
+        "completed_at": "2026-11-12T18:42:48Z",
+        "runner_name": "",
+        "runner_group_name": "",
+        "labels": [
+          "macos-14"
+        ],
+        "steps": [],
+        "check_output": {
+          "title": "",
+          "summary": "",
+          "text": ""
+        },
+        "annotations": [
+          {
+            "title": "",
+            "message": "The configuration 'macos-14-arm64-us-default' is not supported",
+            "path": ".github"
+          }
+        ]
+      },
+      {
+        "id": 131407830666,
+        "name": "Build linux-x86_64",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T18:42:50Z",
+        "completed_at": "2026-11-12T18:52:12Z",
+        "runner_name": "GitHub Actions 1000000196",
+        "runner_group_name": "GitHub Actions",
+        "labels": [
+          "ubuntu-22.04"
+        ],
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Linux dependencies",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "Build, test, verify architecture and package",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Retain binaries and diagnostic logs",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 10
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 11
+          }
+        ],
+        "check_output": {
+          "title": "",
+          "summary": "",
+          "text": ""
+        },
+        "annotations": [
+          {
+            "title": "",
+            "message": "Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/",
+            "path": ".github"
+          }
+        ]
+      },
+      {
+        "id": 131413427460,
+        "name": "report",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-12T18:52:15Z",
+        "completed_at": "2026-11-12T18:52:27Z",
+        "runner_name": "GitHub Actions 1000000197",
+        "runner_group_name": "GitHub Actions",
+        "labels": [
+          "ubuntu-22.04"
+        ],
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/download-artifact@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "Locate publication receipt",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 4
+          },
+          {
+            "name": "Record outcome and verified download links",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 10
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 11
+          }
+        ],
+        "check_output": {
+          "title": "",
+          "summary": "",
+          "text": ""
+        },
+        "annotations": [
+          {
+            "title": "",
+            "message": "Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/download-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/",
+            "path": ".github"
+          }
+        ]
+      },
+      {
+        "id": 131413428529,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-11-12T18:52:13Z",
+        "completed_at": "2026-11-12T18:52:13Z",
+        "runner_name": null,
+        "runner_group_name": null,
+        "labels": [
+          "ubuntu-22.04"
+        ],
+        "steps": [],
+        "check_output": {
+          "title": "",
+          "summary": "",
+          "text": ""
+        },
+        "annotations": []
+      }
+    ]
   }
 }
