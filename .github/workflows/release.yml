@@ -1,0 +1,45 @@
+name: Publish release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to publish (for example v0.2.0)
+        required: true
+        default: v0.2.0
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-22.04
+    env:
+      RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref_name }}
+      - name: Verify release files and version
+        run: python3 scripts/verify_release.py "$RELEASE_TAG"
+      - name: Publish verified files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_dir="releases/logisth-${RELEASE_TAG#v}"
+          files=("$release_dir"/*.tar.gz "$release_dir"/*.wav "$release_dir"/*.png "$release_dir"/SHA256SUMS)
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "${files[@]}" --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$RELEASE_TAG" "${files[@]}" \
+              --verify-tag --title "logisth ${RELEASE_TAG#v}" \
+              --notes-file "docs/RELEASE-$RELEASE_TAG.md" --repo "$GITHUB_REPOSITORY"
+          fi
