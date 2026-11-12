@@ -1,34 +1,113 @@
-name: Build and test
+name: Native builds and release
+
 on:
   push:
     branches: [master]
   pull_request:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing tag whose release should receive the native binaries
+        required: true
+        default: v0.2.0
+
 permissions:
   contents: read
+
+concurrency:
+  group: native-${{ github.event_name == 'pull_request' && github.ref || inputs.release_tag || 'v0.2.0' }}
+  cancel-in-progress: false
+
+env:
+  RELEASE_TAG: ${{ inputs.release_tag || 'v0.2.0' }}
+  LOGISTH_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
 jobs:
+  started:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Record build start
+        env:
+          REPORT_PHASE: building
+        run: python3 scripts/write_ci_status.py
+
   plugins:
+    name: Build ${{ matrix.platform }}
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, windows-2022, macos-14]
+        include:
+          - os: ubuntu-22.04
+            platform: linux-x86_64
+          - os: windows-2022
+            platform: windows-x86_64
+          - os: macos-14
+            platform: macos-universal
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Linux dependencies
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libasound2-dev libx11-dev libxext-dev libxinerama-dev libxrandr-dev libxcursor-dev libfreetype6-dev libfontconfig1-dev libgl1-mesa-dev
-      - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
-      - name: Compile
-        run: cmake --build build --config Release --parallel 3
-      - name: Tests
-        run: ctest --test-dir build -C Release --output-on-failure
+      - name: Build, test, verify architecture and package
+        run: python scripts/build_native.py --platform ${{ matrix.platform }} --output native-out --parallel 2
+      - name: Retain binaries and diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.platform }}
+          path: native-out/
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    if: github.event_name != 'pull_request'
+    needs: plugins
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: native-*
+          path: ci-artifacts
+      - name: Verify source identity and upload all native builds
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/publish_native_release.py --tag "$RELEASE_TAG" --artifacts ci-artifacts --result native-release-result.json
       - uses: actions/upload-artifact@v4
         with:
-          name: Logisth-${{ runner.os }}
-          path: |
-            build/Logisth_artefacts/Release/VST3/
-            build/Logisth_artefacts/Release/CLAP/
-            build/Logisth_artefacts/Release/Standalone/
+          name: native-release-receipt
+          path: native-release-result.json
           if-no-files-found: error
+
+  report:
+    if: always() && github.event_name != 'pull_request'
+    needs: [started, plugins, publish]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: native-*
+          path: ci-artifacts
+      - name: Locate publication receipt
+        if: needs.publish.result == 'success'
+        run: cp ci-artifacts/native-release-receipt/native-release-result.json native-release-result.json
+      - name: Record outcome and verified download links
+        env:
+          REPORT_PHASE: ${{ needs.publish.result == 'success' && 'published' || 'failed' }}
+          JOB_RESULTS: ${{ toJSON(needs) }}
+        run: python3 scripts/write_ci_status.py

@@ -68,9 +68,14 @@ ctest --test-dir build --output-on-failure
 
 Wyniki: `build/Logisth_artefacts/Release/{VST3,CLAP,Standalone}`. Nazwa produktu
 we wszystkich formatach: **logisth**, CLAP ID/bundle ID: `com.testoren.logisth`.
-Workflow GitHub Actions przygotowuje kompilacje Linux, Windows i macOS.
-Samo zapisanie workflow nie oznacza, że uruchomiono kompilacje zdalne.
-Windows/macOS nie zbudowano w tej sesji; brak podpisywania i notarization.
+Workflow Native builds and release kompiluje Linux x64, Windows x64 i macOS
+Universal (Intel + Apple Silicon), uruchamia testy, sprawdza architektury binariów
+i pakuje VST3/CLAP/Standalone. Po sukcesie wszystkich trzech kompilacji dodaje
+paczki oraz wspólne SHA256SUMS do wydania v0.2.0. BUILD_INFO.json w paczce zapisuje
+rewizję kodu, architektury i wyniki testów. Workflow sprawdza zgodność kodu z tagiem
+przed publikacją. PR-y wykonują testy bez publikowania. Brak podpisu wydawcy
+Windows i notarization; macOS ma podpis ad-hoc. Wynik CI jest zapisywany także
+na gałęzi ci-release-v0.2.0 w status.json.
 
 VST2 jest opcjonalne i wymaga własnego licencjonowanego SDK, którego użytkownik
 nie posiada. Bez niego nie powstaje binarium VST2.
