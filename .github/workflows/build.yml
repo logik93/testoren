@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: native-${{ github.event_name == 'pull_request' && github.ref || inputs.release_tag || 'v0.2.0' }}
@@ -46,18 +47,27 @@ jobs:
             platform: linux-x86_64
           - os: windows-2022
             platform: windows-x86_64
-          - os: macos-14
+          - os: macos-15-intel
             platform: macos-universal
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Reuse tested Windows and Linux packages
+        if: matrix.platform != 'macos-universal'
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: native-${{ matrix.platform }}
+          path: native-out
+          run-id: 43282683578
+          github-token: ${{ github.token }}
       - name: Linux dependencies
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libasound2-dev libx11-dev libxext-dev libxinerama-dev libxrandr-dev libxcursor-dev libfreetype6-dev libfontconfig1-dev libgl1-mesa-dev
       - name: Build, test, verify architecture and package
-        run: python scripts/build_native.py --platform ${{ matrix.platform }} --output native-out --parallel 2
+        run: python scripts/build_native.py --platform ${{ matrix.platform }} --output native-out --parallel 2 --reuse
       - name: Retain binaries and diagnostic logs
         if: always()
         uses: actions/upload-artifact@v4

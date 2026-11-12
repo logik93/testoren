@@ -101,6 +101,25 @@ def main():
         raise ValueError('Compiled source or tests differ from the recorded Git revision')
     version = re.search(r'project\(Logisth VERSION ([\d.]+)',
                         (source / 'CMakeLists.txt').read_text()).group(1)
+    existing = output / f'build-info-{args.platform}.json'
+    if args.reuse and existing.is_file():
+        record = json.loads(existing.read_text())
+        fingerprint = {name: git(source, 'rev-parse', f'HEAD:{name}')
+                       for name in ['Source', 'CMakeLists.txt', 'tests']}
+        name = record.get('archive', '')
+        expected_tests = 6 if args.platform.startswith('linux') else 4
+        valid = (record.get('version') == version and record.get('platform') == args.platform
+                 and record.get('source_fingerprint') == fingerprint
+                 and record.get('tests', {}).get('passed', 0) >= expected_tests
+                 and record.get('tests', {}).get('failed') == 0
+                 and record.get('tests', {}).get('skipped') == 0
+                 and Path(name).name == name and (output / name).is_file())
+        if valid and hashlib.sha256((output / name).read_bytes()).hexdigest() == record['archive_sha256']:
+            record['reuse_validated_in_run'] = os.environ.get('LOGISTH_RUN_URL', '')
+            existing.write_text(json.dumps(record, indent=2) + '\n')
+            print(f'Reused {name}: source identity, {expected_tests} passed tests and checksum verified', flush=True)
+            return
+        print('Existing artifact differs from the source or failed validation; rebuilding', flush=True)
     deps = args.dependencies.resolve() if args.dependencies else build / 'dependencies'
     dependencies(deps, logs)
     configure = [args.cmake, '-S', source, '-B', build, '-DCMAKE_BUILD_TYPE=Release',
