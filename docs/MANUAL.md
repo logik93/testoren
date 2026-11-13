@@ -425,8 +425,7 @@ material can be loud; use moderate levels. An import failure leaves the previous
 material intact. A source starts again on the next note or engine/material change.
 
 Version 0.5 adds the documented Granulizer workflow and eight-graph arp.
-This is a development version. Native release archives are published only after
-their platform builds and tests pass.
+Native release archives are published only after their platform builds and tests pass.
 See BUILD_INFO.json in each archive for source revision and validation results.
 
 

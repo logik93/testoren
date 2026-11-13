@@ -38,7 +38,7 @@ def main():
         record = json.loads(matches[0].read_text())
         if (record['version'] != version or record['platform'] != platform
                 or record['source_fingerprint'] != fingerprint
-                or record['tests']['passed'] < (7 if platform.startswith('linux') else 5)
+                or record['tests']['passed'] < (8 if platform.startswith('linux') else 6)
                 or record['tests']['failed'] != 0 or record['tests']['skipped'] != 0):
             raise ValueError(f'Native build does not match validated release source: {platform}')
         name = record['archive']

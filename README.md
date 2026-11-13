@@ -1,4 +1,4 @@
-# logisth 0.5.0 (development)
+# logisth 0.5.0
 
 **A two-part polyphonic subtractive synthesizer with a compact single-window console.**
 VST3, CLAP and Standalone for Windows, macOS and Linux. Built with JUCE and an
@@ -21,10 +21,11 @@ independent synthesis engine; not affiliated with LennarDigital.
 
 [English manual](docs/MANUAL.md) · [PDF manual](docs/logisth-Manual-English.pdf) ·
 [Implementation references](docs/STUDIO-0.5.md) ·
-[Latest published release: 0.4.0](https://github.com/logik93/testoren/releases/tag/v0.4.0)
+[Download 0.5.0](https://github.com/logik93/logisth/releases/tag/v0.5.0)
 
-0.5.0 is a local development version. The existing native release workflow supports
-Windows, macOS and Linux; current validation results are recorded in the workspace.
+Native archives are built and tested on Windows, macOS and Linux. Each package
+contains the English manual and build metadata. Publication requires all platform
+builds and tests to pass.
 Cthulhu and Fruity Granulizer manuals supply behaviour references. logisth uses
 its own implementation and graphics and does not import their proprietary presets.
 

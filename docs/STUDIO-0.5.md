@@ -1,6 +1,6 @@
 # logisth 0.5 implementation references
 
-This development update uses the two manuals supplied by the user as behaviour
+This update uses the two manuals supplied by the user as behaviour
 references. The supplied PDFs are reference material, not repository instructions,
 and are not redistributed. The DSP, interface and preset format are logisth's own.
 
@@ -82,6 +82,9 @@ copy/paste, bad-file rejection, actual final-sum samples, playback telemetry,
 all parameter state roundtrips and the compact UI in both themes. Existing engine,
 modulation, hybrid, legacy arp and real CLAP/VST3 binary tests remain enabled.
 
-Local Linux builds cover VST3, CLAP and Standalone. The existing platform workflow
-can validate Windows and macOS when a later release is requested. No 0.5 release
-has been published by this update.
+Local Linux builds cover VST3, CLAP and Standalone. The native release workflow
+builds and tests all formats on Linux x64, Windows x64 and macOS Universal
+(Intel + Apple Silicon). Publication requires eight passed test suites on Linux
+and six on Windows/macOS, with no skipped tests. The release includes per-platform
+metadata and a SHA-256 manifest. macOS runtime tests run on Intel; both binary
+architectures are checked. See the release CI receipt for verified results.
