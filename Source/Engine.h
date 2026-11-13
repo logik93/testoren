@@ -1,4 +1,5 @@
 #pragma once
+#include "Gain.h"
 #include "Granular.h"
 #include "Modulation.h"
 #include "SourceData.h"
@@ -639,12 +640,12 @@ class Engine {
                 }
             }
             master += smoothing * (p.master - master);
-            left[s] = out[0] * .15f * master;
-            right[s] = out[1] * .15f * master;
+            left[s] = out[0] * engineHeadroom * master;
+            right[s] = out[1] * engineHeadroom * master;
             if (partA)
-                partA[s] = parts[0] * .15f * master;
+                partA[s] = parts[0] * engineHeadroom * master;
             if (partB)
-                partB[s] = parts[1] * .15f * master;
+                partB[s] = parts[1] * engineHeadroom * master;
             if (distortion)
                 distortion[s] = fxDrive;
             if (phaser)

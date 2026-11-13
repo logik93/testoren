@@ -1,10 +1,22 @@
-# logisth 0.5.1
+# logisth 0.5.2
 
 **A two-part polyphonic subtractive synthesizer with a compact single-window console.**
 VST3, CLAP and Standalone for Windows, macOS and Linux. Built with JUCE and an
 independent synthesis engine; not affiliated with LennarDigital.
 
 ![logisth dark interface](docs/images/logisth-dark.png)
+
+## Output calibration in 0.5.2
+
+- A centred full-scale sine reaches 0 dBFS peak per output channel at unity
+  source, Mix and Main settings (previously -19.49 dBFS).
+- Output calibration follows the shared effects, retaining their operating level.
+- Factory Main trims provide headroom; the mixer shows an output dBFS reading.
+- [Measurement report](docs/CALIBRATION.md), repeatable tests, reference audio
+  and a calibration preset are included with the release.
+
+Older saved patches retain their fader values and are approximately 19.49 dB
+louder at identical settings. Reduce Main when reopening a hot or layered patch.
 
 ## Fixed in 0.5.1
 
@@ -31,7 +43,7 @@ independent synthesis engine; not affiliated with LennarDigital.
 
 [English manual](docs/MANUAL.md) · [PDF manual](docs/logisth-Manual-English.pdf) ·
 [Implementation references](docs/STUDIO-0.5.md) ·
-[Download 0.5.1](https://github.com/logik93/logisth/releases/tag/v0.5.1)
+[Download 0.5.2](https://github.com/logik93/logisth/releases/tag/v0.5.2)
 
 Native archives are built and tested on Windows, macOS and Linux. Each package
 contains the English manual and build metadata. Publication requires all platform

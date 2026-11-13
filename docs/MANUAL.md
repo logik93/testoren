@@ -1,4 +1,4 @@
-# logisth 0.5.1 — User Manual
+# logisth 0.5.2 — User Manual
 
 A two-part polyphonic subtractive synthesizer for VST3, CLAP and standalone use.
 This manual describes logisth's own controls and behaviour. logisth is an independent
@@ -343,6 +343,40 @@ and Solo, scaled by MAIN. L+R shows the actual final left-plus-right output,
 after effects, MAIN and MIDI ONLY. It is a sum, not an average. The scope uses
 zero-crossing alignment and automatic visual scaling; the peak label gives the
 unscaled peak. Selecting a source changes only the view and is saved in state.
+
+### Output calibration (0.5.2)
+
+One centred Classic sine, one unison voice, MIDI note 69 at velocity 127,
+source Volume / Mix / Main at 100%, amplitude sustain at 100%, bypassed filters
+and effects, and no modulation produces **0 dBFS peak on each output channel**.
+The unweighted RMS is -3.0103 dBFS (a full-scale sine has RMS 1/sqrt(2)).
+This is a unity reference, rather than a normal listening preset.
+
+A fixed output calibration follows the shared FX, preserving their input level
+and drive/compression behaviour. At the same controls the change is +19.49 dB
+from 0.5.1. Factory presets have individually adjusted Main settings; the initial
+Main default is now 42%. Existing user presets keep their saved fader values and
+will be louder. Reduce Main for patches that overload the output.
+
+The test reference for factory presets is a six-second C3/G3/C4/E4 chord (MIDI
+48/55/60/64), velocity 102, including the attack. At 48 kHz most factory presets
+peak near -6 dBFS; Grain cloud and Chord pulse remain a little quieter. All ten
+are tested at 44.1, 48 and 96 kHz with at least 3 dB of headroom for that chord.
+This reference does not guarantee headroom for every possible note or edit.
+
+The mixer prints the peak of the latest processed block in dBFS. Values above
+0 dBFS turn red. Constant-power panning is retained: hard panning raises the
+active channel by 3.01 dB relative to centre. Two identical oscillators add
+6.02 dB; eight coherent, undetuned unison voices add 9.03 dB. Keep headroom with
+Mix/Main when stacking voices. There is no automatic note-count normalization
+or hidden output limiter. The scope's L+R mode is a literal sum and reads +6.02
+dB relative to either channel for a centred mono sine.
+
+The release calibration ZIP includes a full-scale 440 Hz float WAV, a rendered
+logisth WAV, a .logisth calibration preset and before/after CSV readings. Load
+the preset, play MIDI 69 at full velocity, leave the DAW track fader at unity,
+and bypass DAW effects to repeat the reference. Some RMS meters add an AES17
+3 dB reference offset; these may display 0 dB RMS for this same signal.
 
 MIX A and MIX B set the part levels; MAIN controls output after all effects.
 Independent L/R meters show post-effects output. There is no hard output limiter:

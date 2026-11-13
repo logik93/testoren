@@ -1032,7 +1032,7 @@ inline const std::array<ParameterSpec, parameterCount> parameterSpecs{{
     {"warmdrive", "Warm drive", 0, "FILTER CONTROL", 0, 1, 0, 1, "Off|On", false},
     {"mixA", "Mix A", 0, "MIXER", 0, 1, 0.7f, 1, "", false},
     {"mixB", "Mix B", 0, "MIXER", 0, 1, 0.7f, 1, "", false},
-    {"master", "Main volume", 0, "MIXER", 0, 1, 0.65f, 1, "", false},
+    {"master", "Main volume", 0, "MIXER", 0, 1, 0.42f, 1, "", false},
     {"polyphony", "Polyphony", 0, "PERFORMANCE", 1, 16, 16, 1, "", true},
     {"monolegato", "Mono legato", 0, "PERFORMANCE", 0, 1, 0, 1, "Off|On", false},
     {"portamento", "Portamento / s", 0, "PERFORMANCE", 0, 4, 0, 0.4f, "", false},

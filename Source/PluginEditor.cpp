@@ -1954,12 +1954,20 @@ class LogisthEditor::Console : public Component,
             float db = 20 * std::log10(jmax(.00001f, level));
             int lit = jlimit(0, 16, int((db + 48) / 3));
             for (int j = 0; j < 16; ++j) {
-                g.setColour(j < lit     ? (j > 13 ? Colour(0xffbb7c46) : green)
+                g.setColour(j < lit     ? (level > 1 && j >= 14 ? Colour(0xffd35f55)
+                                           : j > 13             ? Colour(0xffbb7c46)
+                                                                : green)
                             : darkTheme ? Colour(0xff354138)
                                         : Colour(0xffdee2d8));
                 g.fillRoundedRectangle(float(x + 3), float(506 - j * 4), 9, 3, 1);
             }
         }
+
+        float outputLevel = processor.peak.load();
+        drawCaption(
+            g, outputLevel > 0 ? String(20 * std::log10(outputLevel), 1) + " dBFS" : "-inf dBFS",
+            {1140, 517, 76, 16}, 9, outputLevel > 1 ? Colour(0xffd35f55) : muted,
+            Justification::centred);
 
         g.setColour(screen);
         g.fillRoundedRectangle(Rectangle<float>(280, 278, 668, 258), 8);

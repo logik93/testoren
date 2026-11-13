@@ -352,14 +352,15 @@ void LogisthProcessor::processBlock(AudioBuffer<float> &audio, MidiBuffer &midi)
             for (int s = 0; s < count; ++s) {
                 masterSmooth += smoothing * (masterTarget - masterSmooth);
                 for (auto *ch : {l, r}) {
-                    float x = get(Param::gmuteaudio) > 0 ? 0 : ch[s] * masterSmooth;
+                    float x =
+                        get(Param::gmuteaudio) > 0 ? 0 : ch[s] * masterSmooth * outputCalibration;
                     ch[s] = std::isfinite(x) ? x : 0;
                     maximum = jmax(maximum, std::abs(ch[s]));
                     const size_t channel = ch == l ? 0 : 1;
                     maxima[channel] = jmax(maxima[channel], std::abs(ch[s]));
                 }
-                scope.push(partScopeA[size_t(s)] * masterSmooth,
-                           partScopeB[size_t(s)] * masterSmooth, l[s] + r[s]);
+                scope.push(partScopeA[size_t(s)] * masterSmooth * outputCalibration,
+                           partScopeB[size_t(s)] * masterSmooth * outputCalibration, l[s] + r[s]);
             }
             const auto &views = engine.playbackPictures();
             for (int i = 0; i < 4; ++i)
@@ -736,6 +737,7 @@ void LogisthProcessor::loadPreset(int index) {
             set("delay", .25f);
         }
     }
+    set("master", factoryMainLevels[size_t(jlimit(0, 9, index))]);
     uiChanges.fetch_or(4);
 }
 AudioProcessorEditor *LogisthProcessor::createEditor() {

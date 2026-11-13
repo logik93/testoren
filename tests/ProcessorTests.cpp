@@ -1,3 +1,4 @@
+#include "GainCalibration.h"
 #include "PluginEditor.h"
 #include "PluginProcessor.h"
 #include <iostream>
@@ -441,6 +442,13 @@ void checkPointerInteraction() {
 int main(int argc, char **argv) {
     try {
         juce::ScopedJuceInitialiser_GUI gui;
+        if (argc > 2 &&
+            (juce::String(argv[1]) == "--gain-report" || juce::String(argv[1]) == "--gain-check")) {
+            gain_test::run(juce::String(argv[1]) == "--gain-check",
+                           juce::File(juce::String::fromUTF8(argv[2])));
+            return 0;
+        }
+        gain_test::run(true);
         checkEffects();
         checkHybridProcessor();
         checkStudioProcessor();
