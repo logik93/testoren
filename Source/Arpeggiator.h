@@ -1,31 +1,11 @@
 #pragma once
-#include "Modulation.h"
+#include "ArpTypes.h"
+#include "GraphArpeggiator.h"
 #include <cstdint>
 namespace logisth {
-struct ArpStep {
-    int transpose = 0, velocity = 100;
-    bool hold = false;
-};
-struct ArpParams {
-    bool enabled = false, sync = true, pattern = false, latch = false;
-    int mode = 0, velocityMode = 3, division = 4, octaves = 1, wrap = 0, steps = 16;
-    float time = .125f, gate = .5f, swing = 0;
-    double bpm = 120;
-    std::array<ArpStep, 32> sequence{};
-    struct Lane {
-        int note = 0, octave = 0, gate = 50, repeats = 1, chance = 100;
-    };
-    std::array<Lane, 32> lanes{};
-    std::array<int, 6> lengths{16, 16, 16, 16, 16, 16};
-};
-enum class EventType { NoteOn, NoteOff, Controller, PitchWheel, Aftertouch, StepVelocity };
-struct MidiEvent {
-    int time = 0;
-    EventType type = EventType::NoteOn;
-    int channel = 1, key = 60;
-    float value = 0;
-};
 class Arpeggiator {
+    GraphArpeggiator graph;
+    bool graphMode = false;
     struct Key {
         int note = -1, channel = 1;
         float velocity = 0;
@@ -199,9 +179,12 @@ class Arpeggiator {
   public:
     void prepare(double sampleRate) {
         sr = sampleRate;
+        graph.prepare(sampleRate);
         reset();
     }
     void reset() {
+        graph.reset();
+        graphMode = false;
         keys = {};
         playing = {};
         sustain = {};
@@ -215,10 +198,23 @@ class Arpeggiator {
         currentStep = -1;
         latched = false;
     }
+    int graphHead(int lane) const {
+        return graphMode ? graph.playhead(lane) : -1;
+    }
     int playhead() const {
-        return currentStep;
+        return graphMode ? graph.playhead(0) : currentStep;
     }
     template <class Emit> void begin(const ArpParams &p, Emit &&emit) {
+        bool next = p.pattern && p.graphs.enabled;
+        if (next != graphMode) {
+            stop(0, emit);
+            graphMode = next;
+            enabled = false;
+        }
+        if (graphMode) {
+            graph.begin(p, emit);
+            return;
+        }
         if (enabled != p.enabled) {
             off(0, emit);
             for (int ch = 1; ch <= 16; ++ch) {
@@ -236,6 +232,10 @@ class Arpeggiator {
         }
     }
     template <class Emit> void stop(int time, Emit &&emit) {
+        if (graphMode) {
+            graph.stop(time, emit);
+            return;
+        }
         off(time, emit);
         repeatsLeft = 0;
         untilRepeat = -1;
@@ -249,6 +249,10 @@ class Arpeggiator {
             emit(MidiEvent{time, EventType::Controller, ch, 123, 0});
     }
     template <class Emit> void input(MidiEvent event, const ArpParams &p, Emit &&emit) {
+        if (graphMode) {
+            graph.input(event, p, emit);
+            return;
+        }
         if (!p.enabled) {
             emit(event);
             return;
@@ -316,6 +320,10 @@ class Arpeggiator {
         emit(event);
     }
     template <class Emit> void advance(int start, int end, const ArpParams &p, Emit &&emit) {
+        if (graphMode) {
+            graph.advance(start, end, p, emit);
+            return;
+        }
         if (!p.enabled)
             return;
         if (latchWasEnabled && !p.latch) {

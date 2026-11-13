@@ -1,4 +1,4 @@
-# logisth 0.4.0
+# logisth 0.5.0 (development)
 
 **A two-part polyphonic subtractive synthesizer with a compact single-window console.**
 VST3, CLAP and Standalone for Windows, macOS and Linux. Built with JUCE and an
@@ -6,28 +6,27 @@ independent synthesis engine; not affiliated with LennarDigital.
 
 ![logisth dark interface](docs/images/logisth-dark.png)
 
-## What's new in 0.4.0
+## What's new in 0.5.0
 
-- Four independent source slots, each switchable between Classic, Wavetable,
-  Sampler and Granular, with an optional per-source ADSR.
-- Audio import/drop, waveform preview, 256-frame spectral wavetable morphing,
-  sample regions/loop/reverse/root and overlapping grains with scan/spray.
-- Embedded audio in project state; no original media path needed on reopen.
-- Chord mapper with 128 triggers, eight-note voicings, MIDI learn and chord types.
-- A Cthulhu-inspired 32-step arp: independent note, octave, velocity, gate,
-  repetition and probability lanes, draw editing, ties, latch, eight pattern slots
-  and randomisation. Original Legacy arp remains available.
-- Optional host MIDI output, ten factory sounds and 514 audio parameters.
-- The same compact light/dark console, proportional resizing and embedded fonts.
+- Granulizer model with separate grain/wave spacing, attack/hold, alternating
+  pan, wave-spacing LFO, randomness, transient regions/detection, key mapping,
+  time hold, reverse and tempo stretching. Previous Cloud model remains available.
+- Large sample waveform with a live scanner and grain positions, zoom and seek.
+- Mixer oscilloscope: part A, part B or actual final L+R sum.
+- Eight independent arp graphs, signed early/late timing, clock dividers,
+  pitch-degree masks, note constraints, chord rotation and twelve named A–L patterns.
+- User preset library: save/load/delete .logisth files with embedded audio,
+  chords, all patterns and UI preferences. 936 automatable audio parameters.
+- Compact single-window interface with light/dark themes.
 
 [English manual](docs/MANUAL.md) · [PDF manual](docs/logisth-Manual-English.pdf) ·
-[Download 0.4.0](https://github.com/logik93/testoren/releases/tag/v0.4.0)
+[Implementation references](docs/STUDIO-0.5.md) ·
+[Latest published release: 0.4.0](https://github.com/logik93/testoren/releases/tag/v0.4.0)
 
-Native archives are published after builds and tests on Windows, Linux and
-macOS. Each archive includes build metadata and the English manual. Cthulhu
-supplies a workflow reference; no Xfer graphics, code or preset files are used or imported.
-The first 248 parameter IDs are retained; extended destination choices can affect
-normalised destination automation from older hosts (see the manual).
+0.5.0 is a local development version. The existing native release workflow supports
+Windows, macOS and Linux; current validation results are recorded in the workspace.
+Cthulhu and Fruity Granulizer manuals supply behaviour references. logisth uses
+its own implementation and graphics and does not import their proprietary presets.
 
 ## Install
 

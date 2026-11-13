@@ -32,6 +32,8 @@ LogisthProcessor::LogisthProcessor()
         raw[i] = state.getRawParameterValue(parameterSpecs[i].id);
     for (int i = 0; i < 4; ++i)
         publishSource(i, SourceData::factory());
+    for (auto &position : graphPlayheads)
+        position = -1;
     auto map = std::make_shared<ChordMap>();
     for (int i = 0; i < 128; ++i)
         map->set(i, 1);
@@ -72,6 +74,23 @@ Params LogisthProcessor::snapshot() const {
         o.envelopeEnabled = sourceNext() > 0;
         o.envelope = {sourceNext(), sourceNext(), sourceNext(), sourceNext()};
         o.data = sourcePointers[size_t(i)].load();
+        size_t g = size_t(Param::o1gmodel) + size_t(i) * 15;
+        auto granNext = [&] { return raw[g++]->load(); };
+        o.gran.enabled = granNext() > 0;
+        o.gran.attack = granNext() * .001f;
+        o.gran.hold = granNext() * .001f;
+        o.gran.grainSpacing = granNext();
+        o.gran.waveSpacing = granNext();
+        o.gran.pan = granNext();
+        o.gran.depth = granNext();
+        o.gran.frequency = granNext();
+        o.gran.randomness = granNext();
+        o.gran.transients = int(granNext());
+        o.gran.transientHold = granNext() * .001f;
+        o.gran.freeze = granNext() > 0;
+        o.gran.keyTo = int(granNext());
+        o.gran.sync = granNext() > 0;
+        o.gran.beats = granNext();
     }
     for (int i = 0; i < 2; ++i) {
         size_t at = size_t(Param::p1input) + size_t(i) * 10;
@@ -218,6 +237,39 @@ ArpParams LogisthProcessor::arpSnapshot() const {
     }
     for (int i = 0; i < 6; ++i)
         p.lengths[size_t(i)] = int(raw[size_t(Param::arpnotelen) + size_t(i)]->load());
+    p.graphs.enabled = get(Param::arpgraphs) > 0;
+    p.graphs.retrigger = get(Param::gretrigger) > 0;
+    p.graphs.link = get(Param::glink) > 0;
+    p.graphs.chordMode = get(Param::gchord) > 0;
+    p.graphs.division = int(get(Param::gdivision));
+    p.graphs.freeHz = get(Param::gfree);
+    for (int lane = 0; lane < 8; ++lane) {
+        p.graphs.lengths[size_t(lane)] = int(raw[size_t(Param::glen0) + size_t(lane) * 2]->load());
+        p.graphs.divisors[size_t(lane)] = int(raw[size_t(Param::gdiv0) + size_t(lane) * 2]->load());
+    }
+    for (int i = 0; i < 7; ++i)
+        p.graphs.degrees[size_t(i)] = raw[size_t(Param::gdegree0) + size_t(i)]->load() > 0;
+    for (int i = 0; i < 12; ++i)
+        p.graphs.constraints[size_t(i)] = int(raw[size_t(Param::gprevent0) + size_t(i)]->load());
+    for (int i = 0; i < 32; ++i) {
+        size_t at = size_t(Param::g1note) + size_t(i) * 10;
+        auto next = [&] { return int(raw[at++]->load()); };
+        auto &g = p.graphs.steps[size_t(i)];
+        g.note = next();
+        g.random = next();
+        g.octave = next();
+        g.pitch = next();
+        g.velocity = next();
+        g.gate = next();
+        g.late = next();
+        g.harmony = next();
+        g.mute = next() > 0;
+        g.reset = next() > 0;
+    }
+    p.clockAvailable = clockAvailable;
+    p.transportPlaying = wasPlaying;
+    p.ppq = hostPpq;
+    p.positionValid = hostPpqValid;
     p.bpm = bpm;
     return p;
 }
@@ -230,6 +282,7 @@ void LogisthProcessor::prepareToPlay(double sampleRate, int) {
 }
 void LogisthProcessor::reset() {
     engine.reset();
+    scope.clear();
     chordMapper.reset();
     chordsWereEnabled = false;
     effects.reset();
@@ -259,8 +312,15 @@ void LogisthProcessor::processBlock(AudioBuffer<float> &audio, MidiBuffer &midi)
     } assetRead(assetReaders);
     generatedMidi.clear();
     bool stop = false, seek = false;
+    clockAvailable = false;
+    hostPpqValid = false;
     if (auto *head = getPlayHead())
         if (auto position = head->getPosition()) {
+            clockAvailable = true;
+            if (auto ppq = position->getPpqPosition()) {
+                hostPpq = *ppq;
+                hostPpqValid = std::isfinite(hostPpq);
+            }
             if (auto tempo = position->getBpm())
                 if (std::isfinite(*tempo) && *tempo > 0)
                     bpm = jlimit(20., 400., *tempo);
@@ -286,18 +346,24 @@ void LogisthProcessor::processBlock(AudioBuffer<float> &audio, MidiBuffer &midi)
             int count = jmin(512, end - rendered);
             auto *l = audio.getWritePointer(0) + rendered;
             auto *r = audio.getWritePointer(1) + rendered;
-            engine.render(l, r, count, p, driveMod.data(), phaserMod.data());
+            engine.render(l, r, count, p, driveMod.data(), phaserMod.data(), partScopeA.data(),
+                          partScopeB.data());
             effects.process(l, r, count, driveMod.data(), phaserMod.data(), fx);
             for (int s = 0; s < count; ++s) {
                 masterSmooth += smoothing * (masterTarget - masterSmooth);
                 for (auto *ch : {l, r}) {
-                    float x = ch[s] * masterSmooth;
+                    float x = get(Param::gmuteaudio) > 0 ? 0 : ch[s] * masterSmooth;
                     ch[s] = std::isfinite(x) ? x : 0;
                     maximum = jmax(maximum, std::abs(ch[s]));
                     const size_t channel = ch == l ? 0 : 1;
                     maxima[channel] = jmax(maxima[channel], std::abs(ch[s]));
                 }
+                scope.push(partScopeA[size_t(s)] * masterSmooth,
+                           partScopeB[size_t(s)] * masterSmooth, l[s] + r[s]);
             }
+            const auto &views = engine.playbackPictures();
+            for (int i = 0; i < 4; ++i)
+                playback[size_t(i)].write(views[size_t(i)]);
             rendered += count;
         }
     };
@@ -419,6 +485,9 @@ void LogisthProcessor::processBlock(AudioBuffer<float> &audio, MidiBuffer &midi)
     }
     arp.advance(scheduled, n, ap, emit);
     renderTo(n);
+    scope.commit();
+    for (int i = 0; i < 8; ++i)
+        graphPlayheads[size_t(i)] = arp.graphHead(i);
     arpPlayhead = arp.playhead();
     midi.clear();
     if (output || flushMidi)
@@ -430,23 +499,32 @@ void LogisthProcessor::processBlock(AudioBuffer<float> &audio, MidiBuffer &midi)
 }
 void LogisthProcessor::getStateInformation(MemoryBlock &dest) {
     auto tree = state.copyState();
-    tree.setProperty("schema", 3, nullptr);
+    tree.setProperty("schema", 4, nullptr);
+    tree.setProperty("presetName", currentPresetName(), nullptr);
     saveAssets(tree);
     copyXmlToBinary(*tree.createXml(), dest);
 }
 void LogisthProcessor::setStateInformation(const void *data, int size) {
+    applyState(data, size);
+}
+bool LogisthProcessor::applyState(const void *data, int size) {
     if (size <= 0 || size > 64 * 1024 * 1024)
-        return;
+        return false;
     auto xml = getXmlFromBinary(data, size);
     if (!xml)
-        return;
-    auto restore = [&](const ValueTree &source) {
+        return false;
+    auto restore = [&](const ValueTree &source) -> bool {
         ValueTree safe("LogisthState");
-        safe.setProperty("schema", 3, nullptr);
+        safe.setProperty("schema", 4, nullptr);
+        if (source.hasProperty("uiScope"))
+            safe.setProperty("uiScope", jlimit(0, 2, int(source["uiScope"])), nullptr);
         if (source.hasProperty("uiDark"))
             safe.setProperty("uiDark", int(source["uiDark"]) != 0, nullptr);
         for (const auto &spec : parameterSpecs) {
-            float value = String(spec.id) == "arppattern" ? 0 : spec.initial;
+            float value = (String(spec.id) == "arppattern" || String(spec.id) == "arpgraphs" ||
+                           String(spec.id).endsWith("gmodel"))
+                              ? 0
+                              : spec.initial;
             for (auto child : source)
                 if (child["id"].toString() == spec.id) {
                     value = float(child["value"]);
@@ -463,17 +541,23 @@ void LogisthProcessor::setStateInformation(const void *data, int size) {
             safe.addChild(child, -1, nullptr);
         }
         if (!restoreAssets(source))
-            return;
+            return false;
         state.replaceState(safe);
+        {
+            const ScopedLock lock(assetLock);
+            presetName = source.getProperty("presetName", "").toString().substring(0, 128);
+            activePresetFile = File{};
+        }
+        ++presetRevision;
         uiChanges.fetch_or(4);
+        return true;
     };
     if (xml->hasTagName(state.state.getType())) {
-        restore(ValueTree::fromXml(*xml));
-        return;
+        return restore(ValueTree::fromXml(*xml));
     }
     // Import the previous prototype's state without retaining its product identity.
     if (!xml->hasTagName("AsterionState"))
-        return;
+        return false;
     const auto old = ValueTree::fromXml(*xml);
     ValueTree migrated("LogisthState");
     auto oldValue = [&](const String &id, float fallback) {
@@ -508,7 +592,7 @@ void LogisthProcessor::setStateInformation(const void *data, int size) {
     set("diston", oldValue("drive", 0) > 0 ? 1 : 0);
     set("choruson", oldValue("chorus", 0) > 0 ? 1 : 0);
     set("delayon", oldValue("delay", 0) > 0 ? 1 : 0);
-    restore(migrated);
+    return restore(migrated);
 }
 void LogisthProcessor::loadPreset(int index) {
     for (auto *parameter : getParameters()) {
@@ -516,6 +600,20 @@ void LogisthProcessor::loadPreset(int index) {
         parameter->setValueNotifyingHost(parameter->getDefaultValue());
         parameter->endChangeGesture();
     }
+    {
+        const ScopedLock lock(assetLock);
+        presetName.clear();
+        activePresetFile = File{};
+        patterns = {};
+        currentPattern = 0;
+    }
+    for (int i = 0; i < 4; ++i)
+        clearSource(i);
+    auto defaultChords = std::make_shared<ChordMap>();
+    for (int key = 0; key < 128; ++key)
+        defaultChords->set(key, 1);
+    publishChords(defaultChords);
+    ++presetRevision;
     auto set = [&](const String &id, float value) {
         auto *parameter = state.getParameter(id);
         parameter->beginChangeGesture();
@@ -615,6 +713,7 @@ void LogisthProcessor::loadPreset(int index) {
             set("p1ampr", .8f);
         }
         if (index == 8) {
+            set("o1gmodel", 0);
             set("o1engine", 3);
             set("o1position", .2f);
             set("o1size", 140);

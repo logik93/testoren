@@ -27,6 +27,28 @@ class LogisthProcessor : public juce::AudioProcessor {
     void randomisePattern();
     void serviceAssets();
     std::atomic<int> arpPlayhead{-1};
+    std::array<std::atomic<int>, 8> graphPlayheads{};
+    logisth::ScopeBuffer scope;
+    std::array<logisth::PlaybackTelemetry, 4> playback;
+    void copyGraph(int);
+    void pasteGraph(int);
+    void randomiseGraph(int);
+    void copyPattern(int, int);
+    void setPatternName(int, const juce::String &);
+    juce::String patternName(int) const;
+    juce::File presetDirectory() const;
+    void setPresetDirectory(const juce::File &);
+    juce::Result savePresetFile(const juce::File &);
+    juce::Result loadPresetFile(const juce::File &);
+    void savePresetAsync(const juce::File &);
+    void loadPresetAsync(const juce::File &);
+    juce::String currentPresetName() const;
+    juce::File currentPresetFile() const;
+    int activePattern() const {
+        return currentPattern.load();
+    }
+    std::atomic<int> presetRevision{0};
+    bool applyState(const void *, int);
     const juce::String getName() const override {
         return "logisth";
     }
@@ -107,7 +129,11 @@ class LogisthProcessor : public juce::AudioProcessor {
     std::atomic<int> assetReaders{0}, learnTarget{-1};
     std::array<std::atomic<uint32_t>, 4> learned{};
     juce::String assetStatus;
-    std::array<juce::ValueTree, 8> patterns;
+    std::array<juce::ValueTree, 12> patterns;
+    juce::ValueTree graphClipboard;
+    juce::File userPresetFolder, activePresetFile;
+    juce::String presetName;
+    std::atomic<int> currentPattern{0};
     juce::ThreadPool importWorkers{1};
     logisth::ChordMapper chordMapper;
     bool chordsWereEnabled = false, midiWasEnabled = false;
@@ -115,11 +141,13 @@ class LogisthProcessor : public juce::AudioProcessor {
     logisth::Engine engine;
     logisth::Effects effects;
     logisth::Arpeggiator arp;
-    std::array<float, 512> driveMod{}, phaserMod{};
+    std::array<float, 512> driveMod{}, phaserMod{}, partScopeA{}, partScopeB{};
     std::atomic<int> uiChanges{0};
     float masterSmooth = 0;
     double bpm = 120;
-    bool wasPlaying = false;
+    bool wasPlaying = false, clockAvailable = false;
+    double hostPpq = 0;
+    bool hostPpqValid = false;
     juce::int64 expectedSample = -1;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LogisthProcessor)
 };

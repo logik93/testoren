@@ -103,8 +103,14 @@ void checkHybridProcessor() {
     {
         WavAudioFormat wav;
         auto output = temporary.getFile().createOutputStream();
+        StringPairArray metadata;
+        metadata.set("NumCuePoints", "2");
+        metadata.set("Cue0Identifier", "1");
+        metadata.set("Cue0Offset", "0");
+        metadata.set("Cue1Identifier", "2");
+        metadata.set("Cue1Offset", "2048");
         std::unique_ptr<AudioFormatWriter> writer(
-            wav.createWriterFor(output.get(), 48000, 2, 24, {}, 0));
+            wav.createWriterFor(output.get(), 48000, 2, 24, metadata, 0));
         check(bool(writer), "hybrid test WAV writer");
         output.release();
         AudioBuffer<float> sample(2, 4096);
@@ -123,6 +129,7 @@ void checkHybridProcessor() {
     check(source->samples[0].size() == 4096 && source->frames == 8 && source->frameSize == 512,
           "import and frame slicing");
     check(source->samples[0] != source->samples[1], "stereo import preserved");
+    check(source->regions == std::vector<int64_t>{0, 2048}, "WAV cue regions imported");
     original.prepareToPlay(48000, 512);
     auto *engineParam = original.state.getParameter("o1engine");
     engineParam->setValueNotifyingHost(engineParam->convertTo0to1(2));
@@ -168,6 +175,14 @@ void checkHybridProcessor() {
     check(restored.sourceData(0)->samples == source->samples &&
               restored.sourceData(0)->frameSize == 512,
           "embedded sample restored after source file removed");
+    check(restored.sourceData(0)->regions == source->regions, "region metadata state roundtrip");
+    TemporaryFile portablePreset(".logisth");
+    check(restored.savePresetFile(portablePreset.getFile()).wasOk(), "save embedded user preset");
+    restored.clearSource(0);
+    check(restored.loadPresetFile(portablePreset.getFile()).wasOk() &&
+              restored.sourceData(0)->samples == source->samples &&
+              restored.sourceData(0)->regions == source->regions,
+          "user preset restores embedded audio and WAV regions without original file");
     check(restored.chordMap()->keys[61].notes == original.chordMap()->keys[61].notes,
           "custom chord voicing roundtrip");
     restored.recallPattern(2);
@@ -250,11 +265,92 @@ void checkHybridProcessor() {
            "concurrent media replacement, legacy state, invalid chord rejection\n";
 }
 
+void checkStudioProcessor() {
+    using namespace juce;
+    LogisthProcessor p;
+    auto set = [&](const String &id, float value) {
+        auto *param = p.state.getParameter(id);
+        check(param != nullptr, "studio parameter exists");
+        param->setValueNotifyingHost(param->convertTo0to1(value));
+    };
+    auto get = [&](const String &id) { return p.state.getRawParameterValue(id)->load(); };
+    for (int slot = 0; slot < 12; ++slot) {
+        p.recallPattern(slot);
+        set("g1pitch", float(slot - 6));
+        p.setPatternName(slot, "Phrase " + String(slot + 1));
+    }
+    for (int slot = 0; slot < 12; ++slot) {
+        p.recallPattern(slot);
+        check(get("g1pitch") == slot - 6, "A-L automatically retain edits");
+    }
+    p.copyPattern(11, 3);
+    p.recallPattern(3);
+    check(get("g1pitch") == 5 && p.patternName(3) == "Phrase 12", "whole pattern copy");
+    set("g1pitch", -24);
+    set("glen3", 7);
+    set("gdiv3", 3);
+    p.copyGraph(3);
+    p.pasteGraph(2);
+    check(get("g1octave") == -8 && get("gdiv2") == 3 && get("glen7") == 7,
+          "graph clipboard scales shape and linked lengths");
+    set("glink", 0);
+    set("glen2", 9);
+    p.pasteGraph(3);
+    check(get("glen2") == 9 && get("glen3") == 7, "unlinked paste retains other lengths");
+    p.setChord(61, 4);
+    p.state.state.setProperty("uiScope", 1, nullptr);
+    TemporaryFile preset(".logisth");
+    p.setPresetDirectory(preset.getFile().getParentDirectory());
+    check(p.savePresetFile(preset.getFile()).wasOk(), "user preset atomic save");
+    check(p.currentPresetFile() == preset.getFile(), "save tracks active preset");
+    set("g1pitch", 18);
+    p.setChord(61, 1);
+    check(p.loadPresetFile(preset.getFile()).wasOk(), "user preset load");
+    check(get("g1pitch") == -24 && p.chordMap()->keys[61].count == 4 &&
+              int(p.state.state.getProperty("uiScope")) == 1,
+          "preset restores graphs, chords and scope selection");
+    p.recallPattern(11);
+    check(get("g1pitch") == 5 && p.patternName(11) == "Phrase 12", "preset retains A-L bank");
+    preset.getFile().replaceWithText("not a preset");
+    check(p.loadPresetFile(preset.getFile()).failed() && get("g1pitch") == 5,
+          "invalid preset leaves active patch intact");
+    check(p.savePresetFile(preset.getFile().withFileExtension("txt")).failed(),
+          "preset extension validation");
+    p.loadPreset(0);
+    set("o1engine", 3);
+    set("o1gmodel", 1);
+    p.prepareToPlay(48000, 512);
+    AudioBuffer<float> audio(2, 512);
+    MidiBuffer midi;
+    midi.addEvent(MidiMessage::noteOn(1, 60, .8f), 0);
+    p.processBlock(audio, midi);
+    std::array<float, 512> sum{}, a{};
+    p.scope.read(2, sum.data(), 512);
+    p.scope.read(0, a.data(), 512);
+    bool activeA = false;
+    for (int i = 0; i < 512; ++i) {
+        check(std::abs(sum[size_t(i)] - audio.getSample(0, i) - audio.getSample(1, i)) < 1e-6,
+              "oscilloscope sum matches actual output sample for sample");
+        activeA |= std::abs(a[size_t(i)]) > 1e-5;
+    }
+    auto picture = p.playback[0].read();
+    check(activeA && picture.active && picture.grainCount > 0 && picture.position > 0,
+          "granular playback telemetry and part scope carry real audio");
+    set("gmuteaudio", 1);
+    midi.clear();
+    p.processBlock(audio, midi);
+    check(audio.getMagnitude(0, 512) == 0, "MIDI-only mode silences output");
+    std::cout
+        << "PASS studio processor: 12 automatic pattern memories, graph clipboard, "
+           "user preset files, malformed file rejection, real sum scope and grain telemetry\n";
+}
+
 int main(int argc, char **argv) {
     try {
         juce::ScopedJuceInitialiser_GUI gui;
         checkEffects();
         checkHybridProcessor();
+        checkStudioProcessor();
         LogisthProcessor p;
         p.setRateAndBufferSizeDetails(48000, 512);
         p.prepareToPlay(48000, 512);
@@ -442,6 +538,30 @@ int main(int argc, char **argv) {
             valueEditor->onReturnKey();
             check(p.state.getRawParameterValue("pat2note")->load() == 1,
                   "one-based note entry controls zero-based note index");
+            compact->snapshotPage(13);
+            canvas = ui->getChildComponent(0)->findChildWithID("graph.canvas");
+            check(canvas && canvas->isVisible(), "eight-graph drawing view available");
+            canvas->mouseDown(eventAt({25, 125}, juce::ModifierKeys::leftButtonModifier));
+            check(p.state.getRawParameterValue("g2mute")->load() == 1,
+                  "graph mute row controls mute without erasing note");
+            canvas->mouseDown(eventAt({25, 40}, juce::ModifierKeys::leftButtonModifier |
+                                                    juce::ModifierKeys::altModifier));
+            check(p.state.getRawParameterValue("g2reset")->load() == 1,
+                  "Alt graph click creates motion reset marker");
+            canvas->mouseDown(eventAt({25, 40}, juce::ModifierKeys::rightButtonModifier));
+            valueEditor = dynamic_cast<juce::TextEditor *>(canvas->getChildComponent(0));
+            check(valueEditor && valueEditor->isVisible(), "exact graph entry opens");
+            valueEditor->setText("U+D");
+            valueEditor->onReturnKey();
+            check(p.state.getRawParameterValue("g2note")->load() == 12,
+                  "graph exact entry accepts note motion names");
+            canvas->mouseDown(eventAt({5, 150}, juce::ModifierKeys::leftButtonModifier));
+            check(p.state.getRawParameterValue("gprevent0")->load() == 1,
+                  "graph pitch constraint cycles to Block");
+            canvas->mouseDown(eventAt({260, 1}, juce::ModifierKeys::leftButtonModifier));
+            canvas->mouseUp(eventAt({260, 1}, 0));
+            check(p.state.getRawParameterValue("glen0")->load() == 16,
+                  "graph length bar sets linked length");
         }
         p.setStateInformation(uiState.getData(), int(uiState.getSize()));
         if (argc > 1) {
@@ -449,9 +569,20 @@ int main(int argc, char **argv) {
             folder.createDirectory();
             std::unique_ptr<juce::AudioProcessorEditor> editor(p.createEditor());
             auto image = editor->createComponentSnapshot(editor->getLocalBounds());
+            p.loadPreset(0);
+            for (const auto *id : {"o1engine", "o2engine"}) {
+                auto *param = p.state.getParameter(id);
+                param->setValueNotifyingHost(param->convertTo0to1(3));
+            }
+            midi.clear();
+            midi.addEvent(juce::MidiMessage::noteOn(1, 60, .8f), 0);
+            for (int i = 0; i < 18; ++i) {
+                p.processBlock(audio, midi);
+                midi.clear();
+            }
             auto *logisthEditor = dynamic_cast<LogisthEditor *>(editor.get());
             check(logisthEditor != nullptr, "editor type");
-            for (int page = 0; page < 8; ++page) {
+            for (int page = 0; page < 14; ++page) {
                 auto full = logisthEditor->snapshotPage(page);
                 juce::FileOutputStream out(
                     folder.getChildFile("logisth-page-" + juce::String(page + 1) + ".png"));

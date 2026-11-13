@@ -30,6 +30,7 @@ def inline(text):
     return re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', escape(text))
 
 lines = (root / 'docs/MANUAL.md').read_text().splitlines()
+version = re.search(r'logisth ([0-9.]+)', lines[0]).group(1)
 story, para, table = [], [], []
 def flush():
     if para:
@@ -84,11 +85,11 @@ for line in lines + ['']:
 def footer(canvas, doc):
     canvas.setFont('OpenSans', 8)
     canvas.setFillColor(colors.HexColor('#667268'))
-    canvas.drawString(42, 25, 'logisth 0.4.0 | English User Manual')
+    canvas.drawString(42, 25, f'logisth {version} | English User Manual')
     canvas.drawRightString(A4[0]-42, 25, str(doc.page))
 
 SimpleDocTemplate(str(root / 'docs/logisth-Manual-English.pdf'), pagesize=A4,
                   rightMargin=42, leftMargin=42, topMargin=42, bottomMargin=44,
-                  title='logisth 0.4.0 — User Manual', author='Testoren').build(
+                  title=f'logisth {version} — User Manual', author='Testoren').build(
                       story, onFirstPage=footer, onLaterPages=footer)
 print('Rendered docs/logisth-Manual-English.pdf')

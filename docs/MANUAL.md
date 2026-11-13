@@ -1,4 +1,4 @@
-# logisth 0.4.0 — User Manual
+# logisth 0.5.0 — User Manual
 
 A two-part polyphonic subtractive synthesizer for VST3, CLAP and standalone use.
 This manual describes logisth's own controls and behaviour. logisth is an independent
@@ -101,7 +101,7 @@ faders illustrates the current envelope. Amp Env A and B remain independent.
 
 Every oscillator slot A1/A2/B1/B2 has its own engine menu: Classic, Wavetable,
 Sampler or Granular. All four may use different engines and different audio files.
-The adjacent view menu selects VOICE, SOURCE or ENV without opening another window.
+The adjacent view menu selects VOICE, SOURCE, ENV, GRAINS, MOTION or TIME without opening another window.
 VOICE holds the shared tuning, level, unison, stereo and pan controls. SOURCE
 holds the engine-specific controls; ENV holds that oscillator's optional ADSR.
 The central Amp Env A/B remains the final envelope for its part.
@@ -120,12 +120,38 @@ reverses playback. Without LOOP, playback ends at the selected boundary. Root
 sets the reference pitch, not automatic pitch detection. Stereo files retain
 both channels; mono files feed both channels. Unison and pitch bend still apply.
 
-Granular overlaps up to eight Hann-windowed grains per unison voice. POSITION
-selects the source location; SIZE is grain duration in milliseconds; DENSITY is
-grains per second; SPRAY randomises locations around the playhead; SCAN moves
-through the material in cycles per second. Negative scan moves backwards.
-REVERSE changes each grain's playback direction. ROOT controls grain pitch.
-Unison, stereo and pan remain available in VOICE.
+Granular offers two models. **Granulizer** is the default for new patches;
+**Cloud** retains the eight Hann-windowed grains, size, density, scan and spray
+controls from 0.4. Existing projects select Cloud automatically.
+
+In Granulizer, GRAINS contains ATTACK, HOLD, GRAIN SPACE and WAVE SPACE.
+ATTACK sets both fade-in and fade-out, so total grain duration is twice ATTACK
+plus HOLD. GRAIN SPACE is the interval between grain starts relative to HOLD;
+WAVE SPACE advances the source by HOLD times that percentage at every start.
+With zero ATTACK and both spacings at 100%, playback reconstructs the sample
+at its original pitch. Increasing GRAIN SPACE slows traversal without changing
+pitch. WAVE SPACE can be negative: this reverses the order of grains while each
+grain still reads forwards. REVERSE separately reverses each grain's samples.
+Up to 64 grains overlap per unison voice; further starts are skipped if full.
+
+MOTION contains alternating grain PAN, wave-spacing modulation DEPTH and SPEED,
+RANDOM source-position variation, TIME HOLD (freezes traversal), LOOP and REVERSE.
+TIME contains transient mode Off / Regions / Detect, transient HOLD, KEY TO,
+TEMPO SYNC and BEATS. Regions uses imported WAV cue points; Detect uses a local
+onset detector. A crossed marker aligns the grain and replaces its hold time.
+KEY TO selects Pitch, Percent, Step or Transient. Pitch follows played notes;
+the other modes keep source pitch and use keys relative to ROOT for position:
++12 semitones selects 50% of the sample, advances 12 holds, or selects region 12,
+respectively. Negative position offsets clamp to the first position/region.
+TEMPO SYNC fits traversal to BEATS at the current tempo without repitching grains.
+START sets the initial location; automation moves the active scanner. LOOP wraps
+over the sample to END; TIME HOLD keeps creating grains at the current location.
+
+Click an oscillator's waveform strip or select SAMPLE in the rack for the larger
+waveform view. Choose A1/A2/B1/B2. It draws the actual stereo amplitude envelope,
+region markers, start/end and the most recent active voice's scanner, plus up to
+16 active grain positions. Click to change START; wheel zooms around the cursor;
+Shift-wheel pans. The display is a view of playback, not a sample editor.
 
 Enable OSC ENVELOPE in ENV to give a slot an additional attack, decay, sustain
 and release. A part's shared envelope still limits its final output. New
@@ -221,45 +247,61 @@ DONE stores the first eight distinct pitches in ascending order. The complete
 chord map is saved with the project. Chords can play as blocks with arp disabled,
 or supply a pool of notes to the Pattern engine.
 
-### Pattern engine
+### Eight-graph arpeggiator
 
-Select ARPEGGIATOR, choose Pattern and enable its square. Use 01–16 / 17–32 to
-edit up to 32 steps. The grid has seven rows. The small field beside each row
-sets that lane's independent length from 1 to 32; TIE shares the GATE length.
+Select ARPEGGIATOR, choose Pattern, enable GRAPHS and the rack enable square.
+The selected graph occupies one drawing area with 32 steps. The tabs are:
 
-| Lane | Meaning |
+| Graph | Meaning |
 | --- | --- |
-| NOTE | Rank 1–8 in the sorted held-note/chord pool; wraps when the pool is shorter. |
-| OCTAVE | Adds -2 to +2 octaves to the selected note. |
-| VELOCITY | MIDI 0–127; zero is a rest. The velocity-mode menu sets key/step blending. |
-| GATE | 1–100 percent of the step or ratchet interval. |
-| REPEAT | 1–4 equally spaced note repetitions within a step. |
-| CHANCE | 0–100 percent chance of playing the step; zero is a rest. |
-| TIE | Carries the note into the next step; repeated steps use their individual gates. |
+| NOTE | Rest, held-note ranks 1–8, Up, Down, Up/Down, Down/Up, UpAndDown, DownAndUp, FingeredBottom or FingeredTop. |
+| RAND SEL | Random positive or negative rank offset, wrapping in the held-note pool. |
+| OCTAVE | -8 to +8 octaves. |
+| PITCH | -24 to +24 semitones, with seven pitch-degree enable buttons below. |
+| VEL SCALE | 0–200% of input velocity; zero is a rest. |
+| GATE | 0–100% of the base step interval; zero is a rest. |
+| LATE | -49% early to +49% late, using half-step look-ahead. |
+| HARMONY | Adds a second note -12 to +12 semitones from the main note; zero disables it. |
 
-Draw values by dragging vertically across a row and horizontally across steps.
-Right-click or double-click a cell for exact numeric entry; scroll changes a
-cell by one. Clicking or painting the TIE row toggles ties. Each row has a
-playhead that follows its own length; cells beyond its length appear dimmed.
-For example, note length 5 and octave length 3 produce a 15-step combined cycle.
-The NOTE row uses held-note rank, rather than a recorded absolute melody.
+Up/Down and Down/Up omit repeated extremes; UpAndDown and DownAndUp repeat them.
+Fingered modes alternate the bottom or top note with the other held notes.
+Pitch-degree enables use a detected chord root, including common inversions.
+Root detection uses triad/seventh templates; ambiguous voicings may select a
+different root from another instrument.
 
-TIME selects a musical division with SYNC, or seconds otherwise. LATCH keeps a
-released chord running until a new chord arrives. Turning latch off or stopping
-host transport clears latched notes. Pattern slots 1–8 store complete arp
-settings: choose a slot and SAVE, then select it later to recall. Empty slots do
-not change the pattern. DICE randomises all 32 steps. Chord maps are stored
-separately from these pattern slots. This version has one pattern playing at a
-time and manual slot selection, not an automatic song-chain mode.
+Drag to draw; right-click or double-click for an exact value; wheel adjusts one
+unit. NOTE accepts ranks 1–8 or UP, DN, UD, DU, U+D, D+U, FLO, FHI and REST.
+The row below NOTE toggles mute without erasing values. Alt-click a NOTE step
+adds a motion-reset marker. Drag the top bar or use LEN to change length.
+LINK shares lengths; with LINK off each graph cycles independently. DIV slows
+the selected graph by 1–16 base steps. COPY / PASTE transfer a normalized shape,
+length and divider; RAND randomizes the selected graph. NOTE copying includes
+mute/reset flags. The pitch-class buttons cycle Pass, Block (x), Up (>) and
+Down (<); redirected notes move one semitone. These constraints are global.
 
-MIDI OUT in the header sends generated notes, pitch/controller/pressure events
-and supported passthrough messages to the host in addition to playing the synth.
-Route its MIDI output to another instrument using your host's routing controls.
-Turning MIDI OUT off sends all-notes-off to prevent downstream stuck notes.
-MIDI output routing depends on the host. In Standalone, select a MIDI output
-device in the wrapper's audio/MIDI settings. Large SysEx messages are not
-forwarded. Internal processing preserves sample offsets and ratchet timing
-across buffer sizes.
+A–L are twelve named pattern memories. Switching slots automatically retains
+current edits. Click the name to rename; COPY TO duplicates the complete current
+pattern into another slot. RATE ranges from 1/512 note to 16 bars when SYNC is on,
+or 0.01–512 Hz otherwise. RETR resets motion with each incoming note. With RETR
+off and valid host PPQ, the clock aligns to transport. CHORD rotates the held
+voicing so the selected arp note is lowest, then plays the whole voicing.
+LATCH holds the released chord until a new chord arrives. Stopping the host or
+disabling the arp clears generated notes. Only one pattern plays at a time.
+
+MIDI OUT sends generated notes and supported pitch/controller/pressure messages
+to the host. MIDI ONLY also silences synth output; turning it on enables MIDI OUT.
+Route output in the DAW or choose an output device in Standalone settings.
+Turning MIDI OUT off sends all-notes-off. MIDI routing depends on the host.
+Large SysEx messages are not forwarded. Early/late timing is sample scheduled;
+an early first note is clamped to the incoming note time, never before it.
+
+### Previous Pattern engine
+
+Turn GRAPHS off to use the 0.4 Pattern grid, with note rank, octave, velocity,
+gate, repeat, chance and tie rows, independent lane lengths and two 16-step pages.
+Draw or right-click for values. Existing 0.4 projects select this engine
+automatically. Its pattern selector also uses the A–L memory bank. Legacy remains
+a separate mode with its original controls.
 
 ### Legacy mode and compatibility
 
@@ -295,6 +337,13 @@ envelope times use seconds internally. The panel displays suitable units.
 
 ## 8. Mixer and performance
 
+The mixer scope has A, B and L+R source buttons. A/B show each part's stereo
+sum after its filter, amplitude envelope and Mix level, before shared effects
+and Solo, scaled by MAIN. L+R shows the actual final left-plus-right output,
+after effects, MAIN and MIDI ONLY. It is a sum, not an average. The scope uses
+zero-crossing alignment and automatic visual scaling; the peak label gives the
+unscaled peak. Selecting a source changes only the view and is saved in state.
+
 MIX A and MIX B set the part levels; MAIN controls output after all effects.
 Independent L/R meters show post-effects output. There is no hard output limiter:
 loud patches, resonance and effects may exceed 0 dBFS. Reduce MAIN as needed.
@@ -313,19 +362,33 @@ also update these controls. The keyboard covers five octaves.
 ## 9. Presets, automation and project recall
 
 The ten factory sounds are Init / analog, Wide supersaw, Sub bass, Slow atmosphere,
-Pulse pluck, Step sequence, Morph glass, Sample keys, Grain cloud and Chord pulse. Choose a sound in SOUND LIBRARY or use the arrow
-buttons. Loading a sound replaces the current patch; save the project first if
-you want to retain edits. The preset selection is a factory sound selector, not
-a user bank manager. Use your DAW's plug-in preset/state system to save patches.
+Pulse pluck, Step sequence, Morph glass, Sample keys, Grain cloud and Chord pulse.
+The sound selector lists factory sounds and user presets from the current folder.
+Its arrows step through that list. Loading replaces the current patch.
 
-All 514 audio parameters are available for host automation. A/B view changes,
-rack selection and theme do not alter their values. The theme is saved as UI
-metadata rather than an additional audio parameter. DAW state contains all audio
-parameters, modulation routes and the 16-step pattern. Reopening an instance
-restores its stored theme. The first 248 parameter IDs remain unchanged, with 266 new IDs appended.
-The destination menus now have six additional entries. Projects restore stored
-patch values; review destination automation recorded as normalised values in
-older hosts, since expanding a choice list can change its normalised positions.
+The PATCH menu provides Save as, Save current, Load file, Choose folder,
+Refresh library and Delete current. Save as creates a named **.logisth** file;
+Save current overwrites the active user preset. Delete asks for confirmation
+and moves the file to the OS trash. The default library is logisth/Presets under
+the OS application-data directory. Choose folder selects an instance's working
+library; it does not relocate files. Load file can open a preset from elsewhere.
+Save/load run on a worker, with completion/errors in the footer. Wait for the
+completion message before closing the instance or moving a newly saved file.
+
+Presets contain all 936 audio parameters, routing, compressed audio for all four
+slots, WAV regions, chord mappings, twelve named patterns, theme and scope
+selection. The original sample files are unnecessary on recall. Saving uses a
+temporary file and atomic replacement. Invalid files leave the current patch
+intact. State/preset files are limited to 64 MiB. These are logisth's own files;
+renaming another format to .logisth does not convert it.
+
+All 936 parameters are available for host automation. The first 514 parameter
+IDs and order from 0.4 are retained, with 422 IDs appended. A/B views, rack pages,
+theme and scope source do not change the patch's audio settings. DAW state
+contains the same embedded material and pattern data as a user preset. Restoring
+older states automatically selects the corresponding earlier granular/arp engines.
+The 0.4 destination expansion still affects normalized destination automation
+from earlier releases; inspect such automation when importing an older project.
 
 There is no Sylenth1 bank import or MIDI Learn menu. Legacy prototype states
 receive a best-effort migration of filter and modulation settings; changes to
@@ -361,8 +424,9 @@ Dense granular patches with high unison/polyphony require more CPU. Imported
 material can be loud; use moderate levels. An import failure leaves the previous
 material intact. A source starts again on the next note or engine/material change.
 
-Release 0.4.0 introduces these engines and the new chord/pattern workflow.
-Native archives are published only after their platform builds and tests pass.
+Version 0.5 adds the documented Granulizer workflow and eight-graph arp.
+This is a development version. Native release archives are published only after
+their platform builds and tests pass.
 See BUILD_INFO.json in each archive for source revision and validation results.
 
 

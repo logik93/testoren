@@ -1,6 +1,8 @@
 #pragma once
+#include "Granular.h"
 #include "Modulation.h"
 #include "SourceData.h"
+#include "Telemetry.h"
 #include <cstdint>
 namespace logisth {
 struct OscParams {
@@ -12,6 +14,7 @@ struct OscParams {
     bool loop = true, reverse = false, envelopeEnabled = false;
     EnvelopeParams envelope{.008f, .25f, 1, .35f};
     const SourceData *data = nullptr;
+    GranularParams gran;
 };
 struct PartParams {
     EnvelopeParams amp;
@@ -123,7 +126,9 @@ class Engine {
         std::array<Envelope, 2> amp, env;
         std::array<Envelope, 4> sourceEnv;
         std::array<float, 4> sourcePosition{};
+        std::array<int, 4> sourceModes{-1, -1, -1, -1};
         std::array<std::array<SourcePlayback, 8>, 4> playback{};
+        std::array<std::array<GranulizerPlayback, 8>, 4> granular{};
         std::array<std::array<std::array<Filter, 2>, 2>, 2> filters{};
         std::array<float, 2> cutoff{5000, 5000};
         std::array<LfoState, 2> lfo{};
@@ -133,6 +138,7 @@ class Engine {
         }
     };
     std::vector<Voice> voices = std::vector<Voice>(16);
+    std::array<PlaybackPicture, 4> pictures{};
     std::array<float, 16> bend{}, wheel{}, pressure{};
     std::array<bool, 16> sustain{};
     struct Key {
@@ -435,13 +441,16 @@ class Engine {
         return n;
     }
     void render(float *left, float *right, int count, const Params &p, float *distortion = nullptr,
-                float *phaser = nullptr) {
+                float *phaser = nullptr, float *partA = nullptr, float *partB = nullptr) {
+        pictures = {};
+        std::array<uint64_t, 4> pictureAges{};
         const float smoothing = float(1 - std::exp(-1 / (.01 * sr)));
         const int limit = p.monoLegato ? 1 : std::clamp(p.polyphony, 1, 16);
         for (size_t i = size_t(limit); i < voices.size(); ++i)
             voices[i] = Voice{};
         for (int s = 0; s < count; ++s) {
             float out[2]{};
+            float parts[2]{};
 
             float fxDrive = 0, fxPhaser = 0;
             uint64_t fxAge = 0;
@@ -486,6 +495,14 @@ class Engine {
                 for (int osc = 0; osc < 4; ++osc) {
                     const int part = osc / 2;
                     const auto &op = p.osc[size_t(osc)];
+                    int mode = op.engine == 3 && op.gran.enabled ? 4 : op.engine;
+                    if (v.sourceModes[size_t(osc)] != mode) {
+                        v.sourceModes[size_t(osc)] = mode;
+                        for (auto &player : v.playback[size_t(osc)])
+                            player.reset();
+                        for (auto &player : v.granular[size_t(osc)])
+                            player.reset();
+                    }
                     float sourceEnvelope = v.sourceEnv[size_t(osc)].tick(op.envelope, sr);
                     const float level =
                         clamp(op.level + mods.pair(Destination::VolumeA, part), 0, 2) *
@@ -520,19 +537,64 @@ class Engine {
                                 double ratio = std::exp2((v.pitch - op.root + pitch + op.semitone +
                                                           spread * op.detune * .01) /
                                                          12.);
-                                signal = v.playback[size_t(osc)][size_t(u)].tick(
-                                    *op.data, op.engine, ratio, sr, position, op.end, op.loop,
-                                    op.reverse,
-                                    clamp(
-                                        op.size *
-                                            std::exp2(mods.pair(Destination::GrainSizeA, part) * 4),
-                                        .005f, .25f),
-                                    op.density, op.spray, op.scan,
-                                    op.engine == 3 &&
-                                            v.playback[size_t(osc)][size_t(u)].untilGrain <= 0
-                                        ? noise()
-                                        : 0);
+                                if (op.engine == 3 && op.gran.enabled) {
+                                    signal = v.granular[size_t(osc)][size_t(u)].tick(
+                                        *op.data, op.gran, sr, ratio, position, op.end, op.loop,
+                                        op.reverse, v.note, op.root, p.bpm,
+                                        std::exp2(
+                                            clamp(mods.pair(Destination::GrainSizeA, part), -4, 4) *
+                                            4));
+                                } else
+                                    signal = v.playback[size_t(osc)][size_t(u)].tick(
+                                        *op.data, op.engine, ratio, sr, position, op.end, op.loop,
+                                        op.reverse,
+                                        clamp(op.size *
+                                                  std::exp2(
+                                                      mods.pair(Destination::GrainSizeA, part) * 4),
+                                              .005f, .25f),
+                                        op.density, op.spray, op.scan,
+                                        op.engine == 3 &&
+                                                v.playback[size_t(osc)][size_t(u)].untilGrain <= 0
+                                            ? noise()
+                                            : 0);
                             }
+                        }
+                        if (u == 0 && op.data && v.age >= pictureAges[size_t(osc)]) {
+                            pictureAges[size_t(osc)] = v.age;
+                            auto &view = pictures[size_t(osc)];
+                            view = {};
+                            view.active = true;
+                            view.revision = op.data->revision;
+                            double length = std::max(2., double(op.data->samples[0].size()));
+                            if (op.engine == 1)
+                                view.position = float(t);
+                            else if (op.engine == 2) {
+                                auto &player = v.playback[size_t(osc)][0];
+                                view.active = !player.finished;
+                                view.position =
+                                    float(op.reverse ? op.end - player.cursor / (length - 1)
+                                                     : position + player.cursor / (length - 1));
+                            } else if (op.engine == 3 && op.gran.enabled) {
+                                auto &player = v.granular[size_t(osc)][0];
+                                view.position = float(player.head / (length - 1));
+                                view.active =
+                                    !player.finished ||
+                                    std::any_of(player.grains.begin(), player.grains.end(),
+                                                [](const auto &grain) { return grain.active; });
+                                for (const auto &grain : player.grains)
+                                    if (grain.active && view.grainCount < 16)
+                                        view.grains[size_t(view.grainCount++)] =
+                                            float(grain.cursor / (length - 1));
+                            } else if (op.engine == 3) {
+                                auto &player = v.playback[size_t(osc)][0];
+                                view.position = float(position + player.elapsed * op.scan);
+                                view.position -= std::floor(view.position);
+                                for (const auto &grain : player.grains)
+                                    if (grain.active && view.grainCount < 16)
+                                        view.grains[size_t(view.grainCount++)] =
+                                            float(grain.cursor / (length - 1));
+                            } else
+                                view.active = false;
                         }
                         const float gain = level * (op.invert ? -1.f : 1.f) / std::sqrt(float(n));
                         phase += dt;
@@ -569,19 +631,28 @@ class Engine {
                                                                     pp.filterType, sr, pp.drive,
                                                                     p.warmDrive);
                         }
+                        float contribution = input * amps[part] * v.velocity * mix;
+                        parts[part] += contribution;
                         if (p.solo == 0 || p.solo == part + 1)
-                            out[ch] += input * amps[part] * v.velocity * mix;
+                            out[ch] += contribution;
                     }
                 }
             }
             master += smoothing * (p.master - master);
             left[s] = out[0] * .15f * master;
             right[s] = out[1] * .15f * master;
+            if (partA)
+                partA[s] = parts[0] * .15f * master;
+            if (partB)
+                partB[s] = parts[1] * .15f * master;
             if (distortion)
                 distortion[s] = fxDrive;
             if (phaser)
                 phaser[s] = fxPhaser;
         }
+    }
+    const std::array<PlaybackPicture, 4> &playbackPictures() const {
+        return pictures;
     }
     static float effectiveCutoff(float local, float global, float modulation, float key,
                                  double sampleRate) {

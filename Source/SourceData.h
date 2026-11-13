@@ -19,6 +19,7 @@ struct SourceData {
     double sampleRate = 44100;
     std::string name = "Factory / glass";
     std::array<std::vector<float>, 2> samples;
+    std::vector<int64_t> regions, transients;
     int frameSize = 2048, frames = 1;
     std::array<std::vector<float>, 11> tables;
     static void fft(std::vector<std::complex<float>> &a, bool inverse) {
@@ -47,6 +48,21 @@ struct SourceData {
         if (inverse)
             for (auto &x : a)
                 x /= float(n);
+    }
+    void analyseTransients() {
+        transients.clear();
+        transients.push_back(0);
+        float previous = 0;
+        size_t separation = size_t(sampleRate * .012);
+        for (size_t at = 0; at + 64 < samples[0].size(); at += 64) {
+            float peak = 0;
+            for (size_t i = 0; i < 64; ++i)
+                peak = std::max(peak, std::abs(samples[0][at + i]));
+            if (peak > .025f && peak > previous * 2.2f &&
+                at - size_t(transients.back()) > separation)
+                transients.push_back(int64_t(at));
+            previous = std::max(peak, previous * .92f);
+        }
     }
     void buildTables(int size = 2048) {
         if (size != 256 && size != 512 && size != 1024 && size != 2048)
@@ -129,6 +145,7 @@ struct SourceData {
                 }
             d->buildTables();
             d->samples = std::move(original);
+            d->analyseTransients();
             return std::shared_ptr<const SourceData>(d);
         }();
         return data;
