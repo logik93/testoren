@@ -9,7 +9,7 @@ on:
       release_tag:
         description: Existing tag whose release should receive the native binaries
         required: true
-        default: v0.3.0
+        default: v0.4.0
 
 permissions:
   contents: read
@@ -39,6 +39,8 @@ jobs:
   plugins:
     name: Build ${{ matrix.platform }}
     timeout-minutes: 45
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -67,6 +69,12 @@ jobs:
           path: native-out/
           if-no-files-found: error
           retention-days: 14
+      - name: Record native platform result
+        if: always() && github.event_name != 'pull_request'
+        env:
+          REPORT_PLATFORM: ${{ matrix.platform }}
+          REPORT_PHASE: ${{ job.status == 'success' && 'passed' || 'failed' }}
+        run: python scripts/write_ci_status.py
 
   publish:
     if: github.event_name != 'pull_request'

@@ -1,11 +1,17 @@
 #pragma once
 #include "Modulation.h"
+#include "SourceData.h"
 #include <cstdint>
 namespace logisth {
 struct OscParams {
     int wave = 1, unison = 1;
     float level = .65f, detune = 12, pan = 0, semitone = 0, phase = 0, stereo = .6f;
     bool retrigger = false, invert = false;
+    int engine = 0, root = 60;
+    float position = 0, end = 1, size = .08f, density = 16, spray = .15f, scan = 0, warp = 0;
+    bool loop = true, reverse = false, envelopeEnabled = false;
+    EnvelopeParams envelope{.008f, .25f, 1, .35f};
+    const SourceData *data = nullptr;
 };
 struct PartParams {
     EnvelopeParams amp;
@@ -115,6 +121,9 @@ class Engine {
         float velocity = 0, pressure = -1, random = 0, pitch = 60, glideStep = 0;
         std::array<std::array<double, 8>, 4> phases{};
         std::array<Envelope, 2> amp, env;
+        std::array<Envelope, 4> sourceEnv;
+        std::array<float, 4> sourcePosition{};
+        std::array<std::array<SourcePlayback, 8>, 4> playback{};
         std::array<std::array<std::array<Filter, 2>, 2>, 2> filters{};
         std::array<float, 2> cutoff{5000, 5000};
         std::array<LfoState, 2> lfo{};
@@ -123,7 +132,7 @@ class Engine {
             return amp[0].active() || amp[1].active();
         }
     };
-    std::array<Voice, 16> voices{};
+    std::vector<Voice> voices = std::vector<Voice>(16);
     std::array<float, 16> bend{}, wheel{}, pressure{};
     std::array<bool, 16> sustain{};
     struct Key {
@@ -177,6 +186,8 @@ class Engine {
     }
     void releaseVoice(Voice &v, const Params &p) {
         v.held = v.sustained = false;
+        for (int i = 0; i < 4; ++i)
+            v.sourceEnv[size_t(i)].releaseNote(p.osc[size_t(i)].envelope.release, sr);
         for (int i = 0; i < 2; ++i) {
             v.amp[i].releaseNote(p.part[i].amp.release, sr);
             v.env[i].releaseNote(p.envelopes[i].release, sr);
@@ -242,7 +253,7 @@ class Engine {
         reset();
     }
     void reset() {
-        voices = {};
+        std::fill(voices.begin(), voices.end(), Voice{});
         bend = {};
         wheel = {};
         pressure = {};
@@ -333,9 +344,12 @@ class Engine {
             if (p.lfo[i].free)
                 v.lfo[i] = freeLfo[i];
         }
-        for (size_t o = 0; o < 4; ++o)
+        for (size_t o = 0; o < 4; ++o) {
+            v.sourceEnv[o].on();
+            v.sourcePosition[o] = p.osc[o].position;
             for (auto &phase : v.phases[o])
                 phase = p.osc[o].retrigger ? p.osc[o].phase / 360.f : (noise() + 1) * .5;
+        }
     }
     void noteOff(int note, int channel, const Params &p) {
         if (channel < 1 || channel > 16)
@@ -472,8 +486,10 @@ class Engine {
                 for (int osc = 0; osc < 4; ++osc) {
                     const int part = osc / 2;
                     const auto &op = p.osc[size_t(osc)];
+                    float sourceEnvelope = v.sourceEnv[size_t(osc)].tick(op.envelope, sr);
                     const float level =
-                        clamp(op.level + mods.pair(Destination::VolumeA, part), 0, 2);
+                        clamp(op.level + mods.pair(Destination::VolumeA, part), 0, 2) *
+                        (op.envelopeEnabled ? sourceEnvelope : 1.f);
                     const int n = std::clamp(op.unison, 0, 8);
                     if (n == 0 || level <= 0)
                         continue;
@@ -488,15 +504,44 @@ class Engine {
                         auto &phase = v.phases[size_t(osc)][size_t(u)];
                         double t = phase + mods.pair(Destination::PhaseA, part);
                         t -= std::floor(t);
-                        const float x = wave(t, dt, op.wave) * level * (op.invert ? -1.f : 1.f) /
-                                        std::sqrt(float(n));
+                        std::array<float, 2> signal{};
+                        float targetPosition =
+                            clamp(op.position + mods.pair(Destination::PositionA, part), 0, 1);
+                        auto &position = v.sourcePosition[size_t(osc)];
+                        position += smoothing * (targetPosition - position);
+                        if (op.engine == 0)
+                            signal.fill(wave(t, dt, op.wave));
+                        else if (op.data) {
+                            if (op.engine == 1) {
+                                t += op.warp * .15 * std::sin(2 * pi * t);
+                                t -= std::floor(t);
+                                signal.fill(op.data->table(t, position, dt));
+                            } else {
+                                double ratio = std::exp2((v.pitch - op.root + pitch + op.semitone +
+                                                          spread * op.detune * .01) /
+                                                         12.);
+                                signal = v.playback[size_t(osc)][size_t(u)].tick(
+                                    *op.data, op.engine, ratio, sr, position, op.end, op.loop,
+                                    op.reverse,
+                                    clamp(
+                                        op.size *
+                                            std::exp2(mods.pair(Destination::GrainSizeA, part) * 4),
+                                        .005f, .25f),
+                                    op.density, op.spray, op.scan,
+                                    op.engine == 3 &&
+                                            v.playback[size_t(osc)][size_t(u)].untilGrain <= 0
+                                        ? noise()
+                                        : 0);
+                            }
+                        }
+                        const float gain = level * (op.invert ? -1.f : 1.f) / std::sqrt(float(n));
                         phase += dt;
                         phase -= std::floor(phase);
                         const float pan =
                             clamp(op.pan + spread * op.stereo + mods.pair(Destination::PanA, part),
                                   -1, 1);
-                        oscillators[part][0] += x * std::sqrt((1 - pan) * .5f);
-                        oscillators[part][1] += x * std::sqrt((1 + pan) * .5f);
+                        oscillators[part][0] += signal[0] * gain * std::sqrt((1 - pan) * .5f);
+                        oscillators[part][1] += signal[1] * gain * std::sqrt((1 + pan) * .5f);
                     }
                 }
                 for (int part = 0; part < 2; ++part) {

@@ -1,4 +1,4 @@
-# logisth 0.3.0
+# logisth 0.4.0
 
 **A two-part polyphonic subtractive synthesizer with a compact single-window console.**
 VST3, CLAP and Standalone for Windows, macOS and Linux. Built with JUCE and an
@@ -6,26 +6,28 @@ independent synthesis engine; not affiliated with LennarDigital.
 
 ![logisth dark interface](docs/images/logisth-dark.png)
 
-## What's new
+## What's new in 0.4.0
 
-- A complete vector interface: oscillators and envelopes above, shared and local
-  filters on the left, a central effects/arp rack, mixer and visible modulation below.
-- LIGHT / DARK switch, with the theme saved independently for each instance.
-- Proportional 80–150% resizing and embedded Open Sans for consistent rendering.
-- Grouped routing menus, editable values with units, tooltips and a parameter readout.
-- All 248 parameter IDs retained from 0.2.0; the audio engine is unchanged.
+- Four independent source slots, each switchable between Classic, Wavetable,
+  Sampler and Granular, with an optional per-source ADSR.
+- Audio import/drop, waveform preview, 256-frame spectral wavetable morphing,
+  sample regions/loop/reverse/root and overlapping grains with scan/spray.
+- Embedded audio in project state; no original media path needed on reopen.
+- Chord mapper with 128 triggers, eight-note voicings, MIDI learn and chord types.
+- A Cthulhu-inspired 32-step arp: independent note, octave, velocity, gate,
+  repetition and probability lanes, draw editing, ties, latch, eight pattern slots
+  and randomisation. Original Legacy arp remains available.
+- Optional host MIDI output, ten factory sounds and 514 audio parameters.
+- The same compact light/dark console, proportional resizing and embedded fonts.
 
-[User manual (English)](docs/MANUAL.md) · [PDF manual](docs/logisth-Manual-English.pdf) ·
-[Release notes](docs/RELEASE-v0.3.0.md) ·
-[Download 0.3.0](https://github.com/logik93/testoren/releases/tag/v0.3.0)
+[English manual](docs/MANUAL.md) · [PDF manual](docs/logisth-Manual-English.pdf) ·
+[Download 0.4.0](https://github.com/logik93/testoren/releases/tag/v0.4.0)
 
-## Instrument
-
-Four oscillators with up to eight unison voices each, two independent filters and
-amp envelopes, shared Filter Control, two modulation envelopes, two LFOs and four
-Misc sources. Sixteen modulation routes, 27 destinations, a 16-step arpeggiator,
-seven effects, mono/legato, portamento, pitch/mod wheels and six factory sounds.
-The manual covers installation, every section, routing and sound-design examples.
+Native archives are published after builds and tests on Windows, Linux and
+macOS. Each archive includes build metadata and the English manual. Cthulhu
+supplies a workflow reference; no Xfer graphics, code or preset files are used or imported.
+The first 248 parameter IDs are retained; extended destination choices can affect
+normalised destination automation from older hosts (see the manual).
 
 ## Install
 
@@ -77,6 +79,7 @@ ctest --test-dir build --output-on-failure
 
 Output: `build/Logisth_artefacts/Release/{VST3,CLAP,Standalone}`.
 Product name: logisth. Bundle/CLAP ID: `com.testoren.logisth`.
+To regenerate the PDF, install `reportlab` and run `python scripts/build_manual.py`.
 For an engine-only build, configure with `-DLOGISTH_PLUGINS=OFF`.
 For optional VST2, pass `-DLOGISTH_VST2=ON -DVST2_SDK_PATH=/path/to/licensed/sdk`;
 the SDK must contain `pluginterfaces/vst2.x/aeffect.h` and `aeffectx.h`.

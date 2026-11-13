@@ -114,7 +114,7 @@ def main():
         record = json.loads(existing.read_text())
         fingerprint = source_fingerprint(source)
         name = record.get('archive', '')
-        expected_tests = 6 if args.platform.startswith('linux') else 4
+        expected_tests = 7 if args.platform.startswith('linux') else 5
         valid = (record.get('version') == version and record.get('platform') == args.platform
                  and record.get('source_fingerprint') == fingerprint
                  and record.get('tests', {}).get('passed', 0) >= expected_tests
@@ -147,7 +147,7 @@ def main():
     import xml.etree.ElementTree as ET
     tests = ET.parse(result_file).getroot()
     count = int(tests.attrib.get('tests', '0'))
-    if count < (6 if args.platform == 'linux-x86_64' else 4):
+    if count < (7 if args.platform == 'linux-x86_64' else 5):
         raise ValueError('Required tests did not execute')
     if any(int(tests.attrib.get(key, '0')) for key in ('failures', 'errors', 'skipped', 'disabled')):
         raise ValueError('Failed, skipped or disabled tests prevent packaging')

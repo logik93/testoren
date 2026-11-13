@@ -2,6 +2,7 @@
 #include "PluginProcessor.h"
 #include <iostream>
 #include <stdexcept>
+#include <thread>
 void check(bool ok, const char *message) {
     if (!ok)
         throw std::runtime_error(message);
@@ -95,10 +96,165 @@ void checkEffects() {
     std::cout
         << "PASS: seven FX, five distortion types, EQ/compressor transparency, FX modulation\n";
 }
+void checkHybridProcessor() {
+    using namespace juce;
+    using namespace logisth;
+    TemporaryFile temporary(".wav");
+    {
+        WavAudioFormat wav;
+        auto output = temporary.getFile().createOutputStream();
+        std::unique_ptr<AudioFormatWriter> writer(
+            wav.createWriterFor(output.get(), 48000, 2, 24, {}, 0));
+        check(bool(writer), "hybrid test WAV writer");
+        output.release();
+        AudioBuffer<float> sample(2, 4096);
+        for (int i = 0; i < sample.getNumSamples(); ++i) {
+            sample.setSample(0, i, .7f * std::sin(float(2 * pi * i / 128)));
+            sample.setSample(1, i, .3f * std::cos(float(2 * pi * i / 128)));
+        }
+        check(writer->writeFromAudioSampleBuffer(sample, 0, sample.getNumSamples()),
+              "hybrid test WAV file");
+    }
+    LogisthProcessor original;
+    auto result = original.loadSource(0, temporary.getFile(), 512);
+    if (result.failed())
+        throw std::runtime_error(result.getErrorMessage().toStdString());
+    auto source = original.sourceData(0);
+    check(source->samples[0].size() == 4096 && source->frames == 8 && source->frameSize == 512,
+          "import and frame slicing");
+    check(source->samples[0] != source->samples[1], "stereo import preserved");
+    original.prepareToPlay(48000, 512);
+    auto *engineParam = original.state.getParameter("o1engine");
+    engineParam->setValueNotifyingHost(engineParam->convertTo0to1(2));
+    std::atomic<bool> importing{true}, finite{true};
+    std::thread audioWorker([&] {
+        AudioBuffer<float> audio(2, 512);
+        MidiBuffer events;
+        events.addEvent(MidiMessage::noteOn(1, 60, 1.f), 0);
+        int blocks = 0;
+        while (importing.load() || blocks < 20) {
+            original.processBlock(audio, events);
+            for (int ch = 0; ch < 2; ++ch)
+                for (int i = 0; i < 512; ++i)
+                    if (!std::isfinite(audio.getSample(ch, i)))
+                        finite = false;
+            ++blocks;
+        }
+    });
+    bool importOk = true;
+    for (int i = 0; i < 16; ++i) {
+        original.clearSource(0);
+        importOk &= original.loadSource(0, temporary.getFile(), 512).wasOk();
+        original.serviceAssets();
+    }
+    importing = false;
+    audioWorker.join();
+    check(importOk && finite.load(), "concurrent source replacement during rendering");
+    original.setChord(61, 4);
+    original.setChordNote(61, 3, 74);
+    auto set = [](LogisthProcessor &p, const char *id, float value) {
+        auto *parameter = p.state.getParameter(id);
+        parameter->setValueNotifyingHost(parameter->convertTo0to1(value));
+    };
+    set(original, "o1engine", 2);
+    set(original, "pat1note", 3);
+    original.storePattern(2);
+    set(original, "pat1note", 1);
+    MemoryBlock state;
+    original.getStateInformation(state);
+    temporary.getFile().deleteFile();
+    LogisthProcessor restored;
+    restored.setStateInformation(state.getData(), int(state.getSize()));
+    check(restored.sourceData(0)->samples == source->samples &&
+              restored.sourceData(0)->frameSize == 512,
+          "embedded sample restored after source file removed");
+    check(restored.chordMap()->keys[61].notes == original.chordMap()->keys[61].notes,
+          "custom chord voicing roundtrip");
+    restored.recallPattern(2);
+    check(restored.state.getRawParameterValue("pat1note")->load() == 3,
+          "eight-slot pattern bank roundtrip");
+    check(restored.state.getRawParameterValue("o1engine")->load() == 2, "source engine host state");
+    auto tree = restored.state.copyState();
+    ValueTree malformed("SOURCE");
+    malformed.setProperty("slot", 0, nullptr);
+    MemoryBlock invalid("bad", 3);
+    malformed.setProperty("audio", var(invalid), nullptr);
+    tree.addChild(malformed, -1, nullptr);
+    MemoryBlock corrupt;
+    AudioProcessor::copyXmlToBinary(*tree.createXml(), corrupt);
+    restored.setStateInformation(corrupt.getData(), int(corrupt.getSize()));
+    check(restored.sourceData(0)->samples == source->samples,
+          "malformed embedded source rejected without losing current sample");
+    restored.loadPreset(0);
+    set(restored, "arpon", 1);
+    set(restored, "arppattern", 1);
+    set(restored, "arpout", 1);
+    set(restored, "chordon", 1);
+    restored.prepareToPlay(48000, 512);
+    AudioBuffer<float> audio(2, 512);
+    MidiBuffer midi;
+    midi.addEvent(MidiMessage::noteOn(1, 60, .8f), 32);
+    restored.processBlock(audio, midi);
+    bool at32 = false;
+    for (auto metadata : midi)
+        at32 |= metadata.getMessage().isNoteOn() && metadata.samplePosition == 32 &&
+                metadata.getMessage().getNoteNumber() == 60;
+    check(at32, "generated chord/arp MIDI reaches host at sample offset");
+    restored.learnChord(62);
+    midi.clear();
+    for (int note : {57, 60, 64, 67})
+        midi.addEvent(MidiMessage::noteOn(1, note, .8f), 0);
+    restored.processBlock(audio, midi);
+    restored.finishLearn();
+    check(restored.chordMap()->keys[62].count == 4 && restored.chordMap()->keys[62].notes[0] == 57,
+          "MIDI learning captures chord");
+    set(restored, "arpout", 0);
+    midi.clear();
+    restored.processBlock(audio, midi);
+    check(!midi.isEmpty(), "output disable sends panic");
+    midi.clear();
+    restored.processBlock(audio, midi);
+    check(midi.isEmpty(), "MIDI output opt-out after panic");
+    ValueTree legacy("LogisthState");
+    legacy.setProperty("schema", 2, nullptr);
+    for (size_t i = 0; i < 248; ++i) {
+        ValueTree value("PARAM");
+        value.setProperty("id", parameterSpecs[i].id, nullptr);
+        value.setProperty("value", parameterSpecs[i].initial, nullptr);
+        legacy.addChild(value, -1, nullptr);
+    }
+    MemoryBlock oldState;
+    AudioProcessor::copyXmlToBinary(*legacy.createXml(), oldState);
+    restored.setStateInformation(oldState.getData(), int(oldState.getSize()));
+    check(restored.state.getRawParameterValue("arppattern")->load() == 0 &&
+              restored.state.getRawParameterValue("o1engine")->load() == 0 &&
+              restored.sourceData(0) == SourceData::factory(),
+          "0.3 state restores classic and legacy with factory fallback");
+    auto duplicate = legacy.createCopy();
+    ValueTree badMap("CHORDMAP");
+    for (int i = 0; i < 2; ++i) {
+        ValueTree chord("CHORD");
+        chord.setProperty("key", 60, nullptr);
+        chord.setProperty("notes", i == 0 ? "0 1 2 3 4 5 6 7" : "8 9 10 11 12 13 14 15", nullptr);
+        badMap.addChild(chord, -1, nullptr);
+    }
+    duplicate.addChild(badMap, -1, nullptr);
+    MemoryBlock badChord;
+    AudioProcessor::copyXmlToBinary(*duplicate.createXml(), badChord);
+    auto goodMap = restored.chordMap();
+    restored.setStateInformation(badChord.getData(), int(badChord.getSize()));
+    check(restored.chordMap() == goodMap, "duplicate chord entries rejected atomically");
+    std::cout
+        << "PASS hybrid processor: stereo import, frame size, embedded samples, custom chords, "
+           "pattern bank, malformed source rejection, sample-accurate MIDI out, chord learning, "
+           "concurrent media replacement, legacy state, invalid chord rejection\n";
+}
+
 int main(int argc, char **argv) {
     try {
         juce::ScopedJuceInitialiser_GUI gui;
         checkEffects();
+        checkHybridProcessor();
         LogisthProcessor p;
         p.setRateAndBufferSizeDetails(48000, 512);
         p.prepareToPlay(48000, 512);
@@ -153,10 +309,10 @@ int main(int argc, char **argv) {
         legacyParam("p1cutoff", 99999);
         juce::AudioProcessor::copyXmlToBinary(*legacy.createXml(), saved);
         restored.setStateInformation(saved.getData(), int(saved.getSize()));
-        check(restored.state.getRawParameterValue("misc1dest1")->load() == 27 &&
+        check(restored.state.getRawParameterValue("misc1dest1")->load() == 33 &&
                   restored.state.getRawParameterValue("p1cutoff")->load() == 20000,
               "state values are validated");
-        for (int preset = 0; preset < 6; ++preset) {
+        for (int preset = 0; preset < 10; ++preset) {
             p.reset();
             p.loadPreset(preset);
             midi.addEvent(juce::MidiMessage::noteOn(1, 60, .8f), 0);
@@ -226,6 +382,12 @@ int main(int argc, char **argv) {
             cutoff->setValue(cutoff->getValueFromText("2.5k"), juce::sendNotificationSync);
             check(std::abs(p.state.getRawParameterValue("p1cutoff")->load() - 2500) < .01f,
                   "frequency editing controls parameter");
+            for (const auto *id : {"o1level", "o1position", "o1warp", "o2level", "o2position"}) {
+                auto *sourceControl = dynamic_cast<juce::Slider *>(findWidget(id));
+                check(sourceControl && std::abs(sourceControl->getValue() -
+                                                p.state.getRawParameterValue(id)->load()) < 1e-5,
+                      "source widget displays matching audio parameter");
+            }
             auto *mix = dynamic_cast<juce::Slider *>(findWidget("mixA"));
             check(mix != nullptr, "mix widget");
             mix->setValue(mix->getValueFromText("42%"), juce::sendNotificationSync);
@@ -251,6 +413,35 @@ int main(int argc, char **argv) {
             check(sync != nullptr, "sync switch");
             sync->setToggleState(false, juce::sendNotificationSync);
             check(p.state.getRawParameterValue("sync")->load() == 0, "toggle controls parameter");
+            auto *centralMenu = dynamic_cast<juce::ComboBox *>(findWidget("arpvelocity"));
+            auto &skin = dynamic_cast<LogisthLook &>(ui->getLookAndFeel());
+            check(centralMenu &&
+                      centralMenu->findColour(juce::ComboBox::textColourId) == skin.screenText,
+                  "light theme rack menu contrast");
+            compact->snapshotPage(4);
+            check(centralMenu->findColour(juce::ComboBox::textColourId) == skin.screenText,
+                  "dark theme rack menu contrast");
+            auto *canvas = ui->getChildComponent(0)->findChildWithID("pattern.canvas");
+            check(canvas && canvas->isVisible(), "pattern drawing canvas available");
+            auto eventAt = [&](juce::Point<float> at, int modifiers, int clicks = 1) {
+                return juce::MouseEvent(juce::Desktop::getInstance().getMainMouseSource(), at,
+                                        juce::ModifierKeys(modifiers), 1, 0, 0, 0, 0, canvas,
+                                        canvas, juce::Time::getCurrentTime(), at,
+                                        juce::Time::getCurrentTime(), clicks, false);
+            };
+            canvas->mouseDown(eventAt({31, 0}, juce::ModifierKeys::leftButtonModifier));
+            canvas->mouseDrag(eventAt({57, 18}, juce::ModifierKeys::leftButtonModifier));
+            canvas->mouseUp(eventAt({57, 18}, 0));
+            check(p.state.getRawParameterValue("pat2note")->load() == 7 &&
+                      p.state.getRawParameterValue("pat3note")->load() == 0,
+                  "drawing horizontally edits independent pattern cells");
+            canvas->mouseDown(eventAt({31, 0}, juce::ModifierKeys::rightButtonModifier));
+            auto *valueEditor = dynamic_cast<juce::TextEditor *>(canvas->getChildComponent(0));
+            check(valueEditor && valueEditor->isVisible(), "exact pattern entry opens inline");
+            valueEditor->setText("2");
+            valueEditor->onReturnKey();
+            check(p.state.getRawParameterValue("pat2note")->load() == 1,
+                  "one-based note entry controls zero-based note index");
         }
         p.setStateInformation(uiState.getData(), int(uiState.getSize()));
         if (argc > 1) {
@@ -260,7 +451,7 @@ int main(int argc, char **argv) {
             auto image = editor->createComponentSnapshot(editor->getLocalBounds());
             auto *logisthEditor = dynamic_cast<LogisthEditor *>(editor.get());
             check(logisthEditor != nullptr, "editor type");
-            for (int page = 0; page < 6; ++page) {
+            for (int page = 0; page < 8; ++page) {
                 auto full = logisthEditor->snapshotPage(page);
                 juce::FileOutputStream out(
                     folder.getChildFile("logisth-page-" + juce::String(page + 1) + ".png"));
@@ -311,10 +502,10 @@ int main(int argc, char **argv) {
             stream.release();
             check(writer->writeFromAudioSampleBuffer(demo, 0, demo.getNumSamples()), "WAV render");
         }
-        std::cout << "PASS compact UI: 248 parameters reachable, no overlaps, clickable controls, "
+        std::cout << "PASS compact UI: all parameters reachable, no overlaps, clickable controls, "
                      "80-125% scale, view state preserved, parameter bindings, independent "
-                     "light/dark themes saved in state\n";
-        std::cout << "PASS processor: MIDI offsets, state, malformed state, six presets and FX\n";
+                     "light/dark themes saved in state, pattern drawing and inline entry\n";
+        std::cout << "PASS processor: MIDI offsets, state, malformed state, ten presets and FX\n";
         return 0;
     } catch (const std::exception &e) {
         std::cerr << e.what() << '\n';

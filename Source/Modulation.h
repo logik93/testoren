@@ -36,6 +36,12 @@ enum class Destination {
     Lfo2Rate,
     Lfo2Gain,
     DistortionAmount,
+    PositionA,
+    PositionB,
+    PositionAB,
+    GrainSizeA,
+    GrainSizeB,
+    GrainSizeAB,
     Count
 };
 enum class Source {

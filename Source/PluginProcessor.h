@@ -1,5 +1,6 @@
 #pragma once
 #include "Arpeggiator.h"
+#include "Chords.h"
 #include "Effects.h"
 #include "Engine.h"
 #include "Parameters.h"
@@ -7,6 +8,25 @@
 class LogisthProcessor : public juce::AudioProcessor {
   public:
     LogisthProcessor();
+    ~LogisthProcessor() override;
+    juce::Result loadSource(int, const juce::File &, int frameSize = 2048);
+    void loadSourceAsync(int, const juce::File &, int frameSize = 2048);
+    void clearSource(int);
+    std::shared_ptr<const logisth::SourceData> sourceData(int) const;
+    juce::String sourceStatus() const;
+    std::shared_ptr<const logisth::ChordMap> chordMap() const;
+    void setChord(int, int);
+    void setChordNote(int, int, int);
+    void learnChord(int);
+    void finishLearn();
+    int learning() const {
+        return learnTarget.load();
+    }
+    void storePattern(int);
+    void recallPattern(int);
+    void randomisePattern();
+    void serviceAssets();
+    std::atomic<int> arpPlayhead{-1};
     const juce::String getName() const override {
         return "logisth";
     }
@@ -26,7 +46,7 @@ class LogisthProcessor : public juce::AudioProcessor {
         return true;
     }
     bool producesMidi() const override {
-        return false;
+        return true;
     }
     bool isMidiEffect() const override {
         return false;
@@ -73,6 +93,25 @@ class LogisthProcessor : public juce::AudioProcessor {
     logisth::EffectsParams effectsSnapshot() const;
     logisth::ArpParams arpSnapshot() const;
     std::array<std::atomic<float> *, logisth::parameterCount> raw{};
+    void publishSource(int, std::shared_ptr<const logisth::SourceData>);
+    void publishChords(std::shared_ptr<const logisth::ChordMap>);
+    void saveAssets(juce::ValueTree &);
+    bool restoreAssets(const juce::ValueTree &);
+    mutable juce::CriticalSection assetLock;
+    std::array<std::shared_ptr<const logisth::SourceData>, 4> sourceOwners;
+    std::array<std::atomic<const logisth::SourceData *>, 4> sourcePointers{};
+    std::vector<std::shared_ptr<const logisth::SourceData>> retiredSources;
+    std::shared_ptr<const logisth::ChordMap> chordOwner;
+    std::vector<std::shared_ptr<const logisth::ChordMap>> retiredChords;
+    std::atomic<const logisth::ChordMap *> chordPointer{nullptr};
+    std::atomic<int> assetReaders{0}, learnTarget{-1};
+    std::array<std::atomic<uint32_t>, 4> learned{};
+    juce::String assetStatus;
+    std::array<juce::ValueTree, 8> patterns;
+    juce::ThreadPool importWorkers{1};
+    logisth::ChordMapper chordMapper;
+    bool chordsWereEnabled = false, midiWasEnabled = false;
+    juce::MidiBuffer generatedMidi;
     logisth::Engine engine;
     logisth::Effects effects;
     logisth::Arpeggiator arp;

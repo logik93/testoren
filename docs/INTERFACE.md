@@ -20,6 +20,12 @@ three grouped columns. Hover for tooltips and the bottom value readout.
 Numeric values support units such as kHz, ms and percent. Sync displays musical
 divisions instead of free time/rate controls. Arp steps use 01–08 and 09–16 views.
 
-The 248 audio parameter IDs remain unchanged. Tests check access, bounds, click
+The original 248 audio parameter IDs remain, with 266 new IDs appended. Tests check access, bounds, click
 targets, view changes, bindings, scaling and independent theme persistence.
 See [the English user manual](MANUAL.md) for full operation.
+
+The oscillator header selects engine and VOICE/SOURCE/ENV views. File drops and
+IMPORT load audio into that slot. CHORDS is the ninth rack page. Pattern arp
+uses a seven-row drawing canvas with independent lane lengths, exact cell entry,
+playheads and two 16-step views; Legacy retains the original arp page. MIDI OUT
+is in the top header. Both themes use the same layout.

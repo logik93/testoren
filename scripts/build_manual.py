@@ -22,7 +22,7 @@ for style in styles.byName.values():
 styles['Normal'].fontSize = 9
 styles['Normal'].leading = 14
 styles['Normal'].spaceAfter = 8
-for name in ['Title', 'Heading1', 'Heading2']:
+for name in ['Title', 'Heading1', 'Heading2', 'Heading3']:
     styles[name].fontName = 'OpenSans-Bold'
 styles.add(ParagraphStyle('Cell', parent=styles['Normal'], fontSize=8, leading=11, spaceAfter=0))
 
@@ -69,6 +69,12 @@ for line in lines + ['']:
         story.append(Paragraph(inline(line[2:]), styles['Title']))
         story.append(Image(str(root / 'docs/images/logisth-dark.png'), width=468, height=468*860/1240))
         story.append(Spacer(1, 16))
+    elif line.startswith('### '):
+        flush()
+        story.append(Paragraph(inline(line[4:]), styles['Heading3']))
+    elif re.match(r'^\d+\. ', line):
+        flush()
+        story.append(Paragraph(inline(line), styles['Normal']))
     elif line.startswith('## '):
         flush()
         story.append(Paragraph(inline(line[3:]), styles['Heading2']))
@@ -78,11 +84,11 @@ for line in lines + ['']:
 def footer(canvas, doc):
     canvas.setFont('OpenSans', 8)
     canvas.setFillColor(colors.HexColor('#667268'))
-    canvas.drawString(42, 25, 'logisth 0.3.0 | English User Manual')
+    canvas.drawString(42, 25, 'logisth 0.4.0 | English User Manual')
     canvas.drawRightString(A4[0]-42, 25, str(doc.page))
 
 SimpleDocTemplate(str(root / 'docs/logisth-Manual-English.pdf'), pagesize=A4,
                   rightMargin=42, leftMargin=42, topMargin=42, bottomMargin=44,
-                  title='logisth 0.3.0 — User Manual', author='Testoren').build(
+                  title='logisth 0.4.0 — User Manual', author='Testoren').build(
                       story, onFirstPage=footer, onLaterPages=footer)
 print('Rendered docs/logisth-Manual-English.pdf')

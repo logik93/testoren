@@ -7,11 +7,16 @@ struct ArpStep {
     bool hold = false;
 };
 struct ArpParams {
-    bool enabled = false, sync = true;
+    bool enabled = false, sync = true, pattern = false, latch = false;
     int mode = 0, velocityMode = 3, division = 4, octaves = 1, wrap = 0, steps = 16;
     float time = .125f, gate = .5f, swing = 0;
     double bpm = 120;
-    std::array<ArpStep, 16> sequence{};
+    std::array<ArpStep, 32> sequence{};
+    struct Lane {
+        int note = 0, octave = 0, gate = 50, repeats = 1, chance = 100;
+    };
+    std::array<Lane, 32> lanes{};
+    std::array<int, 6> lengths{16, 16, 16, 16, 16, 16};
 };
 enum class EventType { NoteOn, NoteOff, Controller, PitchWheel, Aftertouch, StepVelocity };
 struct MidiEvent {
@@ -34,6 +39,17 @@ class Arpeggiator {
     uint64_t counter = 0;
     uint32_t random = 0x57219;
     float lastVelocity = 1;
+    std::array<Key, 128> repeatNotes{};
+    int repeatCount = 0, repeatsLeft = 0;
+    double untilRepeat = -1, repeatPeriod = 1, repeatGate = 1;
+    int currentStep = -1;
+    bool latched = false, latchWasEnabled = false;
+    uint32_t roll() {
+        random ^= random << 13;
+        random ^= random >> 17;
+        random ^= random << 5;
+        return random;
+    }
     bool enabled = false;
     bool anyKeys() const {
         return std::any_of(keys.begin(), keys.end(), [](auto &k) { return k.note >= 0; });
@@ -50,7 +66,8 @@ class Arpeggiator {
         int count = 0;
         for (const auto &key : keys)
             if (key.note >= 0)
-                for (int octave = 0; octave < std::clamp(p.octaves, 1, 4); ++octave)
+                for (int octave = 0; octave < (p.pattern ? 1 : std::clamp(p.octaves, 1, 4));
+                     ++octave)
                     if (key.note + 12 * octave < 128) {
                         sorted[count] = key;
                         sorted[count++].note += 12 * octave;
@@ -58,14 +75,23 @@ class Arpeggiator {
         if (!count)
             return;
         std::sort(sorted.begin(), sorted.begin() + count, [&](auto &a, auto &b) {
-            return p.mode == 7 ? a.age < b.age || (a.age == b.age && a.note < b.note)
-                               : a.note < b.note;
+            return !p.pattern && p.mode == 7 ? a.age < b.age || (a.age == b.age && a.note < b.note)
+                                             : a.note < b.note;
         });
-        const int seq = step % std::clamp(p.steps, 1, 16);
+        const int seq = step % std::clamp(p.pattern ? p.lengths[2] : p.steps, 1, 32);
+        auto laneAt = [&](int lane) -> const ArpParams::Lane & {
+            return p.lanes[size_t(step % std::clamp(p.lengths[size_t(lane)], 1, 32))];
+        };
+        const auto &noteLane = laneAt(0);
+        const auto &octaveLane = laneAt(1);
+        const auto &gateLane = laneAt(3);
+        const auto &repeatLane = laneAt(4);
+        const auto &chanceLane = laneAt(5);
+        currentStep = step;
         const auto &spec = p.sequence[size_t(seq)];
         const int pos = p.wrap > 0 ? position % p.wrap : position;
         int index = pos % count;
-        switch (p.mode) {
+        switch (p.pattern ? -1 : p.mode) {
         case 1:
             index = count - 1 - index;
             break;
@@ -99,14 +125,19 @@ class Arpeggiator {
         default:
             break;
         }
+        if (p.pattern)
+            index = noteLane.note % count;
+        const bool accepted = !p.pattern || int(roll() % 100) < chanceLane.chance;
         std::array<Key, 128> next{};
         int nextCount = 0;
-        const int desired = p.mode == 9 ? std::min(count, 128) : 1;
+        const int desired = !p.pattern && p.mode == 9 ? std::min(count, 128) : 1;
         for (int i = 0; i < desired; ++i) {
-            auto key = sorted[size_t(p.mode == 9 ? i : index)];
-            if (p.mode >= 8)
+            auto key = sorted[size_t(!p.pattern && p.mode == 9 ? i : index)];
+            if (p.pattern)
+                key.note += octaveLane.octave * 12;
+            else if (p.mode >= 8)
                 key.note += spec.transpose;
-            if (key.note < 0 || key.note > 127 || spec.velocity == 0)
+            if (key.note < 0 || key.note > 127 || spec.velocity == 0 || !accepted)
                 continue;
             const float sv = spec.velocity / 127.f;
             switch (p.velocityMode) {
@@ -150,7 +181,17 @@ class Arpeggiator {
             p.sync ? 60 / p.bpm * beatLength(p.division) * sr : std::round(p.time * sr);
         const double interval = std::max(1., period * (step % 2 ? 1 - p.swing : 1 + p.swing));
         untilStep += interval;
-        untilOff = spec.hold ? -1 : std::max(1., std::round(interval * p.gate));
+        const int repeats = p.pattern ? std::clamp(repeatLane.repeats, 1, 4) : 1;
+        repeatPeriod = interval / repeats;
+        repeatGate =
+            std::max(1., std::round(repeatPeriod * (p.pattern ? gateLane.gate / 100. : p.gate)));
+        bool tie =
+            p.pattern ? p.sequence[size_t(step % std::clamp(p.lengths[3], 1, 32))].hold : spec.hold;
+        untilOff = tie && repeats == 1 ? -1 : repeatGate;
+        repeatNotes = next;
+        repeatCount = nextCount;
+        repeatsLeft = repeats - 1;
+        untilRepeat = repeatsLeft > 0 ? repeatPeriod : -1;
         ++step;
         ++position;
     }
@@ -169,6 +210,13 @@ class Arpeggiator {
         untilOff = -1;
         counter = 0;
         enabled = false;
+        repeatsLeft = 0;
+        untilRepeat = -1;
+        currentStep = -1;
+        latched = false;
+    }
+    int playhead() const {
+        return currentStep;
     }
     template <class Emit> void begin(const ArpParams &p, Emit &&emit) {
         if (enabled != p.enabled) {
@@ -179,6 +227,9 @@ class Arpeggiator {
             }
             keys = {};
             sustain = {};
+            repeatsLeft = 0;
+            untilRepeat = -1;
+            latched = false;
             step = position = 0;
             untilStep = 0;
             enabled = p.enabled;
@@ -186,6 +237,10 @@ class Arpeggiator {
     }
     template <class Emit> void stop(int time, Emit &&emit) {
         off(time, emit);
+        repeatsLeft = 0;
+        untilRepeat = -1;
+        currentStep = -1;
+        latched = false;
         keys = {};
         sustain = {};
         untilStep = 0;
@@ -199,6 +254,12 @@ class Arpeggiator {
             return;
         }
         if (event.type == EventType::NoteOn && event.value > 0) {
+            if (p.latch && latched) {
+                keys = {};
+                latched = false;
+                repeatsLeft = 0;
+                untilRepeat = -1;
+            }
             bool wasEmpty = !anyKeys();
             auto key = std::find_if(keys.begin(), keys.end(), [&](auto &k) {
                 return k.note == event.key && k.channel == event.channel;
@@ -216,6 +277,14 @@ class Arpeggiator {
         }
         if (event.type == EventType::NoteOff ||
             (event.type == EventType::NoteOn && event.value <= 0)) {
+            if (p.latch) {
+                for (auto &k : keys)
+                    if (k.note == event.key && k.channel == event.channel)
+                        k.down = false;
+                latched = std::none_of(keys.begin(), keys.end(),
+                                       [](const auto &k) { return k.note >= 0 && k.down; });
+                return;
+            }
             for (auto &k : keys)
                 if (k.note == event.key && k.channel == event.channel) {
                     if (sustain[size_t(k.channel - 1)])
@@ -249,11 +318,38 @@ class Arpeggiator {
     template <class Emit> void advance(int start, int end, const ArpParams &p, Emit &&emit) {
         if (!p.enabled)
             return;
+        if (latchWasEnabled && !p.latch) {
+            for (auto &key : keys)
+                if (key.note >= 0 && !key.down && !sustain[size_t(key.channel - 1)])
+                    key = Key{};
+            if (!anyKeys()) {
+                off(start, emit);
+                repeatsLeft = 0;
+                untilRepeat = -1;
+            }
+            latched = false;
+        }
+        latchWasEnabled = p.latch;
         for (int s = start; s < end; ++s) {
             if (untilOff >= 0) {
                 untilOff -= 1;
                 if (untilOff <= 0)
                     off(s, emit);
+            }
+            if (repeatsLeft > 0 && anyKeys()) {
+                if (--untilRepeat <= 0) {
+                    off(s, emit);
+                    playing = repeatNotes;
+                    playingCount = repeatCount;
+                    for (int i = 0; i < playingCount; ++i)
+                        emit(MidiEvent{s, EventType::NoteOn, playing[i].channel, playing[i].note,
+                                       playing[i].velocity});
+                    if (playingCount)
+                        emit(MidiEvent{s, EventType::StepVelocity, 1, 0, playing[0].velocity});
+                    untilOff = repeatGate;
+                    untilRepeat += repeatPeriod;
+                    --repeatsLeft;
+                }
             }
             if (anyKeys()) {
                 if (untilStep <= 0)

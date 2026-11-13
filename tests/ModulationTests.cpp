@@ -59,7 +59,7 @@ int main() {
             base.lfo[i].routes[0] = {i == 0 ? Destination::PitchA : Destination::PitchB, .5f};
         }
         const auto baseline = render(base);
-        for (int d = 1; d < int(Destination::Count); ++d) {
+        for (int d = 1; d <= int(Destination::DistortionAmount); ++d) {
             auto p = base;
             p.misc[0].source = Source::Velocity;
             p.misc[0].routes[0] = {Destination(d), 3};

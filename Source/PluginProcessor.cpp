@@ -30,6 +30,12 @@ LogisthProcessor::LogisthProcessor()
       state(*this, nullptr, "LogisthState", layout()) {
     for (size_t i = 0; i < parameterCount; ++i)
         raw[i] = state.getRawParameterValue(parameterSpecs[i].id);
+    for (int i = 0; i < 4; ++i)
+        publishSource(i, SourceData::factory());
+    auto map = std::make_shared<ChordMap>();
+    for (int i = 0; i < 128; ++i)
+        map->set(i, 1);
+    publishChords(map);
 }
 Params LogisthProcessor::snapshot() const {
     Params p;
@@ -50,6 +56,22 @@ Params LogisthProcessor::snapshot() const {
         o.pan = next();
         o.retrigger = next() > 0;
         o.invert = next() > 0;
+        size_t ext = size_t(Param::o1engine) + size_t(i) * 16;
+        auto sourceNext = [&] { return raw[ext++]->load(); };
+        o.engine = int(sourceNext());
+        o.position = sourceNext();
+        o.end = sourceNext();
+        o.root = int(sourceNext());
+        o.loop = sourceNext() > 0;
+        o.reverse = sourceNext() > 0;
+        o.size = sourceNext() * .001f;
+        o.density = sourceNext();
+        o.spray = sourceNext();
+        o.scan = sourceNext();
+        o.warp = sourceNext();
+        o.envelopeEnabled = sourceNext() > 0;
+        o.envelope = {sourceNext(), sourceNext(), sourceNext(), sourceNext()};
+        o.data = sourcePointers[size_t(i)].load();
     }
     for (int i = 0; i < 2; ++i) {
         size_t at = size_t(Param::p1input) + size_t(i) * 10;
@@ -182,10 +204,25 @@ ArpParams LogisthProcessor::arpSnapshot() const {
         size_t at = size_t(Param::step1transpose) + size_t(i) * 3;
         p.sequence[i] = {int(raw[at]->load()), int(raw[at + 1]->load()), raw[at + 2]->load() > 0};
     }
+    p.pattern = get(Param::arppattern) > 0;
+    p.latch = get(Param::arplatch) > 0;
+    for (int i = 16; i < 32; ++i) {
+        size_t at = size_t(Param::step17velocity) + size_t(i - 16) * 2;
+        p.sequence[size_t(i)] = {0, int(raw[at]->load()), raw[at + 1]->load() > 0};
+    }
+    for (int i = 0; i < 32; ++i) {
+        size_t at = size_t(Param::pat1note) + size_t(i) * 5;
+        p.lanes[size_t(i)] = {int(raw[at]->load()), int(raw[at + 1]->load()),
+                              int(raw[at + 2]->load()), int(raw[at + 3]->load()),
+                              int(raw[at + 4]->load())};
+    }
+    for (int i = 0; i < 6; ++i)
+        p.lengths[size_t(i)] = int(raw[size_t(Param::arpnotelen) + size_t(i)]->load());
     p.bpm = bpm;
     return p;
 }
 void LogisthProcessor::prepareToPlay(double sampleRate, int) {
+    generatedMidi.ensureSize(131072);
     engine.prepare(sampleRate);
     effects.prepare(sampleRate);
     arp.prepare(sampleRate);
@@ -193,6 +230,8 @@ void LogisthProcessor::prepareToPlay(double sampleRate, int) {
 }
 void LogisthProcessor::reset() {
     engine.reset();
+    chordMapper.reset();
+    chordsWereEnabled = false;
     effects.reset();
     arp.reset();
     masterSmooth = 0;
@@ -209,6 +248,16 @@ void LogisthProcessor::processBlock(AudioBuffer<float> &audio, MidiBuffer &midi)
     const int n = audio.getNumSamples();
     if (n <= 0 || audio.getNumChannels() < 2)
         return;
+    struct AssetReadScope {
+        std::atomic<int> &count;
+        AssetReadScope(std::atomic<int> &c) : count(c) {
+            count.fetch_add(1);
+        }
+        ~AssetReadScope() {
+            count.fetch_sub(1);
+        }
+    } assetRead(assetReaders);
+    generatedMidi.clear();
     bool stop = false, seek = false;
     if (auto *head = getPlayHead())
         if (auto position = head->getPosition()) {
@@ -252,7 +301,36 @@ void LogisthProcessor::processBlock(AudioBuffer<float> &audio, MidiBuffer &midi)
             rendered += count;
         }
     };
+    const bool output = get(Param::arpout) > 0;
+    const bool flushMidi = midiWasEnabled && !output;
+    if (flushMidi)
+        for (int ch = 1; ch <= 16; ++ch)
+            generatedMidi.addEvent(MidiMessage::allNotesOff(ch), 0);
+    midiWasEnabled = output;
     auto emit = [&](MidiEvent event) {
+        if (output && event.time < n) {
+            if (event.type == EventType::NoteOn)
+                generatedMidi.addEvent(MidiMessage::noteOn(event.channel, event.key, event.value),
+                                       event.time);
+            else if (event.type == EventType::NoteOff)
+                generatedMidi.addEvent(MidiMessage::noteOff(event.channel, event.key), event.time);
+            else if (event.type == EventType::Controller)
+                generatedMidi.addEvent(
+                    MidiMessage::controllerEvent(event.channel, event.key, int(event.value)),
+                    event.time);
+            else if (event.type == EventType::PitchWheel)
+                generatedMidi.addEvent(
+                    MidiMessage::pitchWheel(event.channel,
+                                            jlimit(0, 16383, int(event.value * 8192 + 8192))),
+                    event.time);
+            else if (event.type == EventType::Aftertouch)
+                generatedMidi.addEvent(
+                    event.key < 0
+                        ? MidiMessage::channelPressureChange(event.channel, int(event.value * 127))
+                        : MidiMessage::aftertouchChange(event.channel, event.key,
+                                                        int(event.value * 127)),
+                    event.time);
+        }
         renderTo(jlimit(rendered, n, event.time));
         switch (event.type) {
         case EventType::NoteOn:
@@ -276,9 +354,18 @@ void LogisthProcessor::processBlock(AudioBuffer<float> &audio, MidiBuffer &midi)
         }
     };
     arp.begin(ap, emit);
-    if (stop || seek)
+    const bool chordEnabled = get(Param::chordon) > 0;
+    if (stop || seek || chordsWereEnabled != chordEnabled) {
         arp.stop(0, emit);
+        chordMapper.reset();
+    }
+    chordsWereEnabled = chordEnabled;
     int changes = uiChanges.exchange(0);
+    if (changes & 4) {
+        arp.stop(0, emit);
+        chordMapper.reset();
+    }
+    auto mapped = [&](MidiEvent event) { arp.input(event, ap, emit); };
     if (changes & 1)
         arp.input(MidiEvent{0, EventType::PitchWheel, 1, 0, pitchPosition.load()}, ap, emit);
     if (changes & 2)
@@ -313,17 +400,29 @@ void LogisthProcessor::processBlock(AudioBuffer<float> &audio, MidiBuffer &midi)
             event.type = EventType::Aftertouch;
             event.key = -1;
             event.value = m.getChannelPressureValue() / 127.f;
-        } else
+        } else {
+            if (output && m.getRawDataSize() <= 4096)
+                generatedMidi.addEvent(m, offset);
             continue;
+        }
         if (event.type == EventType::PitchWheel)
             pitchPosition = event.value;
         if (event.type == EventType::Controller && event.key == 1)
             wheelPosition = event.value / 127.f;
-        arp.input(event, ap, emit);
+        const int learn = learnTarget.load();
+        if (learn >= 0 && (event.type == EventType::NoteOn || event.type == EventType::NoteOff)) {
+            if (event.type == EventType::NoteOn)
+                learned[size_t(event.key / 32)].fetch_or(uint32_t(1) << (event.key % 32));
+            continue;
+        }
+        chordMapper.input(event, chordEnabled, *chordPointer.load(), mapped);
     }
     arp.advance(scheduled, n, ap, emit);
     renderTo(n);
+    arpPlayhead = arp.playhead();
     midi.clear();
+    if (output || flushMidi)
+        midi.swapWith(generatedMidi);
     peak = maximum;
     channelPeaks[0] = maxima[0];
     channelPeaks[1] = maxima[1];
@@ -331,20 +430,23 @@ void LogisthProcessor::processBlock(AudioBuffer<float> &audio, MidiBuffer &midi)
 }
 void LogisthProcessor::getStateInformation(MemoryBlock &dest) {
     auto tree = state.copyState();
-    tree.setProperty("schema", 2, nullptr);
+    tree.setProperty("schema", 3, nullptr);
+    saveAssets(tree);
     copyXmlToBinary(*tree.createXml(), dest);
 }
 void LogisthProcessor::setStateInformation(const void *data, int size) {
+    if (size <= 0 || size > 64 * 1024 * 1024)
+        return;
     auto xml = getXmlFromBinary(data, size);
     if (!xml)
         return;
     auto restore = [&](const ValueTree &source) {
         ValueTree safe("LogisthState");
-        safe.setProperty("schema", 2, nullptr);
+        safe.setProperty("schema", 3, nullptr);
         if (source.hasProperty("uiDark"))
             safe.setProperty("uiDark", int(source["uiDark"]) != 0, nullptr);
         for (const auto &spec : parameterSpecs) {
-            float value = spec.initial;
+            float value = String(spec.id) == "arppattern" ? 0 : spec.initial;
             for (auto child : source)
                 if (child["id"].toString() == spec.id) {
                     value = float(child["value"]);
@@ -360,7 +462,10 @@ void LogisthProcessor::setStateInformation(const void *data, int size) {
             child.setProperty("value", value, nullptr);
             safe.addChild(child, -1, nullptr);
         }
+        if (!restoreAssets(source))
+            return;
         state.replaceState(safe);
+        uiChanges.fetch_or(4);
     };
     if (xml->hasTagName(state.state.getType())) {
         restore(ValueTree::fromXml(*xml));
@@ -395,6 +500,7 @@ void LogisthProcessor::setStateInformation(const void *data, int size) {
         set(env + "amt1", oldValue(part + "env", 24) / 12);
         set(i == 1 ? "mixA" : "mixB", oldValue(part + "level", .7f));
     }
+    set("arppattern", 0);
     set("lfo1dest1", 15);
     set("lfo1amt1", oldValue("lfo1depth", 0) / 12);
     set("lfo2dest1", 6);
@@ -473,6 +579,7 @@ void LogisthProcessor::loadPreset(int index) {
         set("delay", .3f);
     }
     if (index == 5) {
+        set("arppattern", 0);
         set("arpon", 1);
         set("arpmode", 8);
         set("arpsteps", 8);
@@ -488,6 +595,49 @@ void LogisthProcessor::loadPreset(int index) {
         set("delayon", 1);
         set("delay", .2f);
     }
+    if (index >= 6 && index <= 9) {
+        clearSource(0);
+        set("o2level", 0);
+        set("p1cutoff", 8500);
+        set("env1amt1", 0);
+        if (index == 6) {
+            set("o1engine", 1);
+            set("o1position", .55f);
+            set("o1voices", 3);
+            set("lfo1dest1", 28);
+            set("lfo1amt1", 2);
+            set("lfo1free", 1);
+            set("lfo1rate", .2f);
+        }
+        if (index == 7) {
+            set("o1engine", 2);
+            set("o1loop", 0);
+            set("p1ampr", .8f);
+        }
+        if (index == 8) {
+            set("o1engine", 3);
+            set("o1position", .2f);
+            set("o1size", 140);
+            set("o1density", 28);
+            set("o1spray", .5f);
+            set("o1scan", .15f);
+            set("p1ampa", .5f);
+            set("p1ampr", 1.8f);
+            set("reverb", .5f);
+        }
+        if (index == 9) {
+            set("o1engine", 1);
+            set("o1position", .75f);
+            set("arpon", 1);
+            set("arppattern", 1);
+            set("chordon", 1);
+            set("p1amps", .15f);
+            set("p1ampd", .15f);
+            set("delayon", 1);
+            set("delay", .25f);
+        }
+    }
+    uiChanges.fetch_or(4);
 }
 AudioProcessorEditor *LogisthProcessor::createEditor() {
     return new LogisthEditor(*this);

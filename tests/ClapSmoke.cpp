@@ -72,6 +72,10 @@ int main(int argc, char **argv) {
         auto *params = static_cast<const clap_plugin_params_t *>(
             plugin->get_extension(plugin, CLAP_EXT_PARAMS));
         check(params && params->count(plugin) == logisth::parameterCount, "all host parameters");
+        auto *notePorts = static_cast<const clap_plugin_note_ports_t *>(
+            plugin->get_extension(plugin, CLAP_EXT_NOTE_PORTS));
+        check(notePorts && notePorts->count(plugin, false) > 0,
+              "MIDI output port advertised to CLAP host");
         check(plugin->activate(plugin, 48000, 1, 512), "activate");
         check(plugin->start_processing(plugin), "start");
         std::array<float, 512> l{}, r{};
@@ -111,7 +115,7 @@ int main(int argc, char **argv) {
         plugin->destroy(plugin);
         entry->deinit();
         dlclose(lib);
-        std::cout << "PASS actual CLAP: discovery, stereo, 248 parameters, MIDI timing, audio\n";
+        std::cout << "PASS actual CLAP: discovery, stereo, all parameters, MIDI timing, audio\n";
         return 0;
     } catch (const std::exception &e) {
         std::cerr << e.what() << '\n';

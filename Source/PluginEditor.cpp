@@ -183,6 +183,10 @@ void LogisthLook::drawLinearSlider(Graphics &g, int x, int y, int w, int h, floa
     if (bool(s.getProperties()["number"])) {
         capsule(g, b, isDark ? Colour(0xff30443b) : Colour(0xffe9ede5), isDark ? screenLine : line);
         float p = float(s.valueToProportionOfLength(s.getValue()));
+        if (bool(s.getProperties()["lane"])) {
+            g.setColour((isDark ? mint : green).withAlpha(.24f));
+            g.fillRoundedRectangle(b.withTrimmedTop(b.getHeight() * (1 - p)).reduced(1), 2);
+        }
         g.setColour((isDark ? mint : green).withAlpha(.4f));
         g.fillRoundedRectangle(b.getX() + 5, b.getBottom() - 2, jmax(0.f, (b.getWidth() - 10) * p),
                                1, 0.5f);
@@ -248,7 +252,10 @@ void LogisthLook::drawCornerResizer(Graphics &g, int w, int h, bool, bool) {
         g.drawLine(float(w - i * 4), float(h - 2), float(w - 2), float(h - i * 4), 1);
 }
 
-class LogisthEditor::Console : public Component, private Timer, public LogisthColours {
+class LogisthEditor::Console : public Component,
+                               private Timer,
+                               public LogisthColours,
+                               public FileDragAndDropTarget {
     enum class Style { Knob, Trim, Fader, Number, Menu, Toggle };
     class Control : public Component {
       public:
@@ -321,6 +328,8 @@ class LogisthEditor::Console : public Component, private Timer, public LogisthCo
                     else if (t.endsWithIgnoreCase("s") && !t.endsWithIgnoreCase("ms") &&
                              storedMilliseconds)
                         v *= 1000;
+                    if (String(spec.id).startsWith("pat") && String(spec.id).endsWith("note"))
+                        v -= 1;
                     if (percent())
                         v *= .01;
                     return v;
@@ -335,6 +344,11 @@ class LogisthEditor::Console : public Component, private Timer, public LogisthCo
                 };
             }
             menu.onChange = [this] {
+                if (String(spec.id).endsWith("engine")) {
+                    int slot = (int(id) - int(Param::o1engine)) / 16;
+                    owner.sourceViews[size_t(slot)].setSelectedId(menu.getSelectedId() == 1 ? 1 : 2,
+                                                                  dontSendNotification);
+                }
                 if (isMouseOverOrDragging(true))
                     describe();
             };
@@ -349,10 +363,14 @@ class LogisthEditor::Console : public Component, private Timer, public LogisthCo
             kind = style;
             caption = title;
             getProperties().set("dark", isDark);
+            menu.setColour(ComboBox::textColourId,
+                           (isDark || owner.darkTheme) ? owner.screenText : owner.ink);
             setBounds(b);
             setVisible(true);
             label.setText(title, dontSendNotification);
             label.setColour(Label::textColourId, isDark ? owner.mint.withAlpha(.7f) : owner.muted);
+            slider.getProperties().set("lane", String(spec.id).startsWith("pat") ||
+                                                   String(spec.id).startsWith("step"));
             slider.getProperties().set("number", kind == Style::Number);
             slider.getProperties().set("trim", kind == Style::Trim);
             slider.setSliderStyle(kind == Style::Fader    ? Slider::LinearVertical
@@ -375,6 +393,8 @@ class LogisthEditor::Console : public Component, private Timer, public LogisthCo
             slider.setVisible(kind == Style::Knob || kind == Style::Trim || kind == Style::Fader ||
                               kind == Style::Number);
             menu.setVisible(kind == Style::Menu);
+            if (kind == Style::Menu)
+                menu.setSelectedId(int(owner.value(id)) + 1, dontSendNotification);
             toggle.setVisible(kind == Style::Toggle);
             slider.setBounds(b);
             menu.setBounds(b.withSizeKeepingCentre(b.getWidth(), jmin(25, b.getHeight())));
@@ -408,6 +428,11 @@ class LogisthEditor::Console : public Component, private Timer, public LogisthCo
         }
         String formatted(double v) const {
             const String name(spec.id);
+            if (name.startsWith("pat") && name.endsWith("note"))
+                return String(int(v) + 1);
+            if (name.contains("env") &&
+                (name.endsWith("enva") || name.endsWith("envd") || name.endsWith("envr")))
+                return v < 1 ? String(v * 1000, 0) + "ms" : String(v, 1) + "s";
             if (name.endsWith("fine"))
                 return String(v, 1) + "ct";
             if (String(spec.label).contains("/ ms"))
@@ -473,6 +498,156 @@ class LogisthEditor::Console : public Component, private Timer, public LogisthCo
         int index;
         String name;
     };
+    class PatternCanvas : public Component {
+      public:
+        explicit PatternCanvas(Console &c) : owner(c) {
+            setComponentID("pattern.canvas");
+            setName("Draw pattern lanes");
+            setWantsKeyboardFocus(true);
+            addChildComponent(input);
+            input.setJustification(Justification::centred);
+            input.onReturnKey = [this] { commit(); };
+            input.onEscapeKey = [this] { input.setVisible(false); };
+            input.onFocusLost = [this] { commit(); };
+        }
+        ~PatternCanvas() override {
+            finishGesture();
+            input.onFocusLost = nullptr;
+        }
+        void paint(Graphics &g) override {
+            int step = owner.processor.arpPlayhead.load();
+            for (int row = 0; row < 7; ++row) {
+                int lane = std::min(row, 5);
+                if (row == 6)
+                    lane = 3;
+                int length = int(owner.value(Param(size_t(Param::arpnotelen) + size_t(lane))));
+                for (int col = 0; col < 16; ++col)
+                    if (owner.stepPage * 16 + col >= length) {
+                        g.setColour(owner.screen.withAlpha(.55f));
+                        g.fillRect(col * 26, row * 22, 24, 19);
+                    }
+                if (step >= 0) {
+                    int col = step % length - owner.stepPage * 16;
+                    if (col >= 0 && col < 16) {
+                        g.setColour(owner.mint.withAlpha(.65f));
+                        g.drawRoundedRectangle(
+                            Rectangle<float>(float(col * 26), float(row * 22), 24, 19), 2, 1);
+                    }
+                }
+            }
+        }
+        void mouseDown(const MouseEvent &e) override {
+            if (e.mods.isRightButtonDown() || e.getNumberOfClicks() > 1) {
+                showValue(e.position);
+                return;
+            }
+            paintRow = std::clamp(int(e.position.y) / 22, 0, 6);
+            drag(e.position, true);
+        }
+        void mouseDrag(const MouseEvent &e) override {
+            if (!input.isVisible())
+                drag(e.position, false);
+        }
+        void mouseUp(const MouseEvent &) override {
+            finishGesture();
+        }
+        void mouseWheelMove(const MouseEvent &e, const MouseWheelDetails &wheel) override {
+            int row = std::clamp(int(e.position.y) / 22, 0, 6),
+                column = std::clamp(int(e.position.x) / 26, 0, 15);
+            auto *p = parameter(row, column);
+            auto *spec = specification(row, column);
+            float current = owner.processor.state.getRawParameterValue(spec->id)->load();
+            p->beginChangeGesture();
+            p->setValueNotifyingHost(p->convertTo0to1(
+                jlimit(spec->low, spec->high, current + (wheel.deltaY > 0 ? 1.f : -1.f))));
+            p->endChangeGesture();
+        }
+        void visibilityChanged() override {
+            if (!isVisible()) {
+                finishGesture();
+                input.setVisible(false);
+            }
+        }
+
+      private:
+        String identifier(int row, int column) const {
+            int step = owner.stepPage * 16 + column + 1;
+            if (row == 2 || row == 6)
+                return "step" + String(step) + (row == 2 ? "velocity" : "hold");
+            return "pat" + String(step) +
+                   StringArray{"note", "oct", "", "gate", "repeat", "chance"}[row];
+        }
+        const ParameterSpec *specification(int row, int column) const {
+            auto id = identifier(row, column);
+            for (const auto &spec : parameterSpecs)
+                if (id == spec.id)
+                    return &spec;
+            jassertfalse;
+            return &parameterSpecs[0];
+        }
+        RangedAudioParameter *parameter(int row, int column) const {
+            return owner.processor.state.getParameter(identifier(row, column));
+        }
+        void finishGesture() {
+            if (active) {
+                active->endChangeGesture();
+                active = nullptr;
+            }
+        }
+        void drag(Point<float> at, bool initial) {
+            int column = std::clamp(int(at.x) / 26, 0, 15);
+            auto *p = parameter(paintRow, column);
+            auto *spec = specification(paintRow, column);
+            if (active != p) {
+                finishGesture();
+                active = p;
+                active->beginChangeGesture();
+            }
+            float proportion = 1 - jlimit(0.f, 18.f, at.y - paintRow * 22) / 18;
+            float value = std::round(spec->low + (spec->high - spec->low) * proportion);
+            if (paintRow == 6) {
+                if (!initial && lastColumn == column)
+                    return;
+                value =
+                    owner.processor.state.getRawParameterValue(spec->id)->load() > 0 ? 0.f : 1.f;
+            }
+            active->setValueNotifyingHost(active->convertTo0to1(value));
+            lastColumn = column;
+        }
+        void showValue(Point<float> at) {
+            finishGesture();
+            inputRow = std::clamp(int(at.y) / 22, 0, 6);
+            inputColumn = std::clamp(int(at.x) / 26, 0, 15);
+            const auto *spec = specification(inputRow, inputColumn);
+            float value = owner.processor.state.getRawParameterValue(spec->id)->load();
+            if (inputRow == 0)
+                value += 1;
+            input.setBounds(inputColumn * 26, inputRow * 22, 24, 19);
+            input.setText(String(int(value)), false);
+            input.setColour(TextEditor::backgroundColourId, owner.screen);
+            input.setColour(TextEditor::textColourId, owner.screenText);
+            input.setFont(font(10));
+            input.setVisible(true);
+            input.grabKeyboardFocus();
+            input.selectAll();
+        }
+        void commit() {
+            if (!input.isVisible())
+                return;
+            auto *p = parameter(inputRow, inputColumn);
+            auto *spec = specification(inputRow, inputColumn);
+            float value = float(input.getText().getDoubleValue()) - (inputRow == 0 ? 1.f : 0.f);
+            input.setVisible(false);
+            p->beginChangeGesture();
+            p->setValueNotifyingHost(p->convertTo0to1(jlimit(spec->low, spec->high, value)));
+            p->endChangeGesture();
+        }
+        Console &owner;
+        TextEditor input;
+        RangedAudioParameter *active = nullptr;
+        int paintRow = 0, lastColumn = -1, inputRow = 0, inputColumn = 0;
+    };
+
     class Keys : public MidiKeyboardComponent {
       public:
         Keys(MidiKeyboardState &s, Console &c)
@@ -505,8 +680,10 @@ class LogisthEditor::Console : public Component, private Timer, public LogisthCo
 
   public:
     Console(LogisthProcessor &p, LogisthLook &skin)
-        : processor(p), look(skin), keyboard(p.keyboard, *this), tooltips(this, 650) {
+        : processor(p), look(skin), keyboard(p.keyboard, *this), patternCanvas(*this),
+          tooltips(this, 650) {
         setLookAndFeel(&look);
+        addChildComponent(patternCanvas);
         setSize(canvasWidth, canvasHeight);
         for (size_t i = 0; i < parameterCount; ++i) {
             controls[i] = std::make_unique<Control>(*this, Param(i));
@@ -518,9 +695,9 @@ class LogisthEditor::Console : public Component, private Timer, public LogisthCo
             button.onClick = [this, i] { setPart(i); };
             addAndMakeVisible(button);
         }
-        StringArray names{"ARPEGGIATOR", "DISTORTION", "PHASER", "CHORUS",
-                          "EQUALIZER",   "REVERB",     "DELAY",  "COMPRESSOR"};
-        for (int i = 0; i < 8; ++i) {
+        StringArray names{"ARPEGGIATOR", "DISTORTION", "PHASER",     "CHORUS", "EQUALIZER",
+                          "REVERB",      "DELAY",      "COMPRESSOR", "CHORDS"};
+        for (int i = 0; i < 9; ++i) {
             rackButtons[size_t(i)] = std::make_unique<RackButton>(*this, i, names[i]);
             addAndMakeVisible(*rackButtons[size_t(i)]);
         }
@@ -534,9 +711,10 @@ class LogisthEditor::Console : public Component, private Timer, public LogisthCo
             addChildComponent(stepPages[size_t(i)]);
         }
         presets.addItemList({"Init / analog", "Wide supersaw", "Sub bass", "Slow atmosphere",
-                             "Pulse pluck", "Step sequence"},
+                             "Pulse pluck", "Step sequence", "Morph glass", "Sample keys",
+                             "Grain cloud", "Chord pulse"},
                             1);
-        presets.setTextWhenNothingSelected("Init / custom patch");
+        presets.setTextWhenNothingSelected("Current patch");
         presets.getProperties().set("fontSize", 12.f);
         presets.onChange = [this] {
             processor.loadPreset(presets.getSelectedId() - 1);
@@ -548,11 +726,12 @@ class LogisthEditor::Console : public Component, private Timer, public LogisthCo
         next.setButtonText(String(CharPointer_UTF8("›")));
         previous.onClick = [this] {
             int i = presets.getSelectedId();
-            presets.setSelectedId(i <= 1 ? 6 : i - 1, sendNotificationSync);
+            presets.setSelectedId(i <= 1 ? presets.getNumItems() : i - 1, sendNotificationSync);
         };
         next.onClick = [this] {
             int i = presets.getSelectedId();
-            presets.setSelectedId(i < 1 || i >= 6 ? 1 : i + 1, sendNotificationSync);
+            presets.setSelectedId(i < 1 || i >= presets.getNumItems() ? 1 : i + 1,
+                                  sendNotificationSync);
         };
         addAndMakeVisible(previous);
         addAndMakeVisible(next);
@@ -579,6 +758,125 @@ class LogisthEditor::Console : public Component, private Timer, public LogisthCo
         theme.setTooltip("Light / dark appearance");
         theme.onClick = [this] { setDarkTheme(theme.getToggleState()); };
         addAndMakeVisible(theme);
+        for (int i = 0; i < 4; ++i) {
+            auto &view = sourceViews[size_t(i)];
+            view.addItemList({"VOICE", "SOURCE", "ENV"}, 1);
+            view.setSelectedId(
+                processor.state.getRawParameterValue("o" + String(i + 1) + "engine")->load() > 0
+                    ? 2
+                    : 1);
+            view.setName("Oscillator view");
+            view.onChange = [this] {
+                layout();
+                repaint();
+            };
+            addChildComponent(view);
+            auto &load = sourceLoad[size_t(i)];
+            load.setButtonText("IMPORT");
+            load.onClick = [this, i] { chooseSource(i); };
+            addChildComponent(load);
+            auto &clear = sourceClear[size_t(i)];
+            clear.setButtonText("RESET");
+            clear.onClick = [this, i] {
+                processor.clearSource(i);
+                repaint();
+            };
+            addChildComponent(clear);
+            auto &frame = sourceFrame[size_t(i)];
+            frame.addItemList({"256", "512", "1024", "2048"}, 1);
+            frame.setSelectedId(4);
+            frame.setTooltip("Samples per wavetable frame on import");
+            addChildComponent(frame);
+        }
+        patternSlot.addItemList({"1", "2", "3", "4", "5", "6", "7", "8"}, 1);
+        patternSlot.setSelectedId(1);
+        patternSlot.setTooltip("Recall pattern slot; SAVE stores the current pattern");
+        patternSlot.onChange = [this] {
+            processor.recallPattern(patternSlot.getSelectedId() - 1);
+            layout();
+            repaint();
+        };
+        addChildComponent(patternSlot);
+        patternSave.setButtonText("SAVE");
+        patternSave.onClick = [this] {
+            processor.storePattern(patternSlot.getSelectedId() - 1);
+            readout = "Pattern stored";
+            repaint();
+        };
+        addChildComponent(patternSave);
+        patternRandom.setButtonText("DICE");
+        patternRandom.onClick = [this] {
+            processor.randomisePattern();
+            repaint();
+        };
+        addChildComponent(patternRandom);
+        for (int note = 0; note < 128; ++note)
+            chordTrigger.addItem(
+                MidiMessage::getMidiNoteName(note, true, true, 4) + " / " + String(note), note + 1);
+        chordTrigger.setSelectedId(61);
+        chordTrigger.setName("Chord trigger note");
+        chordTrigger.onChange = [this] {
+            refreshChord();
+            repaint();
+        };
+        addChildComponent(chordTrigger);
+        chordType.addItemList({"Unison", "Major", "Minor", "Maj 7", "Min 7", "Dominant 7", "Sus 2",
+                               "Sus 4", "Power", "Diminished", "Augmented"},
+                              1);
+        chordType.setTextWhenNothingSelected("Voicing");
+        chordType.onChange = [this] {
+            processor.setChord(chordTrigger.getSelectedId() - 1, chordType.getSelectedId() - 1);
+            refreshChord();
+        };
+        addChildComponent(chordType);
+        chordLearn.setButtonText("LEARN");
+        chordLearn.setTooltip("Collect up to eight MIDI notes, then click DONE");
+        chordLearn.onClick = [this] {
+            if (processor.learning() >= 0)
+                processor.finishLearn();
+            else
+                processor.learnChord(chordTrigger.getSelectedId() - 1);
+            refreshChord();
+        };
+        addChildComponent(chordLearn);
+        chordCopy.setButtonText("MAP ALL");
+        chordCopy.onClick = [this] {
+            int type = chordType.getSelectedId() - 1;
+            if (type >= 0)
+                for (int key = 0; key < 128; ++key)
+                    processor.setChord(key, type);
+            refreshChord();
+        };
+        chordCopy.setTooltip("Map this voicing type to every trigger, transposed to its root");
+        addChildComponent(chordCopy);
+        for (int i = 0; i < 8; ++i) {
+            auto &note = chordNotes[size_t(i)];
+            note.setSliderStyle(Slider::LinearBar);
+            note.getProperties().set("number", true);
+            note.setTextBoxStyle(Slider::TextBoxLeft, false, 50, 28);
+            note.setRange(-1, 127, 1);
+            note.textFromValueFunction = [](double value) {
+                return value < 0 ? String("-")
+                                 : MidiMessage::getMidiNoteName(int(value), true, true, 4);
+            };
+            note.valueFromTextFunction = [](const String &text) { return text.getDoubleValue(); };
+            note.onValueChange = [this, i] {
+                if (!updatingChord) {
+                    processor.setChordNote(chordTrigger.getSelectedId() - 1, i,
+                                           int(chordNotes[size_t(i)].getValue()));
+                    refreshChord();
+                }
+            };
+            note.setTooltip("MIDI note: drag or enter 0–127; -1 removes a voice");
+            addChildComponent(note);
+        }
+        for (Component *widget :
+             std::array<Component *, 7>{&patternSlot, &patternSave, &patternRandom, &chordTrigger,
+                                        &chordType, &chordLearn, &chordCopy})
+            widget->getProperties().set("dark", true);
+        for (auto &note : chordNotes)
+            note.getProperties().set("dark", true);
+        refreshChord();
         readout = "Ready  /  Choose a sound or play a note";
         setDarkTheme(int(processor.state.state.getProperty("uiDark", 0)) != 0, false);
         startTimerHz(24);
@@ -589,12 +887,45 @@ class LogisthEditor::Console : public Component, private Timer, public LogisthCo
             c.reset();
         setLookAndFeel(nullptr);
     }
+    bool isInterestedInFileDrag(const StringArray &files) override {
+        return files.size() == 1 && File(files[0]).hasFileExtension("wav;aif;aiff;flac");
+    }
+    void filesDropped(const StringArray &files, int x, int y) override {
+        if (!isInterestedInFileDrag(files))
+            return;
+        int slot = y >= 82 && y <= 266 ? (x >= 16 && x <= 476     ? selectedPart * 2
+                                          : x >= 764 && x <= 1224 ? selectedPart * 2 + 1
+                                                                  : -1)
+                                       : -1;
+        if (slot < 0) {
+            readout = "Drop audio on an oscillator panel";
+            repaint();
+            return;
+        }
+        auto *engine = processor.state.getParameter("o" + String(slot + 1) + "engine");
+        if (processor.state.getRawParameterValue("o" + String(slot + 1) + "engine")->load() == 0) {
+            engine->beginChangeGesture();
+            engine->setValueNotifyingHost(engine->convertTo0to1(2));
+            engine->endChangeGesture();
+        }
+        sourceViews[size_t(slot)].setSelectedId(2, dontSendNotification);
+        processor.loadSourceAsync(slot, File(files[0]),
+                                  256 << (sourceFrame[size_t(slot)].getSelectedId() - 1));
+        layout();
+        repaint();
+    }
     void setDarkTheme(bool enabled, bool persist = true) {
         choosePalette(enabled);
         look.setDarkTheme(enabled);
         theme.setToggleState(enabled, dontSendNotification);
         theme.setButtonText(enabled ? "DARK" : "LIGHT");
         keyboard.applyTheme();
+        for (ComboBox *box : {&patternSlot, &chordTrigger, &chordType})
+            box->setColour(ComboBox::textColourId, screenText);
+        for (TextButton *button : {&patternSave, &patternRandom, &chordLearn, &chordCopy}) {
+            button->setColour(TextButton::buttonColourId, Colour(0xff30443b));
+            button->setColour(TextButton::textColourOffId, screenText);
+        }
         sendLookAndFeelChange();
         layout();
         if (persist)
@@ -610,11 +941,26 @@ class LogisthEditor::Console : public Component, private Timer, public LogisthCo
         repaint();
     }
     void setRack(int page) {
-        rack = jlimit(0, 7, page);
+        rack = jlimit(0, 8, page);
         layout();
         repaint();
     }
     void showScenario(int index) {
+        if (index >= 4) {
+            selectedPart = 0;
+            rack = index == 6 ? 8 : 0;
+            stepPage = index == 5 ? 1 : 0;
+            previewPattern = 1;
+            previewSource = index == 4 ? 1 : 3;
+            for (auto &v : sourceViews)
+                v.setSelectedId(2, dontSendNotification);
+            layout();
+            repaint();
+            return;
+        }
+        previewPattern = previewSource = -1;
+        for (auto &v : sourceViews)
+            v.setSelectedId(1, dontSendNotification);
         selectedPart = index == 1 ? 1 : 0;
         rack = index == 1 ? 6 : index == 2 ? 2 : 0;
         stepPage = index == 3 ? 1 : 0;
@@ -623,45 +969,76 @@ class LogisthEditor::Console : public Component, private Timer, public LogisthCo
     }
     String validate() {
         const int oldPart = selectedPart, oldRack = rack, oldStep = stepPage;
+        std::array<int, 4> views;
+        for (int i = 0; i < 4; ++i)
+            views[size_t(i)] = sourceViews[size_t(i)].getSelectedId();
         std::set<size_t> visited;
         String error;
+        auto inspect = [&] {
+            layout();
+            for (size_t i = 0; i < controls.size(); ++i)
+                if (controls[i]->isVisible()) {
+                    visited.insert(i);
+                    auto *hit = getComponentAt(controls[i]->getBounds().getCentre());
+                    if (hit != controls[i].get() && !controls[i]->isParentOf(hit) &&
+                        hit != &patternCanvas)
+                        error = "Obscured: " + String(parameterSpecs[i].id);
+                    if (!getLocalBounds().contains(controls[i]->getBounds()) ||
+                        controls[i]->getWidth() < 20 || controls[i]->getHeight() < 18)
+                        error = "Invalid bounds: " + String(parameterSpecs[i].id);
+                    for (size_t j = 0; j < i; ++j)
+                        if (controls[j]->isVisible() &&
+                            controls[i]->getBounds().intersects(controls[j]->getBounds()))
+                            error = "Overlap: " + String(parameterSpecs[i].id) + " / " +
+                                    parameterSpecs[j].id;
+                }
+            for (auto *component : getChildren())
+                if (component->isVisible() && component != &keyboard &&
+                    dynamic_cast<Control *>(component) == nullptr) {
+                    if (!getLocalBounds().contains(component->getBounds()))
+                        error = "Widget outside console: " + component->getName();
+                }
+        };
+        for (auto &v : sourceViews)
+            v.setSelectedId(1, dontSendNotification);
+        previewPattern = 0;
+        previewSource = 0;
         for (int clock = 0; clock < 2; ++clock) {
             previewSync = clock;
             for (int part = 0; part < 2; ++part)
-                for (int page = 0; page < 8; ++page)
+                for (int page = 0; page < 9; ++page)
                     for (int step = 0; step < 2; ++step) {
                         selectedPart = part;
                         rack = page;
                         stepPage = step;
-                        layout();
-                        for (size_t i = 0; i < controls.size(); ++i)
-                            if (controls[i]->isVisible()) {
-                                visited.insert(i);
-                                auto *hit = getComponentAt(controls[i]->getBounds().getCentre());
-                                if (hit != controls[i].get() && !controls[i]->isParentOf(hit))
-                                    error = "Control obscured by another component: " +
-                                            String(parameterSpecs[i].id);
-                                if (!getLocalBounds().contains(controls[i]->getBounds()) ||
-                                    controls[i]->getWidth() < 20 || controls[i]->getHeight() < 18)
-                                    error =
-                                        "Invalid control bounds: " + String(parameterSpecs[i].id);
-                                for (size_t j = 0; j < i; ++j)
-                                    if (controls[j]->isVisible() &&
-                                        controls[i]->getBounds().intersects(
-                                            controls[j]->getBounds()))
-                                        error = "Overlapping controls: " +
-                                                String(parameterSpecs[i].id) + " / " +
-                                                parameterSpecs[j].id;
-                            }
+                        inspect();
                     }
         }
-        previewSync = -1;
+        rack = 0;
+        previewPattern = 1;
+        for (int step = 0; step < 2; ++step) {
+            stepPage = step;
+            inspect();
+        }
+        previewPattern = 0;
+        for (int part = 0; part < 2; ++part)
+            for (int mode = 0; mode < 4; ++mode)
+                for (int view = 1; view <= 3; ++view) {
+                    selectedPart = part;
+                    previewSource = mode;
+                    for (auto &v : sourceViews)
+                        v.setSelectedId(view, dontSendNotification);
+                    inspect();
+                }
         for (size_t i = 0; i < controls.size(); ++i)
-            if (visited.count(i) == 0)
-                error = "Unreachable parameter: " + String(parameterSpecs[i].id);
+            if (!visited.count(i))
+                error = "Unreachable: " + String(parameterSpecs[i].id);
         selectedPart = oldPart;
         rack = oldRack;
         stepPage = oldStep;
+        previewSync = previewSource = previewPattern = -1;
+        for (int i = 0; i < 4; ++i)
+            sourceViews[size_t(i)].setSelectedId(views[size_t(i)], dontSendNotification);
         layout();
         return error;
     }
@@ -671,10 +1048,14 @@ class LogisthEditor::Console : public Component, private Timer, public LogisthCo
     void shell(Graphics &g, Rectangle<int> b, const String &title, const String &hint = {}) {
         paintShell(g, b, title, hint, *this);
     }
-    static constexpr std::array<Param, 8> enables{Param::arpon,    Param::diston, Param::phaseron,
+    static constexpr std::array<Param, 9> enables{Param::arpon,    Param::diston, Param::phaseron,
                                                   Param::choruson, Param::eqon,   Param::reverbon,
-                                                  Param::delayon,  Param::compon};
+                                                  Param::delayon,  Param::compon, Param::chordon};
     float value(Param p) const {
+        if (previewSource >= 0 && String(parameterSpecs[size_t(p)].id).endsWith("engine"))
+            return float(previewSource);
+        if (previewPattern >= 0 && p == Param::arppattern)
+            return float(previewPattern);
         if (previewSync >= 0) {
             if (p == Param::sync)
                 return float(previewSync);
@@ -696,24 +1077,111 @@ class LogisthEditor::Console : public Component, private Timer, public LogisthCo
             }
         jassertfalse;
     }
+    void chooseSource(int index) {
+        sourceChooser = std::make_unique<FileChooser>("Import audio source", File{},
+                                                      "*.wav;*.aif;*.aiff;*.flac");
+        int frame = 256 << (sourceFrame[size_t(index)].getSelectedId() - 1);
+        Component::SafePointer<Console> safe(this);
+        sourceChooser->launchAsync(FileBrowserComponent::openMode |
+                                       FileBrowserComponent::canSelectFiles,
+                                   [safe, index, frame](const FileChooser &chooser) {
+                                       if (safe) {
+                                           auto file = chooser.getResult();
+                                           if (file.existsAsFile())
+                                               safe->processor.loadSourceAsync(index, file, frame);
+                                       }
+                                   });
+    }
+    void refreshChord() {
+        updatingChord = true;
+        const auto map = processor.chordMap();
+        const auto &chord = map->keys[size_t(chordTrigger.getSelectedId() - 1)];
+        for (int i = 0; i < 8; ++i)
+            chordNotes[size_t(i)].setValue(i < chord.count ? chord.notes[size_t(i)] : -1,
+                                           dontSendNotification);
+        chordLearn.setButtonText(processor.learning() >= 0 ? "DONE" : "LEARN");
+        updatingChord = false;
+    }
     void oscillator(int number, Rectangle<int> b) {
         String id = "o" + String(number);
-        StringArray names{"VOLUME", "PHASE", "DETUNE", "STEREO", "PAN"};
-        StringArray suffix{"level", "phase", "detune", "stereo", "pan"};
-        for (int i = 0; i < 3; ++i)
-            control(id + StringArray{"octave", "tune", "fine"}[i],
-                    {b.getX() + 12, b.getY() + 34 + i * 39, 62, 33}, Style::Number,
-                    StringArray{"OCTAVE", "NOTE", "FINE"}[i]);
-        for (int i = 0; i < 5; ++i)
-            control(id + suffix[i], {b.getX() + 86 + i * 72, b.getY() + 35, 66, 86}, Style::Knob,
-                    names[i]);
-        control(id + "wave", {b.getX() + 87, b.getY() + 137, 120, 26}, Style::Menu);
-        control(id + "voices", {b.getX() + 217, b.getY() + 130, 58, 38}, Style::Number, "VOICES");
-        control(id + "retrig", {b.getX() + 287, b.getY() + 141, 74, 22}, Style::Toggle, "RETRIG");
-        control(id + "invert", {b.getX() + 371, b.getY() + 141, 74, 22}, Style::Toggle, "INVERT");
-        controls[size_t(Param(size_t(Param::o1phase) + size_t(number - 1) * 12))]->enable(
-            value(Param(size_t(Param::o1retrig) + size_t(number - 1) * 12)) > 0);
+        const size_t slot = size_t(number - 1);
+        control(id + "engine", {b.getX() + 300, b.getY() + 6, 146, 24}, Style::Menu);
+        sourceViews[slot].setBounds(b.getX() + 191, b.getY() + 6, 99, 24);
+        sourceViews[slot].setVisible(true);
+        int view = sourceViews[slot].getSelectedId();
+        if (view == 1) {
+            StringArray names{"VOLUME", "PHASE", "DETUNE", "STEREO", "PAN"};
+            StringArray suffix{"level", "phase", "detune", "stereo", "pan"};
+            for (int i = 0; i < 3; ++i)
+                control(id + StringArray{"octave", "tune", "fine"}[i],
+                        {b.getX() + 12, b.getY() + 34 + i * 39, 62, 33}, Style::Number,
+                        StringArray{"OCTAVE", "NOTE", "FINE"}[i]);
+            for (int i = 0; i < 5; ++i)
+                control(id + suffix[i], {b.getX() + 86 + i * 72, b.getY() + 35, 66, 86},
+                        Style::Knob, names[i]);
+            control(id + "wave", {b.getX() + 87, b.getY() + 137, 120, 26}, Style::Menu);
+            control(id + "voices", {b.getX() + 217, b.getY() + 130, 58, 38}, Style::Number,
+                    "VOICES");
+            control(id + "retrig", {b.getX() + 287, b.getY() + 141, 74, 22}, Style::Toggle,
+                    "RETRIG");
+            control(id + "invert", {b.getX() + 371, b.getY() + 141, 74, 22}, Style::Toggle,
+                    "INVERT");
+            controls[size_t(Param(size_t(Param::o1wave) + size_t(number - 1) * 12))]->enable(
+                value(Param(size_t(Param::o1engine) + slot * 16)) == 0);
+            controls[size_t(Param(size_t(Param::o1retrig) + size_t(number - 1) * 12))]->enable(
+                value(Param(size_t(Param::o1engine) + slot * 16)) <= 1);
+            controls[size_t(Param(size_t(Param::o1phase) + size_t(number - 1) * 12))]->enable(
+                value(Param(size_t(Param::o1retrig) + size_t(number - 1) * 12)) > 0);
+        } else {
+            for (int i = 0; i < 3; ++i)
+                control(id + StringArray{"octave", "tune", "fine"}[i],
+                        {b.getX() + 12, b.getY() + 34 + i * 39, 62, 33}, Style::Number,
+                        StringArray{"OCTAVE", "NOTE", "FINE"}[i]);
+            if (view == 3) {
+                control(id + "envelope", {b.getX() + 88, b.getY() + 36, 150, 22}, Style::Toggle,
+                        "OSC ENVELOPE");
+                for (int i = 0; i < 4; ++i)
+                    control(id + "env" + StringArray{"a", "d", "s", "r"}[i],
+                            {b.getX() + 90 + i * 89, b.getY() + 65, 70, 99}, Style::Fader,
+                            StringArray{"A", "D", "S", "R"}[i]);
+            } else {
+                int mode = int(value(Param(size_t(Param::o1engine) + slot * 16)));
+                StringArray names =
+                    mode == 3   ? StringArray{"VOLUME", "POSITION", "SIZE", "DENSITY", "SPRAY"}
+                    : mode == 2 ? StringArray{"VOLUME", "START", "END", "STEREO", "PAN"}
+                                : StringArray{"VOLUME", "POSITION", "WARP", "STEREO", "PAN"};
+                StringArray suffix =
+                    mode == 3   ? StringArray{"level", "position", "size", "density", "spray"}
+                    : mode == 2 ? StringArray{"level", "position", "end", "stereo", "pan"}
+                                : StringArray{"level", "position", "warp", "stereo", "pan"};
+                for (int i = 0; i < 5; ++i)
+                    control(id + suffix[i], {b.getX() + 86 + i * 72, b.getY() + 35, 66, 80},
+                            Style::Knob, names[i]);
+                if (mode >= 2) {
+                    control(id + "root", {b.getX() + 88, b.getY() + 129, 48, 35}, Style::Number,
+                            "ROOT");
+                    if (mode == 3)
+                        control(id + "scan", {b.getX() + 145, b.getY() + 129, 68, 35},
+                                Style::Number, "SCAN");
+                    else
+                        control(id + "loop", {b.getX() + 145, b.getY() + 141, 68, 22},
+                                Style::Toggle, "LOOP");
+                    control(id + "reverse", {b.getX() + 223, b.getY() + 141, 68, 22}, Style::Toggle,
+                            "REVERSE");
+                    sourceLoad[slot].setBounds(b.getX() + 300, b.getY() + 141, 68, 22);
+                    sourceClear[slot].setBounds(b.getX() + 379, b.getY() + 141, 65, 22);
+                } else {
+                    sourceLoad[slot].setBounds(b.getX() + 88, b.getY() + 141, 68, 22);
+                    sourceFrame[slot].setBounds(b.getX() + 168, b.getY() + 141, 76, 22);
+                    sourceFrame[slot].setVisible(true);
+                    sourceClear[slot].setBounds(b.getX() + 254, b.getY() + 141, 68, 22);
+                }
+                sourceLoad[slot].setVisible(true);
+                sourceClear[slot].setVisible(true);
+            }
+        }
     }
+
     void envelope(const String &base, Rectangle<int> b, bool mini) {
         const int w = mini ? 29 : 48, gap = mini ? 6 : 12, left = mini ? 10 : 19,
                   top = mini ? 31 : 59, height = mini ? 83 : 105;
@@ -760,12 +1228,67 @@ class LogisthEditor::Console : public Component, private Timer, public LogisthCo
     }
     void rackLayout() {
         Rectangle<int> content{414, 320, 520, 203};
-        for (int i = 0; i < 8; ++i) {
-            rackButtons[size_t(i)]->setBounds(291, 315 + i * 27, 108, 25);
-            put(enables[size_t(i)], {294, 318 + i * 27, 20, 20}, Style::Toggle, {}, true);
+        for (int i = 0; i < 9; ++i) {
+            rackButtons[size_t(i)]->setBounds(291, 311 + i * 24, 108, 23);
+            put(enables[size_t(i)], {294, 313 + i * 24, 20, 20}, Style::Toggle, {}, true);
             controls[size_t(enables[size_t(i)])]->toFront(false);
         }
+        if (rack == 8) {
+            chordTrigger.setBounds(414, 329, 140, 30);
+            chordTrigger.setVisible(true);
+            chordType.setBounds(566, 329, 145, 30);
+            chordType.setVisible(true);
+            chordLearn.setBounds(724, 329, 92, 30);
+            chordLearn.setVisible(true);
+            chordCopy.setBounds(829, 329, 98, 30);
+            chordCopy.setVisible(true);
+            for (int i = 0; i < 8; ++i) {
+                chordNotes[size_t(i)].setBounds(414 + i * 65, 405, 58, 36);
+                chordNotes[size_t(i)].setVisible(true);
+            }
+            return;
+        }
+        if (rack == 0 && value(Param::arppattern) > 0) {
+            put(Param::arppattern, {414, 320, 100, 24}, Style::Menu, {}, true);
+            put(Param::arpswing, {652, 289, 60, 22}, Style::Number, {}, true);
+            put(Param::arplatch, {521, 320, 55, 24}, Style::Toggle, "LATCH", true);
+            put(value(Param::sync) > 0 ? Param::arpdivision : Param::arptime, {582, 320, 64, 24},
+                value(Param::sync) > 0 ? Style::Menu : Style::Number, {}, true);
+            put(Param::arpvelocity, {652, 320, 100, 24}, Style::Menu, {}, true);
+            patternSlot.setBounds(758, 320, 44, 24);
+            patternSlot.setVisible(true);
+            patternSave.setBounds(808, 320, 48, 24);
+            patternSave.setVisible(true);
+            patternRandom.setBounds(862, 320, 64, 24);
+            patternRandom.setVisible(true);
+            for (int i = 0; i < 2; ++i) {
+                stepPages[size_t(i)].setButtonText(i ? "17-32" : "01-16");
+                stepPages[size_t(i)].setBounds(813 + i * 60, 289, 54, 22);
+                stepPages[size_t(i)].setToggleState(stepPage == i, dontSendNotification);
+                stepPages[size_t(i)].setVisible(true);
+            }
+            for (int row = 0; row < 7; ++row) {
+                if (row < 6)
+                    put(Param(size_t(Param::arpnotelen) + size_t(row)),
+                        {468, 359 + row * 22, 32, 19}, Style::Number, {}, true);
+                for (int i = 0; i < 16; ++i) {
+                    int step = stepPage * 16 + i + 1;
+                    String id = row == 2   ? "step" + String(step) + "velocity"
+                                : row == 6 ? "step" + String(step) + "hold"
+                                           : "pat" + String(step) +
+                                                 StringArray{"note",   "oct",    "", "gate",
+                                                             "repeat", "chance", ""}[row];
+                    control(id, {509 + i * 26, 359 + row * 22, 24, 19},
+                            row == 6 ? Style::Toggle : Style::Number, {}, true);
+                }
+            }
+            patternCanvas.setBounds(509, 359, 416, 151);
+            patternCanvas.setVisible(true);
+            patternCanvas.toFront(false);
+            return;
+        }
         if (rack == 0) {
+            put(Param::arppattern, {813, 289, 112, 22}, Style::Menu, {}, true);
             control("arpmode", {content.getX(), content.getY(), 128, 38}, Style::Menu, "MODE",
                     true);
             control("arpvelocity", {content.getX(), content.getY() + 43, 128, 38}, Style::Menu,
@@ -785,6 +1308,7 @@ class LogisthEditor::Console : public Component, private Timer, public LogisthCo
             put(Param::arpsteps, {content.getX() + 471, content.getY() + 3, 44, 36}, Style::Number,
                 "LENGTH", true);
             for (int i = 0; i < 2; ++i) {
+                stepPages[size_t(i)].setButtonText(i ? "09-16" : "01-08");
                 stepPages[size_t(i)].setBounds(content.getX() + 365 + i * 77, content.getY() + 55,
                                                70, 22);
                 stepPages[size_t(i)].setToggleState(stepPage == i, dontSendNotification);
@@ -858,8 +1382,23 @@ class LogisthEditor::Console : public Component, private Timer, public LogisthCo
             c->setVisible(false);
             c->enable(true);
         }
+        patternCanvas.setVisible(false);
         for (auto &button : stepPages)
             button.setVisible(false);
+        for (auto &w : sourceViews)
+            w.setVisible(false);
+        for (auto &w : sourceLoad)
+            w.setVisible(false);
+        for (auto &w : sourceClear)
+            w.setVisible(false);
+        for (auto &w : sourceFrame)
+            w.setVisible(false);
+        for (Component *w :
+             std::array<Component *, 7>{&patternSlot, &patternSave, &patternRandom, &chordTrigger,
+                                        &chordType, &chordLearn, &chordCopy})
+            w->setVisible(false);
+        for (auto &w : chordNotes)
+            w.setVisible(false);
         presets.setBounds(364, 25, 362, 32);
         previous.setBounds(332, 25, 26, 32);
         next.setBounds(732, 25, 26, 32);
@@ -871,6 +1410,7 @@ class LogisthEditor::Console : public Component, private Timer, public LogisthCo
         put(Param::polyphony, {1010, 16, 60, 38}, Style::Number, "POLY");
         put(Param::sync, {1085, 28, 64, 24}, Style::Toggle, "SYNC");
         theme.setBounds(1162, 28, 62, 24);
+        put(Param::arpout, {225, 29, 82, 24}, Style::Toggle, "MIDI OUT");
         const int first = selectedPart * 2 + 1;
         oscillator(first, {16, 82, 460, 184});
         oscillator(first + 1, {764, 82, 460, 184});
@@ -911,21 +1451,53 @@ class LogisthEditor::Console : public Component, private Timer, public LogisthCo
         for (auto &b : rackButtons)
             b->repaint();
         clockSignature = int(value(Param::sync)) * 8 + int(value(Param::lfo1free)) * 4 +
-                         int(value(Param::lfo2free)) * 2 + int(value(Param::arpmode) >= 8);
+                         int(value(Param::lfo2free)) * 2 + int(value(Param::arpmode) >= 8) +
+                         int(value(Param::arppattern)) * 16;
+        for (int o = 0; o < 4; ++o)
+            clockSignature += int(value(Param(size_t(Param::o1engine) + size_t(o) * 16)))
+                              << (6 + o * 2);
     }
     void timerCallback() override {
+        processor.serviceAssets();
+        auto status = processor.sourceStatus();
+        if (status != lastStatus) {
+            lastStatus = status;
+            if (status.isNotEmpty())
+                readout = status;
+            repaint(120, 844, 870, 16);
+        }
+        for (int i = 0; i < 4; ++i) {
+            auto data = processor.sourceData(i);
+            if (displayedRevisions[size_t(i)] != data->revision) {
+                displayedRevisions[size_t(i)] = data->revision;
+                if (i / 2 == selectedPart)
+                    repaint(i % 2 ? 764 : 16, 82, 460, 184);
+            }
+        }
+        if (rack == 8)
+            refreshChord();
         int signature = int(value(Param::sync)) * 8 + int(value(Param::lfo1free)) * 4 +
-                        int(value(Param::lfo2free)) * 2 + int(value(Param::arpmode) >= 8);
+                        int(value(Param::lfo2free)) * 2 + int(value(Param::arpmode) >= 8) +
+                        int(value(Param::arppattern)) * 16;
+        for (int o = 0; o < 4; ++o)
+            signature += int(value(Param(size_t(Param::o1engine) + size_t(o) * 16))) << (6 + o * 2);
         if (signature != clockSignature)
             layout();
         for (int i = 0; i < 4; ++i)
             controls[size_t(Param(size_t(Param::o1phase) + size_t(i) * 12))]->enable(
-                value(Param(size_t(Param::o1retrig) + size_t(i) * 12)) > 0);
+                value(Param(size_t(Param::o1retrig) + size_t(i) * 12)) > 0 &&
+                value(Param(size_t(Param::o1engine) + size_t(i) * 16)) <= 1);
         controls[size_t(Param::polyphony)]->enable(value(Param::monolegato) == 0);
         if (!pitch.isMouseButtonDown())
             pitch.setValue(processor.pitchPosition.load(), dontSendNotification);
         if (!mod.isMouseButtonDown())
             mod.setValue(processor.wheelPosition.load(), dontSendNotification);
+        if (rack == 0) {
+            repaint(414, 350, 520, 165);
+            patternCanvas.repaint();
+        }
+        if (rack == 8)
+            repaint(414, 366, 520, 145);
         repaint(956, 278, 268, 258);
     }
     void paint(Graphics &g) override {
@@ -947,9 +1519,35 @@ class LogisthEditor::Console : public Component, private Timer, public LogisthCo
         drawCaption(g, "SOLO", {927, 12, 68, 13}, 8, muted);
         drawCaption(g, "THEME", {1162, 12, 62, 13}, 8, muted);
         String part = selectedPart == 0 ? "A" : "B";
-        shell(g, {16, 82, 460, 184}, "OSCILLATOR " + part + "1", "01 / VOICE");
-        shell(g, {764, 82, 460, 184}, "OSCILLATOR " + part + "2", "02 / VOICE");
+        shell(g, {16, 82, 460, 184}, "OSCILLATOR " + part + "1", {});
+        shell(g, {764, 82, 460, 184}, "OSCILLATOR " + part + "2", {});
         shell(g, {486, 82, 268, 184}, "AMP ENVELOPE " + part, "ADSR");
+        for (int slot = selectedPart * 2; slot < selectedPart * 2 + 2; ++slot)
+            if (sourceViews[size_t(slot)].getSelectedId() == 2) {
+                auto data = processor.sourceData(slot);
+                int x = slot % 2 ? 850 : 102;
+                Path path;
+                for (int i = 0; i < 340; ++i) {
+                    float sample = 0;
+                    int mode = int(value(Param(size_t(Param::o1engine) + size_t(slot) * 16)));
+                    if (mode == 1)
+                        sample = data->table(
+                            double(i) / 340,
+                            float(value(Param(size_t(Param::o1position) + size_t(slot) * 16))),
+                            .001);
+                    else
+                        sample =
+                            data->sample(double(i) * double(data->samples[0].size() - 2) / 340, 0);
+                    float y = 204 - jlimit(-1.f, 1.f, sample) * 6;
+                    if (i == 0)
+                        path.startNewSubPath(float(x + i), y);
+                    else
+                        path.lineTo(float(x + i), y);
+                }
+                g.setColour(green.withAlpha(.6f));
+                g.strokePath(path, PathStrokeType(1));
+                drawCaption(g, String(data->name), {x, 248, 340, 14}, 8, muted);
+            }
         auto curveBounds = Rectangle<float>(508, 116, 224, 22);
         size_t ampBase = size_t(Param::p1ampa) + size_t(selectedPart) * 10;
         const float attack = .05f + .45f * std::sqrt(value(Param(ampBase)) / 8.f);
@@ -991,13 +1589,34 @@ class LogisthEditor::Console : public Component, private Timer, public LogisthCo
         g.drawRoundedRectangle(Rectangle<float>(280.5f, 278.5f, 667, 257), 8, 1);
         g.drawVerticalLine(404, 292, 523);
         drawCaption(g, "SIGNAL RACK", {292, 290, 108, 16}, 8, mint.withAlpha(.5f));
-        StringArray titles{"ARPEGGIATOR", "DISTORTION", "PHASER", "CHORUS",
-                           "EQUALIZER",   "REVERB",     "DELAY",  "COMPRESSOR"};
+        StringArray titles{"ARPEGGIATOR", "DISTORTION", "PHASER",     "CHORUS", "EQUALIZER",
+                           "REVERB",      "DELAY",      "COMPRESSOR", "CHORDS"};
         drawCaption(g, titles[rack], {414, 289, 350, 20}, 12, screenText,
                     Justification::centredLeft, true);
-        drawCaption(g, value(Param::sync) > 0 ? "HOST SYNC" : "FREE TIME", {813, 291, 118, 16}, 8,
-                    mint.withAlpha(.65f), Justification::centredRight);
-        if (rack == 0) {
+
+        if (rack == 8) {
+            drawCaption(g, "TRIGGER", {414, 309, 140, 18}, 9, mint);
+            drawCaption(g, "VOICING", {566, 309, 145, 18}, 9, mint);
+            drawCaption(g,
+                        processor.learning() >= 0 ? "Play a chord, then choose DONE"
+                                                  : "Each trigger stores up to eight notes",
+                        {414, 371, 510, 24}, 12, screenText);
+            drawCaption(g,
+                        "VOICE 1       VOICE 2       VOICE 3       VOICE 4       VOICE 5       "
+                        "VOICE 6       VOICE 7       VOICE 8",
+                        {414, 446, 520, 18}, 8, mint);
+            drawCaption(g, "CHORDS → ARPEGGIATOR → SYNTH / MIDI OUT", {414, 490, 520, 24}, 10,
+                        mint.withAlpha(.65f));
+        } else if (rack == 0 && value(Param::arppattern) > 0) {
+            drawCaption(g, "SWING", {600, 291, 47, 18}, 8, mint);
+            drawCaption(g, "LANE / LEN", {414, 345, 87, 12}, 7, mint.withAlpha(.65f));
+            StringArray labels{"NOTE", "OCTAVE", "VELOCITY", "GATE", "REPEAT", "CHANCE", "TIE"};
+            for (int row = 0; row < 7; ++row)
+                drawCaption(g, labels[row], {414, 359 + row * 22, 51, 19}, 8, mint);
+            for (int column = 0; column < 16; ++column)
+                drawCaption(g, String(stepPage * 16 + column + 1), {509 + column * 26, 345, 24, 12},
+                            7, mint.withAlpha(.65f), Justification::centred);
+        } else if (rack == 0) {
             for (int i = 0; i < 8; ++i) {
                 int x = 459 + i * 59;
                 int n = stepPage * 8 + i + 1;
@@ -1033,14 +1652,24 @@ class LogisthEditor::Console : public Component, private Timer, public LogisthCo
     LogisthLook &look;
     std::array<std::unique_ptr<Control>, parameterCount> controls;
     std::array<ToggleButton, 2> parts, stepPages;
-    std::array<std::unique_ptr<RackButton>, 8> rackButtons;
+    std::array<std::unique_ptr<RackButton>, 9> rackButtons;
+    std::array<ComboBox, 4> sourceViews, sourceFrame;
+    std::array<TextButton, 4> sourceLoad, sourceClear;
+    ComboBox patternSlot, chordTrigger, chordType;
+    TextButton patternSave, patternRandom, chordLearn, chordCopy;
+    std::array<Slider, 8> chordNotes;
+    bool updatingChord = false;
+    std::unique_ptr<FileChooser> sourceChooser;
+    int previewSource = -1, previewPattern = -1;
     ComboBox presets;
     ToggleButton theme;
     TextButton previous, next;
     Keys keyboard;
+    PatternCanvas patternCanvas;
     Slider pitch, mod;
     TooltipWindow tooltips;
-    String readout;
+    String readout, lastStatus;
+    std::array<uint64_t, 4> displayedRevisions{};
     int selectedPart = 0, rack = 0, stepPage = 0, clockSignature = -1, previewSync = -1;
 };
 LogisthEditor::LogisthEditor(LogisthProcessor &p) : AudioProcessorEditor(p) {
@@ -1069,8 +1698,8 @@ void LogisthEditor::resized() {
     }
 }
 Image LogisthEditor::snapshotPage(int scenario) {
-    console->setDarkTheme(scenario >= 4, false);
-    console->showScenario(scenario % 4);
+    console->setDarkTheme(scenario >= 4 && scenario != 7, false);
+    console->showScenario(scenario);
     return createComponentSnapshot(getLocalBounds());
 }
 String LogisthEditor::validateLayout() {
