@@ -1,0 +1,56 @@
+{
+  "tag": "v0.4.0",
+  "automation_commit": "d4ac6e7d19ed5a105dc45b8ce894dae67b346dde",
+  "run_id": "43335179365",
+  "run_url": "https://github.com/logik93/testoren/actions/runs/43335179365",
+  "phase": "passed",
+  "platform": "windows-x86_64",
+  "build": {
+    "version": "0.4.0",
+    "platform": "windows-x86_64",
+    "source_commit": "d4ac6e7d19ed5a105dc45b8ce894dae67b346dde",
+    "source_fingerprint": {
+      "Source": "5149204df15856302ac2139ea9d9d2a6c1addd72",
+      "CMakeLists.txt": "e4fde064027760cb2f5a2d1eb56564cb392f9172",
+      "tests": "ccd183280a07de8217c35218aedc5434f4a694c0",
+      "assets": "e0e48f00ed454a127f942f5f4ac219f3920f506a"
+    },
+    "tests": {
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    "binaries": [
+      {
+        "path": "VST3/logisth.vst3/Contents/x86_64-win/logisth.vst3",
+        "architectures": [
+          "x86_64"
+        ],
+        "sha256": "0a3d0d0ef38289572c872139e9b54bb090a77c0dd4ccbd0fe9c1f958d3779270"
+      },
+      {
+        "path": "CLAP/logisth.clap",
+        "architectures": [
+          "x86_64"
+        ],
+        "sha256": "05e93a8915e9fa02c3b1b844c6a0ac270f307dbaecc2f9ea4c5694fe4f75f54e"
+      },
+      {
+        "path": "Standalone/logisth.exe",
+        "architectures": [
+          "x86_64"
+        ],
+        "sha256": "85e4702fc686e9ebe1d61dc7ba85c2cdb2750fb7c73a78a9d01d29c2cf917abc"
+      }
+    ],
+    "formats": [
+      "VST3",
+      "CLAP",
+      "Standalone"
+    ],
+    "run_url": "https://github.com/logik93/testoren/actions/runs/43335179365",
+    "signing": "unsigned",
+    "archive": "logisth-0.4.0-windows-x86_64.zip",
+    "archive_sha256": "6e1d75002c25c087dd5a1151d76c40bb0aad2a47ceac3036f4c14d376d21c57c"
+  }
+}
