@@ -3,5 +3,238 @@
   "automation_commit": "d4ac6e7d19ed5a105dc45b8ce894dae67b346dde",
   "run_id": "43335179365",
   "run_url": "https://github.com/logik93/testoren/actions/runs/43335179365",
-  "phase": "building"
+  "phase": "published",
+  "jobs": {
+    "started": {
+      "result": "success",
+      "outputs": {}
+    },
+    "plugins": {
+      "result": "success",
+      "outputs": {}
+    },
+    "publish": {
+      "result": "success",
+      "outputs": {}
+    }
+  },
+  "release_url": "https://github.com/logik93/testoren/releases/tag/v0.4.0",
+  "release_commit": "d4ac6e7d19ed5a105dc45b8ce894dae67b346dde",
+  "platforms": [
+    {
+      "version": "0.4.0",
+      "platform": "linux-x86_64",
+      "source_commit": "d4ac6e7d19ed5a105dc45b8ce894dae67b346dde",
+      "source_fingerprint": {
+        "Source": "5149204df15856302ac2139ea9d9d2a6c1addd72",
+        "CMakeLists.txt": "e4fde064027760cb2f5a2d1eb56564cb392f9172",
+        "tests": "ccd183280a07de8217c35218aedc5434f4a694c0",
+        "assets": "e0e48f00ed454a127f942f5f4ac219f3920f506a"
+      },
+      "tests": {
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0
+      },
+      "binaries": [
+        {
+          "path": "VST3/logisth.vst3/Contents/x86_64-linux/logisth.so",
+          "architectures": [
+            "x86_64"
+          ],
+          "sha256": "b2a1719182554c402f381cad31f5776ea1d9e475b9dcc060a4be3816d8ba6b3f"
+        },
+        {
+          "path": "CLAP/logisth.clap",
+          "architectures": [
+            "x86_64"
+          ],
+          "sha256": "acdbf2e6752e5509f77f40904fff1e387ad5e7f941700e0f9fe66f4c64ce9966"
+        },
+        {
+          "path": "Standalone/logisth",
+          "architectures": [
+            "x86_64"
+          ],
+          "sha256": "3164ba384efaa0c03eaacc81f16dbec43a55044621bd62f8fef918c04b955d7f"
+        }
+      ],
+      "formats": [
+        "VST3",
+        "CLAP",
+        "Standalone"
+      ],
+      "run_url": "https://github.com/logik93/testoren/actions/runs/43335179365",
+      "signing": "unsigned",
+      "minimum_glibc": "2.35",
+      "archive": "logisth-0.4.0-linux-x86_64.tar.gz",
+      "archive_sha256": "f730efe28f4e2945ad0ea03c1b6023c9c8b3de5a6c6608482362b269a1ab13c0"
+    },
+    {
+      "version": "0.4.0",
+      "platform": "windows-x86_64",
+      "source_commit": "d4ac6e7d19ed5a105dc45b8ce894dae67b346dde",
+      "source_fingerprint": {
+        "Source": "5149204df15856302ac2139ea9d9d2a6c1addd72",
+        "CMakeLists.txt": "e4fde064027760cb2f5a2d1eb56564cb392f9172",
+        "tests": "ccd183280a07de8217c35218aedc5434f4a694c0",
+        "assets": "e0e48f00ed454a127f942f5f4ac219f3920f506a"
+      },
+      "tests": {
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0
+      },
+      "binaries": [
+        {
+          "path": "VST3/logisth.vst3/Contents/x86_64-win/logisth.vst3",
+          "architectures": [
+            "x86_64"
+          ],
+          "sha256": "0a3d0d0ef38289572c872139e9b54bb090a77c0dd4ccbd0fe9c1f958d3779270"
+        },
+        {
+          "path": "CLAP/logisth.clap",
+          "architectures": [
+            "x86_64"
+          ],
+          "sha256": "05e93a8915e9fa02c3b1b844c6a0ac270f307dbaecc2f9ea4c5694fe4f75f54e"
+        },
+        {
+          "path": "Standalone/logisth.exe",
+          "architectures": [
+            "x86_64"
+          ],
+          "sha256": "85e4702fc686e9ebe1d61dc7ba85c2cdb2750fb7c73a78a9d01d29c2cf917abc"
+        }
+      ],
+      "formats": [
+        "VST3",
+        "CLAP",
+        "Standalone"
+      ],
+      "run_url": "https://github.com/logik93/testoren/actions/runs/43335179365",
+      "signing": "unsigned",
+      "archive": "logisth-0.4.0-windows-x86_64.zip",
+      "archive_sha256": "6e1d75002c25c087dd5a1151d76c40bb0aad2a47ceac3036f4c14d376d21c57c"
+    },
+    {
+      "version": "0.4.0",
+      "platform": "macos-universal",
+      "source_commit": "d4ac6e7d19ed5a105dc45b8ce894dae67b346dde",
+      "source_fingerprint": {
+        "Source": "5149204df15856302ac2139ea9d9d2a6c1addd72",
+        "CMakeLists.txt": "e4fde064027760cb2f5a2d1eb56564cb392f9172",
+        "tests": "ccd183280a07de8217c35218aedc5434f4a694c0",
+        "assets": "e0e48f00ed454a127f942f5f4ac219f3920f506a"
+      },
+      "tests": {
+        "passed": 5,
+        "failed": 0,
+        "skipped": 0
+      },
+      "binaries": [
+        {
+          "path": "VST3/logisth.vst3/Contents/MacOS/logisth",
+          "architectures": [
+            "arm64",
+            "x86_64"
+          ],
+          "sha256": "2852106ae4da99d8dcf2b9451b210149fbfd70f69894711a24d65b4fc2374064"
+        },
+        {
+          "path": "CLAP/logisth.clap/Contents/MacOS/logisth",
+          "architectures": [
+            "arm64",
+            "x86_64"
+          ],
+          "sha256": "80a3c32dbd1ac51eb60e3a693e3060e4242d938c246eb0b64364005fb70b4a69"
+        },
+        {
+          "path": "Standalone/logisth.app/Contents/MacOS/logisth",
+          "architectures": [
+            "arm64",
+            "x86_64"
+          ],
+          "sha256": "461cfe9ba654b86f43387ed537e1bc9ebf58f42bc8ef7b80e691ceba46ab26ca"
+        }
+      ],
+      "formats": [
+        "VST3",
+        "CLAP",
+        "Standalone"
+      ],
+      "run_url": "https://github.com/logik93/testoren/actions/runs/43335179365",
+      "signing": "ad-hoc, not notarized",
+      "archive": "logisth-0.4.0-macos-universal.zip",
+      "archive_sha256": "27e520eed5ac3e829f6514fe459aa450ae1fe698687fc830e8fa9e2a8969d907"
+    }
+  ],
+  "assets": [
+    {
+      "name": "SHA256SUMS",
+      "size": 1112,
+      "url": "https://github.com/logik93/testoren/releases/download/v0.4.0/SHA256SUMS"
+    },
+    {
+      "name": "build-info-linux-x86_64.json",
+      "size": 1384,
+      "url": "https://github.com/logik93/testoren/releases/download/v0.4.0/build-info-linux-x86_64.json"
+    },
+    {
+      "name": "build-info-macos-universal.json",
+      "size": 1464,
+      "url": "https://github.com/logik93/testoren/releases/download/v0.4.0/build-info-macos-universal.json"
+    },
+    {
+      "name": "build-info-windows-x86_64.json",
+      "size": 1410,
+      "url": "https://github.com/logik93/testoren/releases/download/v0.4.0/build-info-windows-x86_64.json"
+    },
+    {
+      "name": "logisth-0.4.0-linux-x86_64.tar.gz",
+      "size": 14963841,
+      "url": "https://github.com/logik93/testoren/releases/download/v0.4.0/logisth-0.4.0-linux-x86_64.tar.gz"
+    },
+    {
+      "name": "logisth-0.4.0-macos-universal.zip",
+      "size": 24282734,
+      "url": "https://github.com/logik93/testoren/releases/download/v0.4.0/logisth-0.4.0-macos-universal.zip"
+    },
+    {
+      "name": "logisth-0.4.0-source.tar.gz",
+      "size": 749205,
+      "url": "https://github.com/logik93/testoren/releases/download/v0.4.0/logisth-0.4.0-source.tar.gz"
+    },
+    {
+      "name": "logisth-0.4.0-windows-x86_64.zip",
+      "size": 11240864,
+      "url": "https://github.com/logik93/testoren/releases/download/v0.4.0/logisth-0.4.0-windows-x86_64.zip"
+    },
+    {
+      "name": "logisth-Manual-English.md",
+      "size": 22646,
+      "url": "https://github.com/logik93/testoren/releases/download/v0.4.0/logisth-Manual-English.md"
+    },
+    {
+      "name": "logisth-Manual-English.pdf",
+      "size": 178735,
+      "url": "https://github.com/logik93/testoren/releases/download/v0.4.0/logisth-Manual-English.pdf"
+    },
+    {
+      "name": "logisth-dark.png",
+      "size": 136166,
+      "url": "https://github.com/logik93/testoren/releases/download/v0.4.0/logisth-dark.png"
+    },
+    {
+      "name": "logisth-demo.wav",
+      "size": 2304044,
+      "url": "https://github.com/logik93/testoren/releases/download/v0.4.0/logisth-demo.wav"
+    },
+    {
+      "name": "logisth.png",
+      "size": 140231,
+      "url": "https://github.com/logik93/testoren/releases/download/v0.4.0/logisth.png"
+    }
+  ]
 }
