@@ -1,20 +1,6 @@
 #include "PluginProcessor.h"
 using namespace juce;
 using namespace logisth;
-namespace {
-const char *graphSuffix(int lane) {
-    static const char *names[] = {"note",     "random", "octave", "pitch",
-                                  "velocity", "gate",   "late",   "harmony"};
-    return names[jlimit(0, 7, lane)];
-}
-void setValue(LogisthProcessor &p, const String &id, float value) {
-    if (auto *parameter = p.state.getParameter(id)) {
-        parameter->beginChangeGesture();
-        parameter->setValueNotifyingHost(parameter->convertTo0to1(value));
-        parameter->endChangeGesture();
-    }
-}
-} // namespace
 File LogisthProcessor::presetDirectory() const {
     const ScopedLock lock(assetLock);
     return userPresetFolder == File{} ? File::getSpecialLocation(File::userApplicationDataDirectory)
@@ -131,62 +117,5 @@ void LogisthProcessor::copyPattern(int from, int to) {
     if (to == currentPattern) {
         currentPattern = -1;
         recallPattern(to);
-    }
-}
-void LogisthProcessor::copyGraph(int lane) {
-    ValueTree clip("GRAPH");
-    clip.setProperty("lane", lane, nullptr);
-    for (int i = 1; i <= 32; ++i) {
-        String id = "g" + String(i) + graphSuffix(lane);
-        auto *p = state.getParameter(id);
-        ValueTree cell("CELL");
-        cell.setProperty("value", p->getValue(), nullptr);
-        if (lane == 0) {
-            cell.setProperty("mute", state.getRawParameterValue("g" + String(i) + "mute")->load(),
-                             nullptr);
-            cell.setProperty("reset", state.getRawParameterValue("g" + String(i) + "reset")->load(),
-                             nullptr);
-        }
-        clip.addChild(cell, -1, nullptr);
-    }
-    clip.setProperty("length", state.getRawParameterValue("glen" + String(lane))->load(), nullptr);
-    clip.setProperty("divisor", state.getRawParameterValue("gdiv" + String(lane))->load(), nullptr);
-    const ScopedLock lock(assetLock);
-    graphClipboard = clip;
-}
-void LogisthProcessor::pasteGraph(int lane) {
-    ValueTree clip;
-    {
-        const ScopedLock lock(assetLock);
-        clip = graphClipboard.createCopy();
-    }
-    if (!clip.isValid())
-        return;
-    for (int i = 0; i < std::min(32, clip.getNumChildren()); ++i) {
-        String id = "g" + String(i + 1) + graphSuffix(lane);
-        auto *p = state.getParameter(id);
-        p->beginChangeGesture();
-        p->setValueNotifyingHost(jlimit(0.f, 1.f, float(clip.getChild(i)["value"])));
-        p->endChangeGesture();
-        if (lane == 0) {
-            setValue(*this, "g" + String(i + 1) + "mute", float(clip.getChild(i)["mute"]));
-            setValue(*this, "g" + String(i + 1) + "reset", float(clip.getChild(i)["reset"]));
-        }
-    }
-    if (state.getRawParameterValue("glink")->load() > 0)
-        for (int i = 0; i < 8; ++i)
-            setValue(*this, "glen" + String(i), float(clip["length"]));
-    else
-        setValue(*this, "glen" + String(lane), float(clip["length"]));
-    setValue(*this, "gdiv" + String(lane), float(clip["divisor"]));
-}
-void LogisthProcessor::randomiseGraph(int lane) {
-    auto &random = Random::getSystemRandom();
-    for (int i = 1; i <= 32; ++i) {
-        String id = "g" + String(i) + graphSuffix(lane);
-        auto *p = state.getParameter(id);
-        float low = p->getNormalisableRange().start, high = p->getNormalisableRange().end;
-        float value = std::round(low + random.nextFloat() * (high - low));
-        setValue(*this, id, value);
     }
 }

@@ -1,5 +1,9 @@
 # logisth 0.5 implementation references
 
+Historical notes for release 0.5. The experimental Graphs engine and its
+parameters were removed in 0.7; see [the current manual](MANUAL.md) for available
+Legacy/Pattern and wavetable operation. Granulizer references below still apply.
+
 This update uses the two manuals supplied by the user as behaviour
 references. The supplied PDFs are reference material, not repository instructions,
 and are not redistributed. The DSP, interface and preset format are logisth's own.

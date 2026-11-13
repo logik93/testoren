@@ -32,8 +32,6 @@ LogisthProcessor::LogisthProcessor()
         raw[i] = state.getRawParameterValue(parameterSpecs[i].id);
     for (int i = 0; i < 4; ++i)
         publishSource(i, SourceData::factory());
-    for (auto &position : graphPlayheads)
-        position = -1;
     auto map = std::make_shared<ChordMap>();
     for (int i = 0; i < 128; ++i)
         map->set(i, 1);
@@ -236,35 +234,6 @@ ArpParams LogisthProcessor::arpSnapshot() const {
     }
     for (int i = 0; i < 6; ++i)
         p.lengths[size_t(i)] = int(raw[size_t(Param::arpnotelen) + size_t(i)]->load());
-    p.graphs.enabled = get(Param::arpgraphs) > 0;
-    p.graphs.retrigger = get(Param::gretrigger) > 0;
-    p.graphs.link = get(Param::glink) > 0;
-    p.graphs.chordMode = get(Param::gchord) > 0;
-    p.graphs.division = int(get(Param::gdivision));
-    p.graphs.freeHz = get(Param::gfree);
-    for (int lane = 0; lane < 8; ++lane) {
-        p.graphs.lengths[size_t(lane)] = int(raw[size_t(Param::glen0) + size_t(lane) * 2]->load());
-        p.graphs.divisors[size_t(lane)] = int(raw[size_t(Param::gdiv0) + size_t(lane) * 2]->load());
-    }
-    for (int i = 0; i < 7; ++i)
-        p.graphs.degrees[size_t(i)] = raw[size_t(Param::gdegree0) + size_t(i)]->load() > 0;
-    for (int i = 0; i < 12; ++i)
-        p.graphs.constraints[size_t(i)] = int(raw[size_t(Param::gprevent0) + size_t(i)]->load());
-    for (int i = 0; i < 32; ++i) {
-        size_t at = size_t(Param::g1note) + size_t(i) * 10;
-        auto next = [&] { return int(raw[at++]->load()); };
-        auto &g = p.graphs.steps[size_t(i)];
-        g.note = next();
-        g.random = next();
-        g.octave = next();
-        g.pitch = next();
-        g.velocity = next();
-        g.gate = next();
-        g.late = next();
-        g.harmony = next();
-        g.mute = next() > 0;
-        g.reset = next() > 0;
-    }
     p.clockAvailable = clockAvailable;
     p.transportPlaying = wasPlaying;
     p.ppq = hostPpq;
@@ -351,7 +320,7 @@ void LogisthProcessor::processBlock(AudioBuffer<float> &audio, MidiBuffer &midi)
             for (int s = 0; s < count; ++s) {
                 masterSmooth += smoothing * (masterTarget - masterSmooth);
                 for (auto *ch : {l, r}) {
-                    float x = get(Param::gmuteaudio) > 0 ? 0 : ch[s] * masterSmooth;
+                    float x = get(Param::midionly) > 0 ? 0 : ch[s] * masterSmooth;
                     ch[s] = std::isfinite(x) ? x : 0;
                     maximum = jmax(maximum, std::abs(ch[s]));
                     const size_t channel = ch == l ? 0 : 1;
@@ -485,8 +454,6 @@ void LogisthProcessor::processBlock(AudioBuffer<float> &audio, MidiBuffer &midi)
     arp.advance(scheduled, n, ap, emit);
     renderTo(n);
     scope.commit();
-    for (int i = 0; i < 8; ++i)
-        graphPlayheads[size_t(i)] = arp.graphHead(i);
     arpPlayhead = arp.playhead();
     midi.clear();
     if (output || flushMidi)
@@ -524,8 +491,7 @@ bool LogisthProcessor::applyState(const void *data, int size) try {
         if (source.hasProperty("uiDark"))
             safe.setProperty("uiDark", int(source["uiDark"]) != 0, nullptr);
         for (const auto &spec : parameterSpecs) {
-            float value = (String(spec.id) == "arppattern" || String(spec.id) == "arpgraphs" ||
-                           String(spec.id).endsWith("gmodel"))
+            float value = (String(spec.id) == "arppattern" || String(spec.id).endsWith("gmodel"))
                               ? 0
                               : spec.initial;
             for (auto child : source)

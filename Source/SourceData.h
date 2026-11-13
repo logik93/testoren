@@ -94,8 +94,11 @@ struct SourceData {
         }
         return result;
     }
+    static bool validFrameSize(int size) {
+        return size >= 128 && size <= 4096 && (size & (size - 1)) == 0;
+    }
     void buildTables(int size = 2048) {
-        if (size != 256 && size != 512 && size != 1024 && size != 2048)
+        if (!validFrameSize(size))
             size = 2048;
         frameSize = size;
         frames = std::clamp(int(samples[0].size() / size_t(size)), 1, 256);
@@ -120,23 +123,32 @@ struct SourceData {
             }
         }
     }
-    float table(double phase, float position, double increment) const {
-        if (tables[0].empty())
+    // WT POS selects one complete periodic cycle; it never advances through the PCM file.
+    int frameIndex(float position) const {
+        if (!std::isfinite(position))
+            position = 0;
+        return std::clamp(int(std::lround(std::clamp(position, 0.f, 1.f) * (frames - 1))), 0,
+                          frames - 1);
+    }
+    float framePosition(int frame) const {
+        return frames > 1 ? float(std::clamp(frame, 0, frames - 1)) / float(frames - 1) : 0;
+    }
+    float frameSample(int frame, double phase, int band = 0) const {
+        if (tables[0].empty() || !std::isfinite(phase))
             return 0;
-        float frame = std::clamp(position, 0.f, 1.f) * float(frames - 1);
-        int f = int(frame), g = std::min(f + 1, frames - 1);
+        phase -= std::floor(phase);
+        double x = phase * frameSize;
+        int i = int(x), j = (i + 1) % frameSize;
+        float fraction = float(x - i);
+        const auto &v = tables[size_t(std::clamp(band, 0, 10))];
+        size_t offset = size_t(std::clamp(frame, 0, frames - 1) * frameSize);
+        return v[offset + size_t(i)] * (1 - fraction) + v[offset + size_t(j)] * fraction;
+    }
+    float table(double phase, float position, double increment) const {
+        const int frame = frameIndex(position);
         double level = std::clamp(std::log2(std::max(1., increment * frameSize * 2)), 0., 10.);
         int band = std::min(10, int(level) + 1), next = std::min(10, band + 1);
-        double x = phase * frameSize;
-        int i = int(x) % frameSize, j = (i + 1) % frameSize;
-        float frac = float(x - std::floor(x));
-        auto read = [&](int b, int row) {
-            const auto &v = tables[size_t(b)];
-            auto offset = size_t(row * frameSize);
-            return v[offset + size_t(i)] * (1 - frac) + v[offset + size_t(j)] * frac;
-        };
-        float a = read(band, f) * (1 - (frame - f)) + read(band, g) * (frame - f);
-        float b = read(next, f) * (1 - (frame - f)) + read(next, g) * (frame - f);
+        float a = frameSample(frame, phase, band), b = frameSample(frame, phase, next);
         return a + (b - a) * float(level - std::floor(level));
     }
     float sample(double position, int channel) const {
@@ -161,14 +173,14 @@ struct SourceData {
                                 std::exp(-4 * t) * .6);
                 d->samples[0][size_t(i)] = d->samples[1][size_t(i)] = x;
             }
-            // A separate, smoothly morphing harmonic factory wavetable.
+            // A separate, 128-cycle harmonic factory wavetable.
             auto original = d->samples;
-            d->samples[0].resize(16 * 2048);
-            for (int f = 0; f < 16; ++f)
+            d->samples[0].resize(128 * 2048);
+            for (int f = 0; f < 128; ++f)
                 for (int i = 0; i < 2048; ++i) {
                     float x = 0;
                     for (int h = 1; h <= 32; ++h) {
-                        double gain = (1. - f / 15.) * (h == 1 ? 1. : 0.) + f / 15. / h;
+                        double gain = (1. - f / 127.) * (h == 1 ? 1. : 0.) + f / 127. / h;
                         x += float(std::sin(2 * 3.141592653589793 * i * h / 2048.) * gain * .6);
                     }
                     d->samples[0][size_t(f * 2048 + i)] = x;

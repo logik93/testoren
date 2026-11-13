@@ -1,6 +1,7 @@
 #include "Chords.h"
 #include "Engine.h"
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 #include <vector>
 using namespace logisth;
@@ -79,10 +80,67 @@ int main() {
                     check(difference(a, b) < .00001,
                           "hybrid output invariant to buffer partitioning");
                 }
+        // A bank contains 128 separate single-cycle waves, not one long playback loop.
+        SourceData bank;
+        bank.samples[0].resize(128 * 128);
+        bank.samples[1].resize(128 * 128);
+        for (int frame = 0; frame < 128; ++frame)
+            for (int i = 0; i < 128; ++i)
+                bank.samples[0][size_t(frame * 128 + i)] =
+                    float(std::sin(2 * pi * i / 128.) * (frame + 1) / 128.);
+        bank.samples[1] = bank.samples[0];
+        bank.buildTables(128);
+        check(bank.frames == 128, "wavetable retains all 128 independent cycles");
+        for (int frame = 0; frame < 128; ++frame) {
+            const float pos = bank.framePosition(frame);
+            check(bank.frameIndex(pos) == frame, "WT POS can select every frame exactly");
+            for (int i = 0; i < 256; ++i) {
+                double phase = i / 256.;
+                float expected = float(std::sin(2 * pi * phase) * (frame + 1) / 128.);
+                check(std::abs(bank.table(phase, pos, .0001) - expected) < .0004,
+                      "WT playback repeats only the selected full cycle");
+            }
+        }
+        check(bank.frameIndex(-1) == 0 && bank.frameIndex(2) == 127 &&
+                  bank.frameIndex(std::numeric_limits<float>::quiet_NaN()) == 0,
+              "WT POS endpoints and invalid input are bounded");
+        float inside = bank.framePosition(63) + .4f / 127;
+        check(bank.table(.25, inside, .0001) == bank.table(.25, bank.framePosition(63), .0001),
+              "WT POS does not silently mix neighbouring cycles");
+        check(std::abs(bank.table(-.75, 1, .0001) - bank.table(1.25, 1, .0001)) < 1e-6,
+              "selected wavetable cycle wraps at the oscillator phase boundary");
+        Params wt = p;
+        wt.osc[0].engine = 1;
+        wt.osc[0].data = &bank;
+        wt.osc[0].position = bank.framePosition(91);
+        Engine displayEngine;
+        displayEngine.prepare(48000);
+        displayEngine.noteOn(60, 1, 1, wt);
+        float left[128]{}, right[128]{};
+        displayEngine.render(left, right, 128, wt);
+        auto picture = displayEngine.playbackPictures()[0];
+        check(picture.active && picture.revision == bank.revision &&
+                  bank.frameIndex(picture.position) == 91,
+              "WT display telemetry reports the played frame, not the phase cursor");
+        float settledPosition = -1;
+        for (int unison : {1, 8}) {
+            Engine moving;
+            moving.prepare(48000);
+            wt.osc[0].position = 0;
+            wt.osc[0].unison = unison;
+            moving.noteOn(60, 1, 1, wt);
+            wt.osc[0].position = 1;
+            moving.render(left, right, 128, wt);
+            float position = moving.playbackPictures()[0].position;
+            if (settledPosition >= 0)
+                check(position == settledPosition,
+                      "WT POS movement and displayed frame are independent of unison count");
+            settledPosition = position;
+        }
         p.osc[0].engine = 1;
         auto wavetable = render(p);
         p.osc[0].position = 1;
-        check(difference(wavetable, render(p)) > 1, "wavetable frame morph changes timbre");
+        check(difference(wavetable, render(p)) > 1, "wavetable frame selection changes timbre");
         p.osc[0].position = 0;
         p.osc[0].warp = .6f;
         check(difference(wavetable, render(p)) > 1, "phase warp changes timbre");
@@ -236,7 +294,8 @@ int main() {
         notes.clear();
         arp.advance(300, 600, ap, emit);
         check(notes.empty(), "stop clears latched and repeated events");
-        std::cout << "PASS: four engines in all four slots at 44.1/48/96 kHz, frame morph, warp, "
+        std::cout << "PASS: four engines in all four slots at 44.1/48/96 kHz, 128-cycle frame "
+                     "selection, warp, "
                      "sample loop/end/reverse, grain modulation, source envelope, shared chord "
                      "notes, polymetric lanes, ratchets, probability, latch, block invariance\n";
         return 0;

@@ -9,8 +9,8 @@ class LogisthProcessor : public juce::AudioProcessor {
   public:
     LogisthProcessor();
     ~LogisthProcessor() override;
-    juce::Result loadSource(int, const juce::File &, int frameSize = 2048);
-    void loadSourceAsync(int, const juce::File &, int frameSize = 2048,
+    juce::Result loadSource(int, const juce::File &, int frameSize = 0);
+    void loadSourceAsync(int, const juce::File &, int frameSize = 0,
                          bool switchClassicToSampler = false);
     void clearSource(int);
     std::shared_ptr<const logisth::SourceData> sourceData(int) const;
@@ -28,12 +28,8 @@ class LogisthProcessor : public juce::AudioProcessor {
     void randomisePattern();
     void serviceAssets();
     std::atomic<int> arpPlayhead{-1};
-    std::array<std::atomic<int>, 8> graphPlayheads{};
     logisth::ScopeBuffer scope;
     std::array<logisth::PlaybackTelemetry, 4> playback;
-    void copyGraph(int);
-    void pasteGraph(int);
-    void randomiseGraph(int);
     void copyPattern(int, int);
     void setPatternName(int, const juce::String &);
     juce::String patternName(int) const;
@@ -131,7 +127,6 @@ class LogisthProcessor : public juce::AudioProcessor {
     std::array<std::atomic<uint32_t>, 4> learned{};
     juce::String assetStatus;
     std::array<juce::ValueTree, 12> patterns;
-    juce::ValueTree graphClipboard;
     juce::File userPresetFolder, activePresetFile;
     juce::String presetName;
     std::atomic<int> currentPattern{0};

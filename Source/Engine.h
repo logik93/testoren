@@ -511,6 +511,10 @@ class Engine {
                         continue;
                     const float pitch = bend[size_t(v.channel - 1)] * p.bendRange +
                                         mods.pair(Destination::PitchA, part) * 48;
+                    float targetPosition =
+                        clamp(op.position + mods.pair(Destination::PositionA, part), 0, 1);
+                    auto &position = v.sourcePosition[size_t(osc)];
+                    position += smoothing * (targetPosition - position);
                     for (int u = 0; u < n; ++u) {
                         const float spread = n == 1 ? 0 : 2.f * u / (n - 1) - 1;
                         const double hz = 440 * std::exp2((v.pitch - 69 + pitch + op.semitone +
@@ -521,10 +525,6 @@ class Engine {
                         double t = phase + mods.pair(Destination::PhaseA, part);
                         t -= std::floor(t);
                         std::array<float, 2> signal{};
-                        float targetPosition =
-                            clamp(op.position + mods.pair(Destination::PositionA, part), 0, 1);
-                        auto &position = v.sourcePosition[size_t(osc)];
-                        position += smoothing * (targetPosition - position);
                         if (op.engine == 0)
                             signal.fill(wave(t, dt, op.wave));
                         else if (op.data) {
@@ -566,7 +566,8 @@ class Engine {
                             view.revision = op.data->revision;
                             double length = std::max(2., double(op.data->samples[0].size()));
                             if (op.engine == 1)
-                                view.position = float(t);
+                                view.position =
+                                    op.data->framePosition(op.data->frameIndex(position));
                             else if (op.engine == 2) {
                                 auto &player = v.playback[size_t(osc)][0];
                                 view.active = !player.finished;

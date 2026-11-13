@@ -1,4 +1,7 @@
-# logisth output calibration — 0.6.0
+# logisth output calibration — 0.7.0
+
+The gain staging introduced in 0.6 is retained in 0.7. These measurements are
+regenerated for the 0.7 wavetable bank and position smoothing.
 
 The reference is one full-scale 440 Hz sine, centred, at source Volume = Mix =
 Main = 1, velocity 127, sustain 1, one unison voice, no modulation, filters bypassed
@@ -7,7 +10,7 @@ including envelopes, panning, FX bypass and output gain. One second of settling
 is followed by a one-second measurement. Peak and RMS use full scale = 1; RMS
 is not AES17-offset.
 
-| Sample rate | 0.5.1 peak dBFS | 0.6.0 peak dBFS | 0.6.0 RMS dBFS |
+| Sample rate | 0.5.1 peak dBFS | 0.7.0 peak dBFS | 0.7.0 RMS dBFS |
 | --- | --- | --- | --- |
 | 44,100 Hz | -19.4886 | 0.0000 | -3.0103 |
 | 48,000 Hz | -19.4886 | 0.0000 | -3.0103 |
@@ -43,10 +46,10 @@ measurements, not LUFS matching or guarantees for every chord or patch edit.
 | Slow atmosphere | -21.43 | -6.01 |
 | Pulse pluck | -22.51 | -6.00 |
 | Step sequence | -27.62 | -6.01 |
-| Morph glass | -24.54 | -6.01 |
+| Morph glass | -24.54 | -6.02 |
 | Sample keys | -25.85 | -6.01 |
 | Grain cloud | -30.07 | -6.84 |
-| Chord pulse | -31.93 | -8.70 |
+| Chord pulse | -31.93 | -8.57 |
 
 All ten sounds are additionally tested at 44.1 and 96 kHz with a minimum 3 dB
 reference-chord headroom requirement. Saved user presets keep their old values,

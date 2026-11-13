@@ -1,10 +1,24 @@
-# logisth 0.6.0
+# logisth 0.7.0
 
 **A two-part polyphonic subtractive synthesizer with a compact single-window console.**
 VST3, CLAP and Standalone for Windows, macOS and Linux. Built with JUCE and an
 independent synthesis engine; not affiliated with LennarDigital.
 
 ![logisth dark interface](docs/images/logisth-dark.png)
+
+## New in 0.7.0
+
+- WT POS selects one periodic cycle from a bank of up to 256 frames; the factory
+  bank contains 128 waves. A stacked waveform view highlights the playing frame
+  and displays its number. Drag the window or use the wheel to select a frame.
+- Auto wavetable import reads Serum WAV CLM cycle lengths, with a 2048-point
+  fallback and short single-cycle detection. Manual lengths: 128–4096 samples.
+- Graphs arp is removed. Legacy and the seven-row Pattern engine remain, with
+  twelve A–L pattern memories, latch, MIDI output and MIDI-only operation.
+- Oscillator menus show only pages valid for the selected engine and grain model.
+  Sampler no longer exposes Granulizer pages or periodic-oscillator phase controls.
+- 575 automatable parameters. The removed Graphs parameter block is not reserved;
+  this update does not preserve the removed Graphs automation parameters.
 
 ## New in 0.6.0
 
@@ -42,15 +56,15 @@ sounds. Parameter IDs remain stable; preserving old sound is not the objective.
   time hold, reverse and tempo stretching. Previous Cloud model remains available.
 - Large sample waveform with a live scanner and grain positions, zoom and seek.
 - Mixer oscilloscope: part A, part B or actual final L+R sum.
-- Eight independent arp graphs, signed early/late timing, clock dividers,
-  pitch-degree masks, note constraints, chord rotation and twelve named A–L patterns.
+- Earlier releases included an experimental Graphs arp, removed in 0.7.0.
+  Twelve A–L pattern memories remain available for Legacy and Pattern.
 - User preset library: save/load/delete .logisth files with embedded audio,
-  chords, all patterns and UI preferences. 936 automatable audio parameters.
+  chords, all patterns and UI preferences. 575 current automatable audio parameters.
 - Compact single-window interface with light/dark themes.
 
 [English manual](docs/MANUAL.md) · [PDF manual](docs/logisth-Manual-English.pdf) ·
 [Implementation references](docs/STUDIO-0.5.md) ·
-[Download 0.6.0](https://github.com/logik93/logisth/releases/tag/v0.6.0)
+[Download 0.7.0](https://github.com/logik93/logisth/releases/tag/v0.7.0)
 
 Native archives are built and tested on Windows, macOS and Linux. Each package
 contains the English manual and build metadata. Publication requires all platform

@@ -20,20 +20,24 @@ three grouped columns. Hover for tooltips and the bottom value readout.
 Numeric values support units such as kHz, ms and percent. Sync displays musical
 divisions instead of free time/rate controls. Arp steps use 01–08 and 09–16 views.
 
-The original 514 audio parameter IDs remain, with 422 new IDs appended. Tests check access, bounds, click
+The current engine exposes 575 audio parameters. Tests check access, bounds, click
 targets, view changes, bindings, scaling and independent theme persistence.
 See [the English user manual](MANUAL.md) for full operation.
 
-The oscillator header selects engine and VOICE/SOURCE/ENV/GRAINS/MOTION/TIME views. File drops and
+The oscillator header selects engine and only its relevant pages: VOICE/ENV for
+Classic, WAVETABLE for the table engine, SOURCE for Sampler, and GRAINS for
+Granular. MOTION/TIME are available only in the Granulizer model. File drops and
 IMPORT load audio into that slot. CHORDS is the ninth rack page. Pattern arp
 uses a seven-row drawing canvas with independent lane lengths, exact cell entry,
 playheads and two 16-step views; Legacy retains the original arp page. MIDI OUT
 is in the top header. Both themes use the same layout.
 
-SAMPLE is the tenth rack page with source selection, actual waveform, live cursor
-and grain markers. Pattern + GRAPHS shows one of eight 32-step graphs, independent
-length/divider, mute/reset, pitch masks and A-L named memories in the same rack.
-GRAPHS off retains the earlier Pattern grid. The mixer scope is always visible.
+SAMPLE is the tenth rack page. For Sampler and Granular it shows the actual PCM
+waveform, live cursor and grain markers. For Wavetable it shows a perspective
+stack, highlights the selected cycle and displays its frame number. WT POS,
+dragging the view or wheeling selects a frame. The header's AUTO/length menu
+controls frame slicing on import. Graphs arp has been removed; Legacy and the
+seven-row Pattern grid remain. The mixer scope is always visible.
 
 Version 0.5.1 increases embedded font sizes by 18%, with an 11 px base minimum
 and 28 px popup rows. The console uses one shared layout-state comparison for

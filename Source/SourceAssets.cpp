@@ -41,10 +41,38 @@ String LogisthProcessor::sourceStatus() const {
     const ScopedLock lock(assetLock);
     return assetStatus;
 }
+namespace {
+int wavetableFrameSize(const File &file, int64 length) {
+    auto stream = file.createInputStream();
+    if (stream && stream->readInt() == int(ByteOrder::littleEndianInt("RIFF"))) {
+        stream->readInt();
+        if (stream->readInt() == int(ByteOrder::littleEndianInt("WAVE")))
+            while (stream->getPosition() + 8 <= stream->getTotalLength()) {
+                const int chunk = stream->readInt();
+                const uint32 bytes = uint32(stream->readInt());
+                const int64 start = stream->getPosition();
+                if (int64(bytes) > stream->getTotalLength() - start)
+                    break;
+                if (chunk == int(ByteOrder::littleEndianInt("clm ")) && bytes >= 4) {
+                    char text[65]{};
+                    stream->read(text, int(std::min<uint32>(bytes, 64)));
+                    String metadata = String::fromUTF8(text, int(std::min<uint32>(bytes, 64)));
+                    if (metadata.startsWith("<!>")) {
+                        int size = metadata.substring(3).getIntValue();
+                        if (SourceData::validFrameSize(size))
+                            return size;
+                    }
+                }
+                stream->setPosition(start + bytes + (bytes & 1));
+            }
+    }
+    return length <= 2048 && SourceData::validFrameSize(int(length)) ? int(length) : 2048;
+}
+} // namespace
 Result LogisthProcessor::loadSource(int index, const File &file, int frameSize) try {
     if (index < 0 || index >= 4)
         return Result::fail("Invalid source slot");
-    if (frameSize != 256 && frameSize != 512 && frameSize != 1024 && frameSize != 2048)
+    if (frameSize != 0 && !SourceData::validFrameSize(frameSize))
         return Result::fail("Unsupported frame size");
     AudioFormatManager formats;
     formats.registerBasicFormats();
@@ -81,7 +109,7 @@ Result LogisthProcessor::loadSource(int index, const File &file, int frameSize) 
                 return Result::fail("Audio contains non-finite samples");
             sample = jlimit(-8.f, 8.f, sample);
         }
-    data->buildTables(frameSize);
+    data->buildTables(frameSize == 0 ? wavetableFrameSize(file, n) : frameSize);
     data->analyseTransients();
     int cueCount =
         jlimit(0, 4096, reader->metadataValues.getValue("NumCuePoints", "0").getIntValue());
@@ -187,8 +215,7 @@ void LogisthProcessor::finishLearn() {
 namespace {
 bool patternParameter(const String &id) {
     return (id.startsWith("arp") && id != "arpon" && id != "arpout") || id.startsWith("step") ||
-           id.startsWith("pat") ||
-           (id.startsWith("g") && !id.startsWith("gprevent") && id != "gmuteaudio");
+           id.startsWith("pat");
 }
 } // namespace
 void LogisthProcessor::storePattern(int slot) {
@@ -352,7 +379,7 @@ bool LogisthProcessor::restoreAssets(const ValueTree &tree) {
             String name = String::fromUTF8(nameBytes.data(), int(nameLength));
             if (!std::isfinite(sr) || sr < 8000 || sr > 96000 || n < 2 ||
                 !fitsSampleMemory(uint64_t(n), totalDecoded) || name.length() > 512 ||
-                (frameSize != 256 && frameSize != 512 && frameSize != 1024 && frameSize != 2048))
+                !SourceData::validFrameSize(frameSize))
                 return false;
             totalDecoded += uint64_t(n) * 8;
             auto data = std::make_shared<SourceData>();

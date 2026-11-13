@@ -24,277 +24,11 @@ class ClickArea : public Component, public SettableTooltipClient {
             onClick();
     }
 };
-class GraphView : public Component {
-    LogisthProcessor &p;
-    LogisthColours &colours;
-    FontMaker font;
-    int lane = 0, dragColumn = -1;
-    bool draggingLength = false;
-    RangedAudioParameter *gesture = nullptr;
-    TextEditor input;
-    int inputColumn = 0;
-    static const char *suffix(int lane) {
-        static const char *names[] = {"note",     "random", "octave", "pitch",
-                                      "velocity", "gate",   "late",   "harmony"};
-        return names[std::clamp(lane, 0, 7)];
-    }
-    String id(int column) const {
-        return "g" + String(column + 1) + suffix(lane);
-    }
-    static String noteName(int value) {
-        static const char *names[] = {"UP", "DN", "UD", "DU", "U+D", "D+U", "FLO", "FHI"};
-        return value < 0    ? "-"
-               : value <= 7 ? String(value + 1)
-                            : String(names[std::clamp(value - 8, 0, 7)]);
-    }
-    Rectangle<float> cell(int column) const {
-        return {float(column) * getWidth() / 32, 7, float(getWidth()) / 32 - 1, 107};
-    }
-    int column(Point<float> at) const {
-        return std::clamp(int(at.x * 32 / getWidth()), 0, 31);
-    }
-    void finish() {
-        if (gesture) {
-            gesture->endChangeGesture();
-            gesture = nullptr;
-        }
-    }
-    void drawValue(Point<float> at) {
-        int col = column(at);
-        auto *parameter = p.state.getParameter(id(col));
-        if (gesture != parameter) {
-            finish();
-            gesture = parameter;
-            gesture->beginChangeGesture();
-        }
-        auto range = parameter->getNormalisableRange();
-        float value = std::round(range.start + (range.end - range.start) *
-                                                   (1 - jlimit(0.f, 1.f, (at.y - 8) / 105)));
-        gesture->setValueNotifyingHost(parameter->convertTo0to1(value));
-        dragColumn = col;
-    }
-    void lengthAt(Point<float> at) {
-        int value = std::clamp(int(std::round(at.x * 32 / getWidth())), 1, 32);
-        if (raw(p, "glink") > 0)
-            for (int i = 0; i < 8; ++i)
-                change(p, "glen" + String(i), float(value));
-        else
-            change(p, "glen" + String(lane), float(value));
-    }
-    void editValue(int col) {
-        finish();
-        inputColumn = col;
-        float value = raw(p, id(col));
-        input.setText(lane == 0 ? noteName(int(value)) : String(int(value)), false);
-        int x = std::clamp(int(cell(col).getX()) - 20, 0, getWidth() - 64);
-        input.setBounds(x, 44, 64, 25);
-        input.setFont(font(12));
-        input.setColour(TextEditor::backgroundColourId, colours.screen);
-        input.setColour(TextEditor::textColourId, colours.screenText);
-        input.setVisible(true);
-        input.grabKeyboardFocus();
-        input.selectAll();
-    }
-    void commit() {
-        if (!input.isVisible())
-            return;
-        String text = input.getText().trim().toUpperCase();
-        float value = float(text.getDoubleValue());
-        if (lane == 0) {
-            if (text == "-" || text == "REST")
-                value = -1;
-            else {
-                bool mode = false;
-                for (int i = 8; i < 16; ++i)
-                    if (noteName(i) == text) {
-                        value = float(i);
-                        mode = true;
-                        break;
-                    }
-                if (!mode)
-                    value -= 1;
-            }
-        }
-        auto *parameter = p.state.getParameter(id(inputColumn));
-        auto range = parameter->getNormalisableRange();
-        input.setVisible(false);
-        change(p, id(inputColumn), jlimit(range.start, range.end, value));
-    }
-
-  public:
-    GraphView(LogisthProcessor &processor, LogisthColours &palette, FontMaker f)
-        : p(processor), colours(palette), font(std::move(f)) {
-        setComponentID("graph.canvas");
-        setName("Arpeggiator graph editor");
-        addChildComponent(input);
-        input.onReturnKey = [this] { commit(); };
-        input.onFocusLost = [this] { commit(); };
-        input.onEscapeKey = [this] { input.setVisible(false); };
-    }
-    ~GraphView() override {
-        finish();
-        input.onFocusLost = nullptr;
-    }
-    void setLane(int next) {
-        finish();
-        input.setVisible(false);
-        lane = std::clamp(next, 0, 7);
-        repaint();
-    }
-    int selectedLane() const {
-        return lane;
-    }
-    static bool ownsParameter(const String &name) {
-        return name.startsWith("gdegree") || name.startsWith("gprevent") ||
-               (name.length() > 1 && name[0] == 'g' && CharacterFunctions::isDigit(name[1]));
-    }
-    void paint(Graphics &g) override {
-        g.fillAll(colours.screen);
-        int length = int(raw(p, "glen" + String(raw(p, "glink") > 0 ? 0 : lane)));
-        int playhead = p.graphPlayheads[size_t(lane)].load();
-        g.setColour(colours.screenLine);
-        for (int i = 0; i < 5; ++i)
-            g.drawHorizontalLine(8 + i * 26, 0, float(getWidth()));
-        g.setColour(colours.mint);
-        g.fillRect(0.f, 0.f, float(getWidth()) * length / 32, 3.f);
-        g.setFont(font(8));
-        for (int col = 0; col < 32; ++col) {
-            auto b = cell(col);
-            auto *parameter = p.state.getParameter(id(col));
-            auto range = parameter->getNormalisableRange();
-            float value = raw(p, id(col)),
-                  normal = (value - range.start) / std::max(1.f, range.end - range.start),
-                  zero = (0 - range.start) / std::max(1.f, range.end - range.start);
-            float y = b.getBottom() - normal * b.getHeight();
-            float base = range.start < 0 ? b.getBottom() - zero * b.getHeight() : b.getBottom();
-            bool muted = raw(p, "g" + String(col + 1) + "mute") > 0;
-            g.setColour(colours.mint.withAlpha(col >= length ? .1f : muted ? .15f : .5f));
-            if (!(lane == 0 && value < 0))
-                g.fillRect(Rectangle<float>(b.getX() + 1, std::min(y, base), b.getWidth() - 2,
-                                            std::max(1.f, std::abs(base - y))));
-            g.setColour(colours.screenText.withAlpha(col >= length ? .25f : 1.f));
-            g.drawText(lane == 0 ? noteName(int(value)) : String(int(value)), b.withHeight(14),
-                       Justification::centred);
-            if (col == playhead) {
-                g.setColour(colours.mint);
-                g.drawRect(b, 1.2f);
-            }
-            if (lane == 0 && raw(p, "g" + String(col + 1) + "reset") > 0) {
-                g.setColour(colours.mint);
-                Path arrow;
-                arrow.startNewSubPath(b.getCentreX(), 96);
-                arrow.lineTo(b.getCentreX(), 109);
-                arrow.lineTo(b.getCentreX() - 3, 104);
-                arrow.startNewSubPath(b.getCentreX(), 109);
-                arrow.lineTo(b.getCentreX() + 3, 104);
-                g.strokePath(arrow, PathStrokeType(1.4f));
-            }
-            if (lane == 0) {
-                g.setColour(muted ? Colour(0xffbd7763) : colours.screenLine);
-                g.fillRoundedRectangle(b.getX() + 2, 120, b.getWidth() - 3, 12, 2);
-            }
-        }
-        if (lane == 3) {
-            for (int i = 0; i < 7; ++i) {
-                bool on = raw(p, "gdegree" + String(i)) > 0;
-                g.setColour(on ? colours.mint : colours.screenLine);
-                g.fillRoundedRectangle(float(i * 50), 119, 44, 15, 2);
-                g.setColour(on ? colours.screen : colours.screenText);
-                g.drawText(String(i + 1), i * 50, 119, 44, 15, Justification::centred);
-            }
-        }
-        if (lane != 0 && lane != 3) {
-            g.setColour(colours.mint.withAlpha(.6f));
-            g.drawText("Drag: draw  /  right-click: value  /  top line: length", 0, 118, getWidth(),
-                       16, Justification::centredLeft);
-        }
-        static const char *pcs[] = {"C",  "C#", "D",  "D#", "E",  "F",
-                                    "F#", "G",  "G#", "A",  "A#", "B"};
-        for (int i = 0; i < 12; ++i) {
-            int rule = int(raw(p, "gprevent" + String(i)));
-            float width = float(getWidth()) / 12;
-            Rectangle<float> b(float(i) * width, 142, width - 2, 16);
-            g.setColour(rule == 0 ? colours.screenLine : Colour(0xff8b5148));
-            g.fillRoundedRectangle(b, 2);
-            g.setColour(colours.screenText);
-            g.drawText(String(pcs[i]) + (rule == 1   ? " x"
-                                         : rule == 2 ? " >"
-                                         : rule == 3 ? " <"
-                                                     : ""),
-                       b, Justification::centred);
-        }
-    }
-    void mouseDown(const MouseEvent &e) override {
-        int col = column(e.position);
-        if (e.position.y >= 141) {
-            int pc = std::clamp(int(e.position.x * 12 / getWidth()), 0, 11);
-            String key = "gprevent" + String(pc);
-            change(p, key, float((int(raw(p, key)) + 1) % 4));
-            repaint();
-            return;
-        }
-        if (e.position.y >= 118) {
-            if (lane == 0) {
-                String key = "g" + String(col + 1) + "mute";
-                change(p, key, raw(p, key) > 0 ? 0 : 1);
-            } else if (lane == 3) {
-                int degree = std::clamp(int(e.position.x) / 50, 0, 6);
-                String key = "gdegree" + String(degree);
-                change(p, key, raw(p, key) > 0 ? 0 : 1);
-            }
-            repaint();
-            return;
-        }
-        if (e.mods.isAltDown() && lane == 0) {
-            String key = "g" + String(col + 1) + "reset";
-            change(p, key, raw(p, key) > 0 ? 0 : 1);
-            repaint();
-            return;
-        }
-        if (e.mods.isRightButtonDown() || e.getNumberOfClicks() > 1) {
-            editValue(col);
-            return;
-        }
-        draggingLength = e.position.y < 5;
-        if (draggingLength)
-            lengthAt(e.position);
-        else
-            drawValue(e.position);
-        repaint();
-    }
-    void mouseDrag(const MouseEvent &e) override {
-        if (input.isVisible())
-            return;
-        if (draggingLength)
-            lengthAt(e.position);
-        else if (e.position.y < 118)
-            drawValue(e.position);
-        repaint();
-    }
-    void mouseUp(const MouseEvent &) override {
-        finish();
-        draggingLength = false;
-    }
-    void mouseWheelMove(const MouseEvent &e, const MouseWheelDetails &wheel) override {
-        int col = column(e.position);
-        auto *parameter = p.state.getParameter(id(col));
-        auto range = parameter->getNormalisableRange();
-        change(p, id(col),
-               jlimit(range.start, range.end, raw(p, id(col)) + (wheel.deltaY > 0 ? 1.f : -1.f)));
-        repaint();
-    }
-    void visibilityChanged() override {
-        if (!isVisible()) {
-            finish();
-            input.setVisible(false);
-        }
-    }
-};
 class WaveView : public Component, public FileDragAndDropTarget {
     LogisthProcessor &p;
     LogisthColours &colours;
     FontMaker font;
-    int slot = 0;
+    int slot = 0, displayMode = -1;
     bool draggingFile = false;
     double zoom = 1, offset = 0;
     uint64_t cachedRevision = 0;
@@ -314,9 +48,68 @@ class WaveView : public Component, public FileDragAndDropTarget {
             }
         cachedRevision = source.revision;
     }
+    bool wavetable() const {
+        return (displayMode >= 0 ? displayMode : int(raw(p, "o" + String(slot + 1) + "engine"))) ==
+               1;
+    }
     void seek(Point<float> at) {
-        double where = std::clamp(offset + at.x / getWidth() / zoom, 0., 1.);
-        change(p, "o" + String(slot + 1) + "position", float(where));
+        auto data = p.sourceData(slot);
+        float where = float(std::clamp(wavetable() ? double(at.x - 12) / (getWidth() - 24)
+                                                   : offset + at.x / getWidth() / zoom,
+                                       0., 1.));
+        if (wavetable())
+            where = data->framePosition(data->frameIndex(where));
+        change(p, "o" + String(slot + 1) + "position", where);
+        repaint();
+    }
+    void paintWavetable(Graphics &g, const logisth::SourceData &data) {
+        auto telemetry = p.playback[size_t(slot)].read();
+        float position = raw(p, "o" + String(slot + 1) + "position");
+        const bool live = telemetry.active && telemetry.revision == data.revision;
+        int selected = data.frameIndex(live ? telemetry.position : position);
+        g.fillAll(colours.screen);
+        g.setColour(colours.screenText);
+        g.setFont(font(10));
+        g.drawFittedText(String(data.name) + "  /  " + String(data.frames) + " frames x " +
+                             String(data.frameSize) + " samples",
+                         0, 0, getWidth(), 21, Justification::centredLeft, 1);
+        const float width = float(getWidth() - 120);
+        auto wave = [&](int frame, bool highlight) {
+            const float depth = data.framePosition(frame);
+            Path path;
+            for (int i = 0; i <= 160; ++i) {
+                float x = 15 + depth * 80 + width * i / 160.f;
+                float y = 135 - depth * 65 -
+                          std::clamp(data.frameSample(frame, double(i) / 160), -1.f, 1.f) * 25;
+                if (i == 0)
+                    path.startNewSubPath(x, y);
+                else
+                    path.lineTo(x, y);
+            }
+            g.setColour(highlight ? colours.mint : colours.mint.withAlpha(.18f));
+            g.strokePath(path, PathStrokeType(highlight ? 2.2f : .8f));
+        };
+        const int stride = std::max(1, (data.frames + 31) / 32);
+        for (int i = data.frames - 1; i >= 0; i -= stride)
+            wave(i, false);
+        wave(selected, true);
+        g.setColour(colours.mint.withAlpha(.14f));
+        g.fillRoundedRectangle(12, 166, float(getWidth() - 24), 9, 3);
+        g.setColour(colours.mint);
+        const float x = 12 + data.framePosition(selected) * (getWidth() - 24);
+        g.fillRoundedRectangle(x - 2, 163, 4, 15, 2);
+        g.setFont(font(12));
+        g.setColour(colours.screenText);
+        g.drawText(String(selected + 1) + " / " + String(data.frames), getWidth() - 105, 123, 96,
+                   28, Justification::centredRight);
+        g.setFont(font(10));
+        g.setColour(colours.mint.withAlpha(.8f));
+        g.drawText("WT POS  /  drag: frame  /  wheel: previous-next  /  drop: import", 0, 182,
+                   getWidth(), 18, Justification::centredLeft);
+        if (draggingFile) {
+            g.setColour(colours.mint);
+            g.drawRect(getLocalBounds().reduced(1), 2);
+        }
     }
 
   public:
@@ -350,11 +143,18 @@ class WaveView : public Component, public FileDragAndDropTarget {
         cachedRevision = 0;
         repaint();
     }
+    void setMode(int mode) {
+        displayMode = mode;
+    }
     int selectedSlot() const {
         return slot;
     }
     void paint(Graphics &g) override {
         auto data = p.sourceData(slot);
+        if (wavetable()) {
+            paintWavetable(g, *data);
+            return;
+        }
         if (data->revision != cachedRevision)
             cache(*data);
         g.fillAll(colours.screen);
@@ -377,8 +177,11 @@ class WaveView : public Component, public FileDragAndDropTarget {
             g.setColour(colours.screenText);
             g.drawText(ch ? "R" : "L", 2, int(centre) - 30, 16, 14, Justification::centredLeft);
         }
+        const bool granular =
+            (displayMode >= 0 ? displayMode : int(raw(p, "o" + String(slot + 1) + "engine"))) == 3;
         int mode = int(raw(p, "o" + String(slot + 1) + "gtrans"));
-        const auto &markers = mode == 1 ? data->regions : data->transients;
+        static const std::vector<int64_t> noMarkers;
+        const auto &markers = !granular ? noMarkers : mode == 1 ? data->regions : data->transients;
         g.setColour(colours.screenText.withAlpha(.3f));
         for (auto marker : markers) {
             float x = xAt(double(marker) / double(data->samples[0].size() - 1));
@@ -429,6 +232,16 @@ class WaveView : public Component, public FileDragAndDropTarget {
         seek(e.position);
     }
     void mouseWheelMove(const MouseEvent &e, const MouseWheelDetails &wheel) override {
+        if (wheel.deltaY == 0)
+            return;
+        if (wavetable()) {
+            auto data = p.sourceData(slot);
+            auto id = "o" + String(slot + 1) + "position";
+            change(p, id,
+                   data->framePosition(data->frameIndex(raw(p, id)) + (wheel.deltaY > 0 ? 1 : -1)));
+            repaint();
+            return;
+        }
         if (e.mods.isShiftDown())
             offset = std::clamp(offset - wheel.deltaY * .2 / zoom, 0., 1 - 1 / zoom);
         else {

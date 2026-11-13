@@ -1,4 +1,4 @@
-# logisth 0.6.0 — User Manual
+# logisth 0.7.0 — User Manual
 
 A two-part polyphonic subtractive synthesizer for VST3, CLAP and standalone use.
 This manual describes logisth's own controls and behaviour. logisth is an independent
@@ -101,18 +101,39 @@ faders illustrates the current envelope. Amp Env A and B remain independent.
 
 Every oscillator slot A1/A2/B1/B2 has its own engine menu: Classic, Wavetable,
 Sampler or Granular. All four may use different engines and different audio files.
-The adjacent view menu selects VOICE, SOURCE, ENV, GRAINS, MOTION or TIME without opening another window.
+The adjacent view menu shows only pages used by the selected engine. Classic
+has VOICE and ENV; Wavetable adds WAVETABLE, and Sampler adds SOURCE. Granular
+also has GRAINS; only the Granulizer model exposes MOTION and TIME.
 VOICE holds the shared tuning, level, unison, stereo and pan controls. SOURCE
 holds the engine-specific controls; ENV holds that oscillator's optional ADSR.
 The central Amp Env A/B remains the final envelope for its part.
 
 Classic retains the original oscillator waveforms and retrigger behaviour.
-Wavetable scans up to 256 frames using POSITION. Frames are interpolated and
-precomputed spectral bands reduce aliasing at higher notes. WARP bends phase.
-Choose a frame size (256/512/1024/2048 samples) before IMPORT when loading a
-concatenated wavetable WAV. The factory table morphs between sine and harmonics.
-Wavetable extraction uses the file's left channel. Padding is used for files
-shorter than one frame; additional frames beyond 256 are ignored.
+Wavetable treats the file as a bank of consecutive, single-cycle waves. **WT POS**
+selects one frame; the selected cycle repeats at the played note's pitch. It does
+not play the entire file in sequence, and adjacent frames are not blended.
+Positions 0% and 100% select the first and last frames. Every frame is reachable;
+a 128-frame file provides 128 selectable waves. WARP bends phase, and precomputed
+spectral bands reduce aliasing at higher notes. Unison voices share one position
+smoother, so adding voices does not change the speed of WT POS movement.
+
+Click the oscillator's waveform strip to open the central source window. In
+Wavetable mode, it shows a perspective stack of waves, highlights the current
+frame and displays its one-based number and total frame count. While playing,
+the display follows the latest voice's modulated WT position; with no active
+voice it follows the knob. Drag horizontally to select a frame, or wheel one
+frame at a time. The header's AUTO menu controls import cycle length. Auto reads
+Serum WAV `clm ` metadata when present, otherwise uses 2048 samples per cycle.
+An untagged power-of-two file of 128–2048 samples becomes one complete cycle.
+Manual lengths are 128, 256, 512, 1024, 2048 or 4096 samples; a manual choice takes
+precedence over metadata. Use 4096 manually for a single 4096-sample cycle.
+
+The factory bank contains 128 waves ranging from sine to harmonic-rich shapes.
+Imported tables use the left channel, preserve cycle amplitudes, and remove DC.
+Up to 256 complete cycles are extracted; trailing partial cycles are ignored,
+except files shorter than one selected cycle, which are zero-padded. For ordinary
+recordings use Sampler or Granular, or choose the intended cycle length manually.
+Frame length and imported audio are embedded in saved presets and host state.
 
 Sampler plays the imported audio at the selected ROOT MIDI note (default 60).
 START and END choose a region; LOOP repeats it with a short crossfade; REVERSE
@@ -255,57 +276,23 @@ DONE stores the first eight distinct pitches in ascending order. The complete
 chord map is saved with the project. Chords can play as blocks with arp disabled,
 or supply a pool of notes to the Pattern engine.
 
-### Eight-graph arpeggiator
+### Available arpeggiator modes
 
-Select ARPEGGIATOR, choose Pattern, enable GRAPHS and the rack enable square.
-The selected graph occupies one drawing area with 32 steps. The tabs are:
-
-| Graph | Meaning |
-| --- | --- |
-| NOTE | Rest, held-note ranks 1–8, Up, Down, Up/Down, Down/Up, UpAndDown, DownAndUp, FingeredBottom or FingeredTop. |
-| RAND SEL | Random positive or negative rank offset, wrapping in the held-note pool. |
-| OCTAVE | -8 to +8 octaves. |
-| PITCH | -24 to +24 semitones, with seven pitch-degree enable buttons below. |
-| VEL SCALE | 0–200% of input velocity; zero is a rest. |
-| GATE | 0–100% of the base step interval; zero is a rest. |
-| LATE | -49% early to +49% late, using half-step look-ahead. |
-| HARMONY | Adds a second note -12 to +12 semitones from the main note; zero disables it. |
-
-Up/Down and Down/Up omit repeated extremes; UpAndDown and DownAndUp repeat them.
-Fingered modes alternate the bottom or top note with the other held notes.
-Pitch-degree enables use a detected chord root, including common inversions.
-Root detection uses triad/seventh templates; ambiguous voicings may select a
-different root from another instrument.
-
-Drag to draw; right-click or double-click for an exact value; wheel adjusts one
-unit. NOTE accepts ranks 1–8 or UP, DN, UD, DU, U+D, D+U, FLO, FHI and REST.
-The row below NOTE toggles mute without erasing values. Alt-click a NOTE step
-adds a motion-reset marker. Drag the top bar or use LEN to change length.
-LINK shares lengths; with LINK off each graph cycles independently. DIV slows
-the selected graph by 1–16 base steps. COPY / PASTE transfer a normalized shape,
-length and divider; RAND randomizes the selected graph. NOTE copying includes
-mute/reset flags. The pitch-class buttons cycle Pass, Block (x), Up (>) and
-Down (<); redirected notes move one semitone. These constraints are global.
-
-A–L are twelve named pattern memories. Switching slots automatically retains
-current edits. Click the name to rename; COPY TO duplicates the complete current
-pattern into another slot. RATE ranges from 1/512 note to 16 bars when SYNC is on,
-or 0.01–512 Hz otherwise. RETR resets motion with each incoming note. With RETR
-off and valid host PPQ, the clock aligns to transport. CHORD rotates the held
-voicing so the selected arp note is lowest, then plays the whole voicing.
-LATCH holds the released chord until a new chord arrives. Stopping the host or
-disabling the arp clears generated notes. Only one pattern plays at a time.
+The engine menu contains **Legacy** and **Pattern**. The experimental Graphs mode
+has been removed from the interface, audio/MIDI scheduler and host parameter list.
+It cannot be enabled by an old Graphs setting. Twelve A–L pattern memories remain;
+switching slots automatically retains edits. SAVE explicitly stores the selected
+slot, and RAND randomizes the Pattern grid. Presets embed the entire memory bank.
 
 MIDI OUT sends generated notes and supported pitch/controller/pressure messages
 to the host. MIDI ONLY also silences synth output; turning it on enables MIDI OUT.
 Route output in the DAW or choose an output device in Standalone settings.
 Turning MIDI OUT off sends all-notes-off. MIDI routing depends on the host.
-Large SysEx messages are not forwarded. Early/late timing is sample scheduled;
-an early first note is clamped to the incoming note time, never before it.
+Large SysEx messages are not forwarded.
 
-### Previous Pattern engine
+### Pattern engine
 
-Turn GRAPHS off to use the 0.4 Pattern grid, with note rank, octave, velocity,
+Choose Pattern to use the seven-row grid, with note rank, octave, velocity,
 gate, repeat, chance and tie rows, independent lane lengths and two 16-step pages.
 Draw or right-click for values. Existing 0.4 projects select this engine
 automatically. Its pattern selector also uses the A–L memory bank. Legacy remains
@@ -420,15 +407,16 @@ library; it does not relocate files. Load file can open a preset from elsewhere.
 Save/load run on a worker, with completion/errors in the footer. Wait for the
 completion message before closing the instance or moving a newly saved file.
 
-Presets contain all 936 audio parameters, routing, compressed audio for all four
+Presets contain all 575 audio parameters, routing, compressed audio for all four
 slots, WAV regions, chord mappings, twelve named patterns, theme and scope
 selection. The original sample files are unnecessary on recall. Saving uses a
 temporary file and atomic replacement. Invalid files leave the current patch
 intact. State/preset files are limited to 1 GiB. These are logisth's own files;
 renaming another format to .logisth does not convert it.
 
-All 936 parameters are available for host automation. The first 514 parameter
-IDs and order from 0.4 are retained, with 422 IDs appended. A/B views, rack pages,
+All 575 parameters are available for host automation. The first 514 parameter
+IDs and order from 0.4 are retained. Granulizer and global MIDI-only controls
+follow them; the former Graphs parameter block is removed. A/B views, rack pages,
 theme and scope source do not change the patch's audio settings. DAW state
 contains the same embedded material and pattern data as a user preset. Restoring
 older states automatically selects the corresponding earlier granular/arp engines.
@@ -469,7 +457,8 @@ Dense granular patches with high unison/polyphony require more CPU. Imported
 material can be loud; use moderate levels. An import failure leaves the previous
 material intact. A source starts again on the next note or engine/material change.
 
-Version 0.5 adds the documented Granulizer workflow and eight-graph arp.
+Version 0.7 rebuilds wavetable frame selection and visualization and removes the
+experimental Graphs arp. Legacy, Pattern and the Granulizer remain available.
 Native release archives are published only after their platform builds and tests pass.
 See BUILD_INFO.json in each archive for source revision and validation results.
 

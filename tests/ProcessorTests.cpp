@@ -277,43 +277,33 @@ void checkStudioProcessor() {
     auto get = [&](const String &id) { return p.state.getRawParameterValue(id)->load(); };
     for (int slot = 0; slot < 12; ++slot) {
         p.recallPattern(slot);
-        set("g1pitch", float(slot - 6));
+        set("pat1gate", float(slot + 10));
         p.setPatternName(slot, "Phrase " + String(slot + 1));
     }
     for (int slot = 0; slot < 12; ++slot) {
         p.recallPattern(slot);
-        check(get("g1pitch") == slot - 6, "A-L automatically retain edits");
+        check(get("pat1gate") == slot + 10, "A-L automatically retain Pattern edits");
     }
     p.copyPattern(11, 3);
     p.recallPattern(3);
-    check(get("g1pitch") == 5 && p.patternName(3) == "Phrase 12", "whole pattern copy");
-    set("g1pitch", -24);
-    set("glen3", 7);
-    set("gdiv3", 3);
-    p.copyGraph(3);
-    p.pasteGraph(2);
-    check(get("g1octave") == -8 && get("gdiv2") == 3 && get("glen7") == 7,
-          "graph clipboard scales shape and linked lengths");
-    set("glink", 0);
-    set("glen2", 9);
-    p.pasteGraph(3);
-    check(get("glen2") == 9 && get("glen3") == 7, "unlinked paste retains other lengths");
+    check(get("pat1gate") == 21 && p.patternName(3) == "Phrase 12", "whole pattern copy");
+    set("pat1gate", 24);
     p.setChord(61, 4);
     p.state.state.setProperty("uiScope", 1, nullptr);
     TemporaryFile preset(".logisth");
     p.setPresetDirectory(preset.getFile().getParentDirectory());
     check(p.savePresetFile(preset.getFile()).wasOk(), "user preset atomic save");
     check(p.currentPresetFile() == preset.getFile(), "save tracks active preset");
-    set("g1pitch", 18);
+    set("pat1gate", 18);
     p.setChord(61, 1);
     check(p.loadPresetFile(preset.getFile()).wasOk(), "user preset load");
-    check(get("g1pitch") == -24 && p.chordMap()->keys[61].count == 4 &&
+    check(get("pat1gate") == 24 && p.chordMap()->keys[61].count == 4 &&
               int(p.state.state.getProperty("uiScope")) == 1,
-          "preset restores graphs, chords and scope selection");
+          "preset restores Pattern steps, chords and scope selection");
     p.recallPattern(11);
-    check(get("g1pitch") == 5 && p.patternName(11) == "Phrase 12", "preset retains A-L bank");
+    check(get("pat1gate") == 21 && p.patternName(11) == "Phrase 12", "preset retains A-L bank");
     preset.getFile().replaceWithText("not a preset");
-    check(p.loadPresetFile(preset.getFile()).failed() && get("g1pitch") == 5,
+    check(p.loadPresetFile(preset.getFile()).failed() && get("pat1gate") == 21,
           "invalid preset leaves active patch intact");
     check(p.savePresetFile(preset.getFile().withFileExtension("txt")).failed(),
           "preset extension validation");
@@ -337,15 +327,128 @@ void checkStudioProcessor() {
     auto picture = p.playback[0].read();
     check(activeA && picture.active && picture.grainCount > 0 && picture.position > 0,
           "granular playback telemetry and part scope carry real audio");
-    set("gmuteaudio", 1);
+    set("midionly", 1);
     midi.clear();
     p.processBlock(audio, midi);
     check(audio.getMagnitude(0, 512) == 0, "MIDI-only mode silences output");
     std::cout
-        << "PASS studio processor: 12 automatic pattern memories, graph clipboard, "
+        << "PASS studio processor: 12 automatic pattern memories, "
            "user preset files, malformed file rejection, real sum scope and grain telemetry\n";
 }
 
+void checkWavetableAndModeViews() {
+    using namespace juce;
+    using namespace logisth;
+    LogisthProcessor p;
+    TemporaryFile file(".wav");
+    auto writeBank = [&](int frames, int size, bool metadata) {
+        {
+            WavAudioFormat wav;
+            auto output = file.getFile().createOutputStream();
+            output->setPosition(0);
+            output->truncate();
+            std::unique_ptr<AudioFormatWriter> writer(
+                wav.createWriterFor(output.get(), 48000, 1, 24, {}, 0));
+            check(bool(writer), "wavetable fixture writer");
+            output.release();
+            AudioBuffer<float> audio(1, frames * size);
+            for (int f = 0; f < frames; ++f)
+                for (int i = 0; i < size; ++i)
+                    audio.setSample(0, f * size + i,
+                                    float(std::sin(2 * pi * i / size) * (f + 1) / frames));
+            check(writer->writeFromAudioSampleBuffer(audio, 0, audio.getNumSamples()),
+                  "128-cycle bank fixture");
+        }
+        if (metadata) {
+            FileOutputStream stream(file.getFile());
+            stream.setPosition(file.getFile().getSize());
+            stream.write("clm ", 4);
+            const String data = "<!>" + String(size).paddedLeft('0', 4) + " 00000000";
+            stream.writeInt(data.getNumBytesAsUTF8());
+            stream.write(data.toRawUTF8(), data.getNumBytesAsUTF8());
+            if (data.getNumBytesAsUTF8() & 1)
+                stream.writeByte(0);
+            auto end = stream.getPosition();
+            stream.setPosition(4);
+            stream.writeInt(int(end - 8));
+        }
+    };
+    writeBank(128, 2048, false);
+    check(p.loadSource(0, file.getFile()).wasOk(), "Auto imports a standard wavetable WAV");
+    check(p.sourceData(0)->frames == 128 && p.sourceData(0)->frameSize == 2048,
+          "standard WAV resolves to 128 cycles of 2048 points");
+    writeBank(128, 256, true);
+    check(p.loadSource(0, file.getFile()).wasOk() && p.sourceData(0)->frames == 128 &&
+              p.sourceData(0)->frameSize == 256,
+          "Auto reads Serum CLM frame length instead of treating the whole file as a cycle");
+    check(p.loadSource(1, file.getFile(), 512).wasOk() && p.sourceData(1)->frames == 64,
+          "manual frame length overrides file metadata");
+    writeBank(1, 128, false);
+    check(p.loadSource(2, file.getFile()).wasOk() && p.sourceData(2)->frames == 1 &&
+              p.sourceData(2)->frameSize == 128,
+          "short single-cycle WAV is not padded with a silent tail");
+    std::unique_ptr<AudioProcessorEditor> ui(p.createEditor());
+    auto *console = ui->getChildComponent(0);
+    auto set = [&](const String &id, float value) {
+        auto *parameter = p.state.getParameter(id);
+        parameter->setValueNotifyingHost(parameter->convertTo0to1(value));
+        Thread::sleep(55);
+        Timer::callPendingTimersSynchronously();
+    };
+    for (int part = 0; part < 2; ++part) {
+        auto *button = dynamic_cast<Button *>(console->findChildWithID("part." + String(part)));
+        check(button != nullptr, "part selector available");
+        button->onClick();
+        for (int slot = part * 2; slot < part * 2 + 2; ++slot) {
+            auto *menu =
+                dynamic_cast<ComboBox *>(console->findChildWithID("source.view." + String(slot)));
+            check(menu != nullptr, "mode-specific source menu available");
+            String prefix = "o" + String(slot + 1);
+            set(prefix + "engine", 3);
+            set(prefix + "gmodel", 1);
+            menu->setSelectedId(6, sendNotificationSync);
+            check(console->findChildWithID(prefix + "gtrans")->isVisible(),
+                  "Granulizer timing controls available in Granulizer");
+            for (int mode : {2, 1, 0}) {
+                set(prefix + "engine", float(mode));
+                check(menu->indexOfItemId(4) < 0 && menu->indexOfItemId(5) < 0 &&
+                          menu->indexOfItemId(6) < 0,
+                      "Sampler, Wavetable and Classic hide granular pages");
+                check(!console->findChildWithID(prefix + "gtrans")->isVisible() &&
+                          !console->findChildWithID(prefix + "gattack")->isVisible(),
+                      "changing engine dismisses stale Granulizer controls");
+                check(mode != 0 || menu->indexOfItemId(2) < 0,
+                      "Classic hides file-only source controls");
+            }
+            set(prefix + "engine", 3);
+            set(prefix + "gmodel", 0);
+            check(menu->indexOfItemId(4) >= 0 && menu->indexOfItemId(5) < 0 &&
+                      menu->indexOfItemId(6) < 0,
+                  "Cloud hides Granulizer-only Motion and Time pages");
+        }
+    }
+    auto *editor = dynamic_cast<LogisthEditor *>(ui.get());
+    editor->snapshotPage(9);
+    auto *selector = dynamic_cast<ComboBox *>(console->findChildWithID("sample.slot"));
+    selector->setSelectedId(1, sendNotificationSync);
+    auto *view = console->findChildWithID("sample.waveform");
+    auto at = Point<float>(float(view->getWidth() - 12), 169);
+    MouseEvent event(Desktop::getInstance().getMainMouseSource(), at,
+                     ModifierKeys(ModifierKeys::leftButtonModifier), 1, 0, 0, 0, 0, view, view,
+                     Time::getCurrentTime(), at, Time::getCurrentTime(), 1, false);
+    view->mouseDown(event);
+    check(p.sourceData(0)->frameIndex(p.state.getRawParameterValue("o1position")->load()) == 127,
+          "dragging the WT window selects the final frame");
+    MouseWheelDetails wheel;
+    wheel.deltaY = -.1f;
+    view->mouseWheelMove(event, wheel);
+    check(p.sourceData(0)->frameIndex(p.state.getRawParameterValue("o1position")->load()) == 126,
+          "WT window wheel steps exactly one frame");
+    check(p.state.getParameter("arpgraphs") == nullptr &&
+              console->findChildWithID("graph.canvas") == nullptr,
+          "only Legacy and Pattern arp remain available");
+    std::cout << "PASS wavetable: 128-frame WAV/CLM import, frame selection, mode-specific menus\n";
+}
 void checkPointerInteraction() {
     using namespace juce;
     LogisthProcessor p;
@@ -474,7 +577,7 @@ void checkLongSourceAndDrop() {
                             sendNotificationSync); // B1; Part A is still the selected editing part
     auto *frame = dynamic_cast<ComboBox *>(console->findChildWithID("source.frame.2"));
     check(frame != nullptr, "drop uses source frame selector");
-    frame->setSelectedId(2, dontSendNotification); // 512
+    frame->setSelectedId(4, dontSendNotification); // 512
     StringArray files{sample.getFile().getFullPathName()};
     check(drop->isInterestedInFileDrag(files), "WAV accepted in waveform");
     check(!drop->isInterestedInFileDrag({"/tmp/readme.txt"}) &&
@@ -559,6 +662,7 @@ int main(int argc, char **argv) {
         checkHybridProcessor();
         checkStudioProcessor();
         checkPointerInteraction();
+        checkWavetableAndModeViews();
         checkLongSourceAndDrop();
         LogisthProcessor p;
         p.setRateAndBufferSizeDetails(48000, 512);
@@ -747,30 +851,9 @@ int main(int argc, char **argv) {
             valueEditor->onReturnKey();
             check(p.state.getRawParameterValue("pat2note")->load() == 1,
                   "one-based note entry controls zero-based note index");
-            compact->snapshotPage(13);
-            canvas = ui->getChildComponent(0)->findChildWithID("graph.canvas");
-            check(canvas && canvas->isVisible(), "eight-graph drawing view available");
-            canvas->mouseDown(eventAt({25, 125}, juce::ModifierKeys::leftButtonModifier));
-            check(p.state.getRawParameterValue("g2mute")->load() == 1,
-                  "graph mute row controls mute without erasing note");
-            canvas->mouseDown(eventAt({25, 40}, juce::ModifierKeys::leftButtonModifier |
-                                                    juce::ModifierKeys::altModifier));
-            check(p.state.getRawParameterValue("g2reset")->load() == 1,
-                  "Alt graph click creates motion reset marker");
-            canvas->mouseDown(eventAt({25, 40}, juce::ModifierKeys::rightButtonModifier));
-            valueEditor = dynamic_cast<juce::TextEditor *>(canvas->getChildComponent(0));
-            check(valueEditor && valueEditor->isVisible(), "exact graph entry opens");
-            valueEditor->setText("U+D");
-            valueEditor->onReturnKey();
-            check(p.state.getRawParameterValue("g2note")->load() == 12,
-                  "graph exact entry accepts note motion names");
-            canvas->mouseDown(eventAt({5, 150}, juce::ModifierKeys::leftButtonModifier));
-            check(p.state.getRawParameterValue("gprevent0")->load() == 1,
-                  "graph pitch constraint cycles to Block");
-            canvas->mouseDown(eventAt({260, 1}, juce::ModifierKeys::leftButtonModifier));
-            canvas->mouseUp(eventAt({260, 1}, 0));
-            check(p.state.getRawParameterValue("glen0")->load() == 16,
-                  "graph length bar sets linked length");
+            check(ui->getChildComponent(0)->findChildWithID("graph.canvas") == nullptr &&
+                      p.state.getParameter("arpgraphs") == nullptr,
+                  "Graphs is removed from the editor and parameter model");
         }
         p.setStateInformation(uiState.getData(), int(uiState.getSize()));
         if (argc > 1) {
@@ -778,20 +861,30 @@ int main(int argc, char **argv) {
             folder.createDirectory();
             std::unique_ptr<juce::AudioProcessorEditor> editor(p.createEditor());
             auto image = editor->createComponentSnapshot(editor->getLocalBounds());
-            p.loadPreset(0);
-            for (const auto *id : {"o1engine", "o2engine"}) {
-                auto *param = p.state.getParameter(id);
-                param->setValueNotifyingHost(param->convertTo0to1(3));
-            }
-            midi.clear();
-            midi.addEvent(juce::MidiMessage::noteOn(1, 60, .8f), 0);
-            for (int i = 0; i < 18; ++i) {
-                p.processBlock(audio, midi);
+            auto previewAudio = [&](int mode) {
+                p.loadPreset(0);
+                for (int slot = 1; slot <= 2; ++slot) {
+                    juce::String prefix = "o" + juce::String(slot);
+                    for (auto setting :
+                         {std::pair<juce::String, float>{prefix + "engine", float(mode)},
+                          {prefix + "position", mode == 1 ? .42f : 0.f},
+                          {prefix + "gmodel", 1.f}}) {
+                        auto *parameter = p.state.getParameter(setting.first);
+                        parameter->setValueNotifyingHost(parameter->convertTo0to1(setting.second));
+                    }
+                }
+                p.prepareToPlay(48000, 512);
                 midi.clear();
-            }
+                midi.addEvent(juce::MidiMessage::noteOn(1, 60, .8f), 0);
+                for (int i = 0; i < 18; ++i) {
+                    p.processBlock(audio, midi);
+                    midi.clear();
+                }
+            };
             auto *logisthEditor = dynamic_cast<LogisthEditor *>(editor.get());
             check(logisthEditor != nullptr, "editor type");
             for (int page = 0; page < 14; ++page) {
+                previewAudio(page < 4 ? 0 : page == 4 || page == 9 ? 1 : page == 8 ? 2 : 3);
                 auto full = logisthEditor->snapshotPage(page);
                 juce::FileOutputStream out(
                     folder.getChildFile("logisth-page-" + juce::String(page + 1) + ".png"));
@@ -801,7 +894,8 @@ int main(int argc, char **argv) {
                 check(format.writeImageToStream(full, out), "full page image");
             }
             {
-                auto dark = logisthEditor->snapshotPage(4);
+                previewAudio(1);
+                auto dark = logisthEditor->snapshotPage(9);
                 juce::FileOutputStream out(folder.getChildFile("logisth-dark.png"));
                 out.setPosition(0);
                 out.truncate();

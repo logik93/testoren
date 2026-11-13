@@ -355,7 +355,7 @@ class LogisthEditor::Console : public Component,
                     describe();
             };
             toggle.onClick = [this] {
-                if (String(spec.id) == "gmuteaudio" && toggle.getToggleState()) {
+                if (id == Param::midionly && toggle.getToggleState()) {
                     auto *midi = owner.processor.state.getParameter("arpout");
                     midi->beginChangeGesture();
                     midi->setValueNotifyingHost(1);
@@ -692,12 +692,10 @@ class LogisthEditor::Console : public Component,
   public:
     Console(LogisthProcessor &p, LogisthLook &skin)
         : processor(p), look(skin), keyboard(p.keyboard, *this), patternCanvas(*this),
-          graphView(p, *this, [](float h) { return font(h); }),
           waveView(p, *this, [](float h) { return font(h); }),
           scopeView(p, *this, [](float h) { return font(h); }), tooltips(this, 650) {
         setLookAndFeel(&look);
         addChildComponent(patternCanvas);
-        addChildComponent(graphView);
         addChildComponent(waveView);
         addAndMakeVisible(scopeView);
         setSize(canvasWidth, canvasHeight);
@@ -707,6 +705,7 @@ class LogisthEditor::Console : public Component,
         }
         for (int i = 0; i < 2; ++i) {
             auto &button = parts[size_t(i)];
+            button.setComponentID("part." + String(i));
             button.setButtonText(i == 0 ? "A" : "B");
             button.onClick = [this, i] { setPart(i); };
             addAndMakeVisible(button);
@@ -781,6 +780,7 @@ class LogisthEditor::Console : public Component,
         addAndMakeVisible(theme);
         for (int i = 0; i < 4; ++i) {
             auto &view = sourceViews[size_t(i)];
+            view.setComponentID("source.view." + String(i));
             view.addItemList({"VOICE", "SOURCE", "ENV", "GRAINS", "MOTION", "TIME"}, 1);
             view.setSelectedId(
                 processor.state.getRawParameterValue("o" + String(i + 1) + "engine")->load() > 0
@@ -805,13 +805,11 @@ class LogisthEditor::Console : public Component,
             addChildComponent(clear);
             auto &frame = sourceFrame[size_t(i)];
             frame.setComponentID("source.frame." + String(i));
-            frame.addItemList({"256", "512", "1024", "2048"}, 1);
-            int loadedFrameSize = processor.sourceData(i)->frameSize;
-            frame.setSelectedId(loadedFrameSize == 256    ? 1
-                                : loadedFrameSize == 512  ? 2
-                                : loadedFrameSize == 1024 ? 3
-                                                          : 4);
-            frame.setTooltip("Samples per wavetable frame on import");
+            frame.addItemList({"AUTO", "128", "256", "512", "1024", "2048", "4096"}, 1);
+            frame.setSelectedId(1);
+            frame.getProperties().set("dark", true);
+            frame.setTooltip("Wavetable samples per cycle: Auto reads Serum WAV metadata, "
+                             "otherwise 2048. Short single-cycle files use their actual length.");
             addChildComponent(frame);
         }
         for (int i = 0; i < 4; ++i) {
@@ -820,66 +818,20 @@ class LogisthEditor::Console : public Component,
                 waveSlot.setSelectedId(i + 1, dontSendNotification);
                 setRack(9);
             };
-            sourceWave[size_t(i)].setTooltip("Open sample waveform and playback position");
+            sourceWave[size_t(i)].setTooltip("Open source waveform / wavetable bank");
             addChildComponent(sourceWave[size_t(i)]);
         }
-        StringArray graphNames{"NOTE",      "RAND SEL", "OCTAVE", "PITCH",
-                               "VEL SCALE", "GATE",     "LATE",   "HARMONY"};
-        for (int i = 0; i < 8; ++i) {
-            auto &tab = graphTabs[size_t(i)];
-            tab.setButtonText(graphNames[i]);
-            tab.getProperties().set("dark", true);
-            tab.onClick = [this, i] {
-                graphView.setLane(i);
-                layout();
-                repaint();
-            };
-            addChildComponent(tab);
-        }
-        graphCopy.setButtonText("COPY");
-        graphCopy.onClick = [this] { processor.copyGraph(graphView.selectedLane()); };
-        addChildComponent(graphCopy);
-        graphPaste.setButtonText("PASTE");
-        graphPaste.onClick = [this] {
-            processor.pasteGraph(graphView.selectedLane());
-            layout();
-            repaint();
-        };
-        addChildComponent(graphPaste);
-        graphDice.setButtonText("RAND");
-        graphDice.onClick = [this] {
-            processor.randomiseGraph(graphView.selectedLane());
-            repaint();
-        };
-        addChildComponent(graphDice);
-        graphBankCopy.setButtonText("COPY TO");
-        graphBankCopy.onClick = [this] {
-            PopupMenu menu;
-            for (int i = 0; i < 12; ++i)
-                menu.addItem(i + 1, String::charToString(juce_wchar('A' + i)));
-            Component::SafePointer<Console> safe(this);
-            int from = patternSlot.getSelectedId() - 1;
-            menu.showMenuAsync(PopupMenu::Options{}.withTargetComponent(&graphBankCopy),
-                               [safe, from](int to) {
-                                   if (safe && to > 0)
-                                       safe->processor.copyPattern(from, to - 1);
-                               });
-        };
-        addChildComponent(graphBankCopy);
-        patternTitle.setEditable(false, true, false);
-        patternTitle.setColour(Label::backgroundColourId, Colour(0xff30443b));
-        patternTitle.setFont(font(11));
-        patternTitle.onTextChange = [this] {
-            processor.setPatternName(patternSlot.getSelectedId() - 1, patternTitle.getText());
-        };
-        addChildComponent(patternTitle);
         waveView.onFileDropped = [this](int slot, const File &file) {
             importDroppedSource(slot, file);
         };
         waveSlot.setComponentID("sample.slot");
         waveSlot.addItemList({"A1", "A2", "B1", "B2"}, 1);
         waveSlot.setSelectedId(1);
-        waveSlot.onChange = [this] { waveView.setSlot(waveSlot.getSelectedId() - 1); };
+        waveSlot.onChange = [this] {
+            waveView.setSlot(waveSlot.getSelectedId() - 1);
+            layout();
+            repaint();
+        };
         waveSlot.getProperties().set("dark", true);
         addChildComponent(waveSlot);
         for (int i = 0; i < 3; ++i) {
@@ -1017,8 +969,7 @@ class LogisthEditor::Console : public Component,
         importDroppedSource(slot, File(files[0]));
     }
     void importDroppedSource(int slot, const File &file) {
-        processor.loadSourceAsync(slot, file,
-                                  256 << (sourceFrame[size_t(slot)].getSelectedId() - 1), true);
+        processor.loadSourceAsync(slot, file, frameSizeForImport(slot), true);
     }
     void setDarkTheme(bool enabled, bool persist = true) {
         choosePalette(enabled);
@@ -1026,12 +977,7 @@ class LogisthEditor::Console : public Component,
         theme.setToggleState(enabled, dontSendNotification);
         theme.setButtonText(enabled ? "DARK" : "LIGHT");
         keyboard.applyTheme();
-        patternTitle.setColour(Label::textColourId, screenText);
         waveSlot.setColour(ComboBox::textColourId, screenText);
-        for (auto *button : {&graphCopy, &graphPaste, &graphDice, &graphBankCopy}) {
-            button->setColour(TextButton::buttonColourId, Colour(0xff30443b));
-            button->setColour(TextButton::textColourOffId, screenText);
-        }
         for (ComboBox *box : {&patternSlot, &chordTrigger, &chordType})
             box->setColour(ComboBox::textColourId, screenText);
         for (TextButton *button : {&patternSave, &patternRandom, &chordLearn, &chordCopy}) {
@@ -1060,12 +1006,10 @@ class LogisthEditor::Console : public Component,
     void showScenario(int index) {
         if (index >= 8) {
             selectedPart = 0;
-            rack = index == 8 ? 9 : 0;
+            rack = index == 8 || index == 9 ? 9 : 0;
             previewPattern = 1;
-            previewGraphs = 1;
             previewGran = 1;
-            previewSource = 3;
-            graphView.setLane(index == 9 ? 3 : 0);
+            previewSource = index == 9 ? 1 : index == 8 ? 2 : 3;
             for (auto &v : sourceViews)
                 v.setSelectedId(index == 10   ? 4
                                 : index == 11 ? 5
@@ -1076,7 +1020,6 @@ class LogisthEditor::Console : public Component,
             repaint();
             return;
         }
-        previewGraphs = 0;
         if (index >= 4) {
             selectedPart = 0;
             rack = index == 6 ? 8 : 0;
@@ -1099,8 +1042,7 @@ class LogisthEditor::Console : public Component,
         repaint();
     }
     String validate() {
-        const int oldPart = selectedPart, oldRack = rack, oldStep = stepPage,
-                  oldGraph = graphView.selectedLane();
+        const int oldPart = selectedPart, oldRack = rack, oldStep = stepPage;
         std::array<int, 4> views;
         for (int i = 0; i < 4; ++i)
             views[size_t(i)] = sourceViews[size_t(i)].getSelectedId();
@@ -1108,13 +1050,6 @@ class LogisthEditor::Console : public Component,
         String error;
         auto inspect = [&] {
             layout();
-            if (graphView.isVisible())
-                for (size_t i = 0; i < parameterCount; ++i)
-                    if (logisth_ui::GraphView::ownsParameter(parameterSpecs[i].id)) {
-                        if (!processor.state.getParameter(parameterSpecs[i].id))
-                            error = "Missing graph binding";
-                        visited.insert(i);
-                    }
             for (size_t i = 0; i < controls.size(); ++i)
                 if (controls[i]->isVisible()) {
                     visited.insert(i);
@@ -1141,7 +1076,6 @@ class LogisthEditor::Console : public Component,
         for (auto &v : sourceViews)
             v.setSelectedId(1, dontSendNotification);
         previewPattern = 0;
-        previewGraphs = 0;
         previewSource = 0;
         for (int clock = 0; clock < 2; ++clock) {
             previewSync = clock;
@@ -1160,43 +1094,28 @@ class LogisthEditor::Console : public Component,
             stepPage = step;
             inspect();
         }
-        previewPattern = 1;
-        previewGraphs = 1;
-        previewLink = 0;
-        for (int graph = 0; graph < 8; ++graph)
-            for (int clock = 0; clock < 2; ++clock) {
-                graphView.setLane(graph);
-                previewSync = clock;
-                inspect();
-            }
         previewPattern = 0;
-        previewGraphs = 0;
-        previewGran = 0;
         for (int part = 0; part < 2; ++part)
             for (int mode = 0; mode < 4; ++mode)
-                for (int view = 1; view <= 6; ++view) {
-                    selectedPart = part;
-                    previewSource = mode;
-                    for (auto &v : sourceViews)
-                        v.setSelectedId(view, dontSendNotification);
-                    inspect();
-                }
+                for (int model = 0; model < 2; ++model)
+                    for (int view = 1; view <= 6; ++view) {
+                        selectedPart = part;
+                        previewSource = mode;
+                        previewGran = model;
+                        // Rebuild the mode's view menu before selecting the requested page.
+                        layout();
+                        for (auto &v : sourceViews)
+                            if (v.indexOfItemId(view) >= 0)
+                                v.setSelectedId(view, dontSendNotification);
+                        inspect();
+                    }
         for (size_t i = 0; i < controls.size(); ++i)
             if (!visited.count(i))
                 error = "Unreachable: " + String(parameterSpecs[i].id);
-        previewGran = 1;
-        for (int part = 0; part < 2; ++part) {
-            selectedPart = part;
-            for (auto &v : sourceViews)
-                v.setSelectedId(2, dontSendNotification);
-            inspect();
-        }
         selectedPart = oldPart;
         rack = oldRack;
         stepPage = oldStep;
-        previewSync = previewSource = previewPattern = previewGraphs = previewGran = previewLink =
-            -1;
-        graphView.setLane(oldGraph);
+        previewSync = previewSource = previewPattern = previewGran = -1;
         for (int i = 0; i < 4; ++i)
             sourceViews[size_t(i)].setSelectedId(views[size_t(i)], dontSendNotification);
         layout();
@@ -1212,12 +1131,8 @@ class LogisthEditor::Console : public Component,
                                                   Param::choruson, Param::eqon,   Param::reverbon,
                                                   Param::delayon,  Param::compon, Param::chordon};
     float value(Param p) const {
-        if (previewGraphs >= 0 && p == Param::arpgraphs)
-            return float(previewGraphs);
         if (previewGran >= 0 && String(parameterSpecs[size_t(p)].id).endsWith("gmodel"))
             return float(previewGran);
-        if (previewLink >= 0 && p == Param::glink)
-            return float(previewLink);
         if (previewSource >= 0 && String(parameterSpecs[size_t(p)].id).endsWith("engine"))
             return float(previewSource);
         if (previewPattern >= 0 && p == Param::arppattern)
@@ -1341,50 +1256,14 @@ class LogisthEditor::Console : public Component,
                 });
             });
     }
-    void graphLayout() {
-        put(Param::arppattern, {414, 289, 86, 23}, Style::Menu, {}, true);
-        put(Param::arpgraphs, {506, 289, 65, 23}, Style::Toggle, "GRAPHS", true);
-        patternSlot.setBounds(577, 289, 48, 23);
-        patternSlot.setVisible(true);
-        patternTitle.setBounds(631, 289, 75, 23);
-        put(Param::arplatch, {712, 289, 53, 23}, Style::Toggle, "LATCH", true);
-        patternTitle.setVisible(true);
-        if (!patternTitle.isBeingEdited())
-            patternTitle.setText(processor.patternName(patternSlot.getSelectedId() - 1),
-                                 dontSendNotification);
-        put(Param::gretrigger, {771, 289, 48, 23}, Style::Toggle, "RETR", true);
-        put(Param::glink, {825, 289, 48, 23}, Style::Toggle, "LINK", true);
-        put(Param::gchord, {879, 289, 52, 23}, Style::Toggle, "CHORD", true);
-        for (int i = 0; i < 8; ++i) {
-            graphTabs[size_t(i)].setBounds(414 + i * 65, 319, 62, 22);
-            graphTabs[size_t(i)].setVisible(true);
-            graphTabs[size_t(i)].setToggleState(i == graphView.selectedLane(),
-                                                dontSendNotification);
-        }
-        int graph = graphView.selectedLane(), lengthLane = value(Param::glink) > 0 ? 0 : graph;
-        put(Param(size_t(Param::glen0) + size_t(lengthLane) * 2), {449, 347, 39, 22}, Style::Number,
-            {}, true);
-        put(Param(size_t(Param::gdiv0) + size_t(graph) * 2), {532, 347, 37, 22}, Style::Number, {},
-            true);
-        put(value(Param::sync) > 0 ? Param::gdivision : Param::gfree, {617, 347, 72, 22},
-            value(Param::sync) > 0 ? Style::Menu : Style::Number, {}, true);
-        graphCopy.setBounds(699, 347, 50, 22);
-        graphCopy.setVisible(true);
-        graphPaste.setBounds(756, 347, 50, 22);
-        graphPaste.setVisible(true);
-        graphDice.setBounds(813, 347, 50, 22);
-        graphDice.setVisible(true);
-        graphBankCopy.setBounds(870, 347, 60, 22);
-        graphBankCopy.setVisible(true);
-        graphView.setBounds(414, 372, 520, 160);
-        graphView.setVisible(true);
-        graphView.toFront(false);
+    int frameSizeForImport(int slot) const {
+        int selection = sourceFrame[size_t(slot)].getSelectedId();
+        return selection <= 1 ? 0 : 128 << (selection - 2);
     }
-
     void chooseSource(int index) {
         sourceChooser = std::make_unique<FileChooser>("Import audio source", File{},
                                                       "*.wav;*.aif;*.aiff;*.flac");
-        int frame = 256 << (sourceFrame[size_t(index)].getSelectedId() - 1);
+        int frame = frameSizeForImport(index);
         Component::SafePointer<Console> safe(this);
         sourceChooser->launchAsync(FileBrowserComponent::openMode |
                                        FileBrowserComponent::canSelectFiles,
@@ -1412,8 +1291,36 @@ class LogisthEditor::Console : public Component,
         control(id + "engine", {b.getX() + 300, b.getY() + 6, 146, 24}, Style::Menu);
         sourceViews[slot].setBounds(b.getX() + 191, b.getY() + 6, 99, 24);
         sourceViews[slot].setVisible(true);
-        int view = sourceViews[slot].getSelectedId();
-        sourceWave[slot].setBounds(b.getX() + 86, b.getY() + 118, 358, 10);
+        const int mode = int(value(Param(size_t(Param::o1engine) + slot * 16)));
+        const bool granModel = value(Param(size_t(Param::o1gmodel) + slot * 15)) > 0;
+        auto &menu = sourceViews[slot];
+        const int menuState = mode * 2 + int(granModel);
+        if (sourceMenuStates[slot] != menuState) {
+            int selected = menu.getSelectedId();
+            menu.clear(dontSendNotification);
+            menu.addItem("VOICE", 1);
+            if (mode > 0)
+                menu.addItem(mode == 1 ? "WAVETABLE" : "SOURCE", 2);
+            menu.addItem("ENV", 3);
+            if (mode == 3) {
+                menu.addItem("GRAINS", 4);
+                if (granModel) {
+                    menu.addItem("MOTION", 5);
+                    menu.addItem("TIME", 6);
+                }
+            }
+            menu.setSelectedId(menu.indexOfItemId(selected) >= 0 ? selected
+                               : mode == 0                       ? 1
+                                                                 : 2,
+                               dontSendNotification);
+            sourceMenuStates[slot] = menuState;
+        }
+        int view = menu.getSelectedId();
+        if (menu.indexOfItemId(view) < 0) {
+            view = mode == 0 ? 1 : 2;
+            menu.setSelectedId(view, dontSendNotification);
+        }
+        sourceWave[slot].setBounds(b.getX() + 86, b.getY() + 114, 358, 14);
         sourceWave[slot].setVisible(view == 2);
         if (view == 1) {
             StringArray names{"VOLUME", "PHASE", "DETUNE", "STEREO", "PAN"};
@@ -1422,14 +1329,22 @@ class LogisthEditor::Console : public Component,
                 control(id + StringArray{"octave", "tune", "fine"}[i],
                         {b.getX() + 12, b.getY() + 34 + i * 39, 62, 33}, Style::Number,
                         StringArray{"OCTAVE", "NOTE", "FINE"}[i]);
-            for (int i = 0; i < 5; ++i)
+            for (int i = 0; i < 5; ++i) {
+                if (mode >= 2 && i == 1)
+                    continue;
                 control(id + suffix[i], {b.getX() + 86 + i * 72, b.getY() + 35, 66, 86},
                         Style::Knob, names[i]);
-            control(id + "wave", {b.getX() + 87, b.getY() + 137, 120, 26}, Style::Menu);
+            }
+            if (mode == 0)
+                control(id + "wave", {b.getX() + 87, b.getY() + 137, 120, 26}, Style::Menu);
+            else if (mode == 1)
+                control(id + "position", {b.getX() + 87, b.getY() + 128, 110, 40}, Style::Number,
+                        "WT POS");
             control(id + "voices", {b.getX() + 217, b.getY() + 130, 58, 38}, Style::Number,
                     "VOICES");
-            control(id + "retrig", {b.getX() + 287, b.getY() + 141, 74, 22}, Style::Toggle,
-                    "RETRIG");
+            if (mode <= 1)
+                control(id + "retrig", {b.getX() + 287, b.getY() + 141, 74, 22}, Style::Toggle,
+                        "RETRIG");
             control(id + "invert", {b.getX() + 371, b.getY() + 141, 74, 22}, Style::Toggle,
                     "INVERT");
             controls[size_t(Param(size_t(Param::o1wave) + size_t(number - 1) * 12))]->enable(
@@ -1447,9 +1362,11 @@ class LogisthEditor::Console : public Component,
             if (view == 4) {
                 control(id + "gmodel", {b.getX() + 88, b.getY() + 35, 150, 24}, Style::Menu);
                 for (int i = 0; i < 4; ++i)
-                    control(id + "g" + StringArray{"attack", "hold", "space", "wave"}[i],
+                    control(id + (granModel ? StringArray{"gattack", "ghold", "gspace", "gwave"}[i]
+                                            : StringArray{"size", "density", "spray", "scan"}[i]),
                             {b.getX() + 87 + i * 90, b.getY() + 68, 76, 96}, Style::Knob,
-                            StringArray{"ATTACK", "HOLD", "GR.SPACE", "WAVE.SPACE"}[i]);
+                            granModel ? StringArray{"ATTACK", "HOLD", "GR.SPACE", "WAVE.SPACE"}[i]
+                                      : StringArray{"SIZE", "DENSITY", "SPRAY", "SCAN"}[i]);
             } else if (view == 5) {
                 for (int i = 0; i < 4; ++i)
                     control(id + "g" + StringArray{"pan", "depth", "speed", "random"}[i],
@@ -1478,11 +1395,10 @@ class LogisthEditor::Console : public Component,
                             {b.getX() + 90 + i * 89, b.getY() + 65, 70, 99}, Style::Fader,
                             StringArray{"A", "D", "S", "R"}[i]);
             } else {
-                int mode = int(value(Param(size_t(Param::o1engine) + slot * 16)));
                 StringArray names =
                     mode == 3   ? StringArray{"VOLUME", "POSITION", "SIZE", "DENSITY", "SPRAY"}
                     : mode == 2 ? StringArray{"VOLUME", "START", "END", "STEREO", "PAN"}
-                                : StringArray{"VOLUME", "POSITION", "WARP", "STEREO", "PAN"};
+                                : StringArray{"VOLUME", "WT POS", "WARP", "STEREO", "PAN"};
                 StringArray suffix =
                     mode == 3   ? StringArray{"level", "position", "size", "density", "spray"}
                     : mode == 2 ? StringArray{"level", "position", "end", "stereo", "pan"}
@@ -1509,8 +1425,6 @@ class LogisthEditor::Console : public Component,
                     sourceClear[slot].setBounds(b.getX() + 379, b.getY() + 141, 65, 22);
                 } else {
                     sourceLoad[slot].setBounds(b.getX() + 88, b.getY() + 141, 68, 22);
-                    sourceFrame[slot].setBounds(b.getX() + 168, b.getY() + 141, 76, 22);
-                    sourceFrame[slot].setVisible(true);
                     sourceClear[slot].setBounds(b.getX() + 254, b.getY() + 141, 68, 22);
                 }
                 sourceLoad[slot].setVisible(true);
@@ -1577,14 +1491,15 @@ class LogisthEditor::Console : public Component,
             waveSlot.setVisible(true);
             waveView.setBounds(414, 320, 520, 203);
             waveView.setVisible(true);
+            int slot = waveView.selectedSlot();
+            int mode = int(value(Param(size_t(Param::o1engine) + size_t(slot) * 16)));
+            waveView.setMode(mode);
+            if (mode == 1) {
+                sourceFrame[size_t(slot)].setBounds(846, 289, 88, 23);
+                sourceFrame[size_t(slot)].setVisible(true);
+            }
             return;
         }
-        if (rack == 0 && value(Param::arppattern) > 0 && value(Param::arpgraphs) > 0) {
-            graphLayout();
-            return;
-        }
-        if (rack == 0)
-            put(Param::arpgraphs, {716, 289, 88, 22}, Style::Toggle, "GRAPHS", true);
         if (rack == 8) {
             chordTrigger.setBounds(414, 329, 140, 30);
             chordTrigger.setVisible(true);
@@ -1603,7 +1518,6 @@ class LogisthEditor::Console : public Component,
         if (rack == 0 && value(Param::arppattern) > 0) {
             put(Param::arppattern, {414, 320, 100, 24}, Style::Menu, {}, true);
             put(Param::arpswing, {652, 289, 60, 22}, Style::Number, {}, true);
-            put(Param::arpgraphs, {720, 289, 78, 22}, Style::Toggle, "GRAPHS", true);
             put(Param::arplatch, {521, 320, 55, 24}, Style::Toggle, "LATCH", true);
             put(value(Param::sync) > 0 ? Param::arpdivision : Param::arptime, {582, 320, 64, 24},
                 value(Param::sync) > 0 ? Style::Menu : Style::Number, {}, true);
@@ -1736,14 +1650,8 @@ class LogisthEditor::Console : public Component,
             c->enable(true);
         }
         patternCanvas.setVisible(false);
-        graphView.setVisible(false);
         waveView.setVisible(false);
         waveSlot.setVisible(false);
-        patternTitle.setVisible(false);
-        for (auto &tab : graphTabs)
-            tab.setVisible(false);
-        for (auto *button : {&graphCopy, &graphPaste, &graphDice, &graphBankCopy})
-            button->setVisible(false);
         for (auto &area : sourceWave)
             area.setVisible(false);
         for (auto &button : stepPages)
@@ -1775,7 +1683,7 @@ class LogisthEditor::Console : public Component,
         put(Param::sync, {1085, 28, 64, 24}, Style::Toggle, "SYNC");
         theme.setBounds(1162, 28, 62, 24);
         put(Param::arpout, {225, 29, 82, 24}, Style::Toggle, "MIDI OUT");
-        put(Param::gmuteaudio, {225, 55, 82, 19}, Style::Toggle, "MIDI ONLY");
+        put(Param::midionly, {225, 55, 82, 19}, Style::Toggle, "MIDI ONLY");
         const int first = selectedPart * 2 + 1;
         oscillator(first, {16, 82, 460, 184});
         oscillator(first + 1, {764, 82, 460, 184});
@@ -1820,14 +1728,13 @@ class LogisthEditor::Console : public Component,
             b->repaint();
         layoutStamp = currentLayoutState();
     }
-    std::array<int, 15> currentLayoutState() const {
-        std::array<int, 15> state{int(value(Param::sync)),       int(value(Param::lfo1free)),
-                                  int(value(Param::lfo2free)),   int(value(Param::arpmode) >= 8),
-                                  int(value(Param::arppattern)), int(value(Param::arpgraphs)),
-                                  int(value(Param::glink))};
+    std::array<int, 13> currentLayoutState() const {
+        std::array<int, 13> state{int(value(Param::sync)), int(value(Param::lfo1free)),
+                                  int(value(Param::lfo2free)), int(value(Param::arpmode) >= 8),
+                                  int(value(Param::arppattern))};
         for (int o = 0; o < 4; ++o) {
-            state[size_t(7 + o)] = int(value(Param(size_t(Param::o1engine) + size_t(o) * 16)));
-            state[size_t(11 + o)] = int(value(Param(size_t(Param::o1gmodel) + size_t(o) * 15)));
+            state[size_t(5 + o)] = int(value(Param(size_t(Param::o1engine) + size_t(o) * 16)));
+            state[size_t(9 + o)] = int(value(Param(size_t(Param::o1gmodel) + size_t(o) * 15)));
         }
         return state;
     }
@@ -1857,14 +1764,11 @@ class LogisthEditor::Console : public Component,
                 scopeSources[size_t(i)].setToggleState(i == scope, dontSendNotification);
             patternSlot.setSelectedId(processor.activePattern() + 1, dontSendNotification);
         }
-        if (rack == 0 && value(Param::arpgraphs) > 0) {
-            graphView.repaint();
-            if (!patternTitle.isBeingEdited())
-                patternTitle.setText(processor.patternName(patternSlot.getSelectedId() - 1),
-                                     dontSendNotification);
-        }
-        if (rack == 9)
+        if (rack == 9) {
+            waveView.setMode(
+                int(value(Param(size_t(Param::o1engine) + size_t(waveView.selectedSlot()) * 16))));
             waveView.repaint();
+        }
         if (rack == 8)
             refreshChord();
         if (currentLayoutState() != layoutStamp)
@@ -1884,6 +1788,9 @@ class LogisthEditor::Console : public Component,
         }
         if (rack == 8)
             repaint(414, 366, 520, 145);
+        for (int slot = selectedPart * 2; slot < selectedPart * 2 + 2; ++slot)
+            if (sourceViews[size_t(slot)].getSelectedId() == 2)
+                repaint(slot % 2 ? 850 : 102, 196, 358, 68);
         repaint(956, 278, 268, 258);
     }
     void paint(Graphics &g) override {
@@ -1912,18 +1819,17 @@ class LogisthEditor::Console : public Component,
             if (sourceViews[size_t(slot)].getSelectedId() == 2) {
                 auto data = processor.sourceData(slot);
                 int x = slot % 2 ? 850 : 102;
+                const int mode = int(value(Param(size_t(Param::o1engine) + size_t(slot) * 16)));
+                auto telemetry = processor.playback[size_t(slot)].read();
+                float position = float(value(Param(size_t(Param::o1position) + size_t(slot) * 16)));
+                if (telemetry.active && telemetry.revision == data->revision && mode == 1)
+                    position = telemetry.position;
                 Path path;
                 for (int i = 0; i < 340; ++i) {
-                    float sample = 0;
-                    int mode = int(value(Param(size_t(Param::o1engine) + size_t(slot) * 16)));
-                    if (mode == 1)
-                        sample = data->table(
-                            double(i) / 340,
-                            float(value(Param(size_t(Param::o1position) + size_t(slot) * 16))),
-                            .001);
-                    else
-                        sample =
-                            data->sample(double(i) * double(data->samples[0].size() - 2) / 340, 0);
+                    float sample =
+                        mode == 1 ? data->frameSample(data->frameIndex(position), double(i) / 340)
+                                  : data->sample(
+                                        double(i) * double(data->samples[0].size() - 2) / 340, 0);
                     float y = 204 - jlimit(-1.f, 1.f, sample) * 6;
                     if (i == 0)
                         path.startNewSubPath(float(x + i), y);
@@ -1932,7 +1838,12 @@ class LogisthEditor::Console : public Component,
                 }
                 g.setColour(green.withAlpha(.6f));
                 g.strokePath(path, PathStrokeType(1));
-                drawCaption(g, String(data->name), {x, 248, 340, 14}, 8, muted);
+                drawCaption(g,
+                            String(data->name) +
+                                (mode == 1 ? "  /  " + String(data->frameIndex(position) + 1) +
+                                                 " / " + String(data->frames)
+                                           : String{}),
+                            {x, 248, 340, 14}, 8, muted);
             }
         auto curveBounds = Rectangle<float>(508, 116, 224, 22);
         size_t ampBase = size_t(Param::p1ampa) + size_t(selectedPart) * 10;
@@ -1986,19 +1897,14 @@ class LogisthEditor::Console : public Component,
         drawCaption(g, "SIGNAL RACK", {292, 290, 108, 16}, 8, mint.withAlpha(.5f));
         StringArray titles{"ARPEGGIATOR", "DISTORTION", "PHASER",     "CHORUS", "EQUALIZER",
                            "REVERB",      "DELAY",      "COMPRESSOR", "CHORDS", "SAMPLE"};
-        drawCaption(g,
-                    (rack == 9 ||
-                     (rack == 0 && value(Param::arpgraphs) > 0 && value(Param::arppattern) > 0))
-                        ? String{}
-                        : titles[rack],
-                    {414, 289, 350, 20}, 12, screenText, Justification::centredLeft, true);
+        drawCaption(g, (rack == 9) ? String{} : titles[rack], {414, 289, 350, 20}, 12, screenText,
+                    Justification::centredLeft, true);
 
         if (rack == 9) {
-            drawCaption(g, "SAMPLE / PLAYBACK", {540, 289, 300, 23}, 11, screenText);
-        } else if (rack == 0 && value(Param::arppattern) > 0 && value(Param::arpgraphs) > 0) {
-            drawCaption(g, "LEN", {414, 347, 31, 22}, 8, mint);
-            drawCaption(g, "DIV", {497, 347, 31, 22}, 8, mint);
-            drawCaption(g, "RATE", {577, 347, 36, 22}, 8, mint);
+            int mode =
+                int(value(Param(size_t(Param::o1engine) + size_t(waveView.selectedSlot()) * 16)));
+            drawCaption(g, mode == 1 ? "WAVETABLE / WT POS" : "SAMPLE / PLAYBACK",
+                        {540, 289, 300, 23}, 11, screenText);
         } else if (rack == 8) {
             drawCaption(g, "TRIGGER", {414, 309, 140, 18}, 9, mint);
             drawCaption(g, "VOICING", {566, 309, 145, 18}, 9, mint);
@@ -2059,28 +1965,25 @@ class LogisthEditor::Console : public Component,
     std::array<ToggleButton, 2> parts, stepPages;
     std::array<std::unique_ptr<RackButton>, 10> rackButtons;
     std::array<ComboBox, 4> sourceViews, sourceFrame;
+    std::array<int, 4> sourceMenuStates{-1, -1, -1, -1};
     std::array<TextButton, 4> sourceLoad, sourceClear;
     ComboBox patternSlot, chordTrigger, chordType;
     TextButton patternSave, patternRandom, chordLearn, chordCopy;
     std::array<Slider, 8> chordNotes;
     bool updatingChord = false;
     std::unique_ptr<FileChooser> sourceChooser;
-    int previewSource = -1, previewPattern = -1, previewGraphs = -1, previewGran = -1,
-        previewLink = -1;
+    int previewSource = -1, previewPattern = -1, previewGran = -1;
     ComboBox presets;
     ToggleButton theme;
     TextButton previous, next;
     Keys keyboard;
     PatternCanvas patternCanvas;
-    logisth_ui::GraphView graphView;
     logisth_ui::WaveView waveView;
     logisth_ui::ScopeView scopeView;
     std::array<logisth_ui::ClickArea, 4> sourceWave;
-    std::array<ToggleButton, 8> graphTabs;
     std::array<ToggleButton, 3> scopeSources;
-    TextButton presetFiles, graphCopy, graphPaste, graphDice, graphBankCopy;
+    TextButton presetFiles;
     ComboBox waveSlot;
-    Label patternTitle;
     std::unique_ptr<FileChooser> presetChooser;
     Array<File> userPresets;
     int presetRevision = -1;
@@ -2088,7 +1991,7 @@ class LogisthEditor::Console : public Component,
     TooltipWindow tooltips;
     String readout, lastStatus;
     std::array<uint64_t, 4> displayedRevisions{};
-    std::array<int, 15> layoutStamp{};
+    std::array<int, 13> layoutStamp{};
     int selectedPart = 0, rack = 0, stepPage = 0, previewSync = -1;
 };
 LogisthEditor::LogisthEditor(LogisthProcessor &p) : AudioProcessorEditor(p) {
