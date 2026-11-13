@@ -44,7 +44,7 @@ def main():
     if result.is_file():
         report.update(json.loads(result.read_text()))
     blob = git('hash-object', '-w', '--stdin', data=json.dumps(report, indent=2) + '\n')
-    tree = git('mktree', data=f'100644 blob {blob}\tstatus.json\n')
+    tree = git('mktree', '-z', data=f'100644 blob {blob}\tstatus.json\0')
     remote = git('ls-remote', '--heads', 'origin', f'refs/heads/{branch}')
     parents = []
     if remote:
