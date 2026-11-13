@@ -1,4 +1,5 @@
 #pragma once
+#include "AssetLimits.h"
 #include <algorithm>
 #include <array>
 #include <atomic>
@@ -50,6 +51,7 @@ struct SourceData {
                 x /= float(n);
     }
     void analyseTransients() {
+        buildWaveformPeaks();
         transients.clear();
         transients.push_back(0);
         float previous = 0;
@@ -63,6 +65,34 @@ struct SourceData {
                 transients.push_back(int64_t(at));
             previous = std::max(peak, previous * .92f);
         }
+    }
+    std::vector<std::array<float, 4>> waveformPeaks;
+    void buildWaveformPeaks() {
+        waveformPeaks.assign((samples[0].size() + 255) / 256, {});
+        for (size_t i = 0; i < samples[0].size(); ++i)
+            for (size_t ch = 0; ch < 2; ++ch) {
+                auto &peak = waveformPeaks[i / 256];
+                peak[ch * 2] = std::min(peak[ch * 2], samples[ch][i]);
+                peak[ch * 2 + 1] = std::max(peak[ch * 2 + 1], samples[ch][i]);
+            }
+    }
+    std::array<float, 2> rangePeaks(int channel, size_t first, size_t last) const {
+        std::array<float, 2> result{};
+        channel = std::clamp(channel, 0, 1);
+        last = std::min(last, samples[size_t(channel)].size());
+        for (size_t i = std::min(first, last); i < last;) {
+            if (i % 256 == 0 && i + 256 <= last && i / 256 < waveformPeaks.size()) {
+                const auto &p = waveformPeaks[i / 256];
+                result[0] = std::min(result[0], p[size_t(channel * 2)]);
+                result[1] = std::max(result[1], p[size_t(channel * 2 + 1)]);
+                i += 256;
+            } else {
+                float x = samples[size_t(channel)][i++];
+                result[0] = std::min(result[0], x);
+                result[1] = std::max(result[1], x);
+            }
+        }
+        return result;
     }
     void buildTables(int size = 2048) {
         if (size != 256 && size != 512 && size != 1024 && size != 2048)

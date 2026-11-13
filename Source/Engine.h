@@ -29,8 +29,7 @@ struct Params {
     std::array<Routes, 2> envelopeRoutes{};
     std::array<LfoParams, 2> lfo{};
     std::array<Misc, 4> misc{};
-    float filterCutoff = 0, filterResonance = 0, keytrack = 0, master = .65f, portamento = 0,
-          bendRange = 2;
+    float filterCutoff = 0, filterResonance = 0, keytrack = 0, portamento = 0, bendRange = 2;
     double bpm = 120;
     int polyphony = 16, solo = 0, portaMode = 0;
     bool warmDrive = false, sync = true, monoLegato = false;
@@ -152,7 +151,7 @@ class Engine {
     double sr = 44100;
     uint64_t counter = 0;
     uint32_t randomState = 0x67a8451;
-    float master = 0, lastPitch = 60, stepVelocity = 0;
+    float lastPitch = 60, stepVelocity = 0;
     float noise() {
         randomState ^= randomState << 13;
         randomState ^= randomState >> 17;
@@ -267,7 +266,6 @@ class Engine {
         sustain = {};
         keys = {};
         freeLfo = {};
-        master = 0;
         counter = 0;
         lastPitch = 60;
         stepVelocity = 0;
@@ -639,13 +637,12 @@ class Engine {
                     }
                 }
             }
-            master += smoothing * (p.master - master);
-            left[s] = out[0] * engineHeadroom * master;
-            right[s] = out[1] * engineHeadroom * master;
+            left[s] = out[0] * engineOutputCalibration;
+            right[s] = out[1] * engineOutputCalibration;
             if (partA)
-                partA[s] = parts[0] * engineHeadroom * master;
+                partA[s] = parts[0] * engineOutputCalibration;
             if (partB)
-                partB[s] = parts[1] * engineHeadroom * master;
+                partB[s] = parts[1] * engineOutputCalibration;
             if (distortion)
                 distortion[s] = fxDrive;
             if (phaser)

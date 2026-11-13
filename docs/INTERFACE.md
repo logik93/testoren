@@ -42,3 +42,9 @@ Regression tests exercise 100 toggle interaction cases across timer ticks in bot
 and both themes, checking both directions of each switch. The cached layout
 previously omitted granular model state used by the refresh comparison, causing
 a permanent mismatch with default patches.
+
+Version 0.6 adds file dropping onto the SAMPLE waveform and header, with a
+highlighted selected-slot destination. File decoding and peak preparation are
+performed on the import worker. The mixer includes a dBFS readout and red
+overload indication. The fixed 12-second sample limit is removed; active
+imported PCM uses a 512 MiB aggregate memory budget.

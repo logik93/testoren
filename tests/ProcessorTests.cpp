@@ -439,6 +439,112 @@ void checkPointerInteraction() {
                  "menu parents\n";
 }
 
+void checkLongSourceAndDrop() {
+    using namespace juce;
+    using namespace logisth;
+    check(fitsSampleMemory(sampleMemoryBudget / 8) && !fitsSampleMemory(sampleMemoryBudget / 8 + 1),
+          "sample allocation bounded by decoded bytes, not seconds");
+    check(!fitsSampleMemory(UINT64_MAX) && !fitsSampleMemory(2, sampleMemoryBudget - 15),
+          "sample frame/aggregate memory bounds reject overflow");
+    TemporaryFile sample(".wav");
+    const int frames = 48000 * 60; // one minute, deliberately beyond the previous 12-second limit
+    {
+        auto stream = sample.getFile().createOutputStream();
+        WavAudioFormat wav;
+        std::unique_ptr<AudioFormatWriter> writer(
+            wav.createWriterFor(stream.get(), 48000, 1, 32, {}, 0));
+        check(bool(writer), "long sample writer");
+        stream.release();
+        AudioBuffer<float> block(1, 48000);
+        for (int i = 0; i < 48000; ++i)
+            block.setSample(0, i, .25f * std::sin(float(2 * pi * i / 100)));
+        for (int second = 0; second < 60; ++second)
+            check(writer->writeFromAudioSampleBuffer(block, 0, 48000), "long sample fixture write");
+    }
+    LogisthProcessor p;
+    std::unique_ptr<AudioProcessorEditor> ui(p.createEditor());
+    auto *editor = dynamic_cast<LogisthEditor *>(ui.get());
+    editor->snapshotPage(8);
+    auto *console = ui->getChildComponent(0);
+    auto *view = console->findChildWithID("sample.waveform");
+    auto *drop = dynamic_cast<FileDragAndDropTarget *>(view);
+    auto *selector = dynamic_cast<ComboBox *>(console->findChildWithID("sample.slot"));
+    check(drop && view->isVisible() && selector, "central sample view accepts file drops");
+    selector->setSelectedId(3,
+                            sendNotificationSync); // B1; Part A is still the selected editing part
+    auto *frame = dynamic_cast<ComboBox *>(console->findChildWithID("source.frame.2"));
+    check(frame != nullptr, "drop uses source frame selector");
+    frame->setSelectedId(2, dontSendNotification); // 512
+    StringArray files{sample.getFile().getFullPathName()};
+    check(drop->isInterestedInFileDrag(files), "WAV accepted in waveform");
+    check(!drop->isInterestedInFileDrag({"/tmp/readme.txt"}) &&
+              !drop->isInterestedInFileDrag({files[0], files[0]}),
+          "waveform rejects unsupported or multiple files");
+    auto oldA = p.sourceData(0);
+    drop->fileDragEnter(files, 40, 60);
+    view->createComponentSnapshot(view->getLocalBounds());
+    drop->filesDropped(files, 40, 60);
+    for (int i = 0; i < 1500 && !p.sourceStatus().startsWith("Loaded "); ++i)
+        Thread::sleep(10);
+    auto data = p.sourceData(2);
+    check(data->samples[0].size() == size_t(frames) && data->frameSize == 512,
+          "one-minute sample loads asynchronously into selected B1 slot");
+    check(p.sourceData(0) == oldA && p.state.getRawParameterValue("o3engine")->load() == 2,
+          "successful waveform drop selects Sampler only for target Classic slot");
+    check(data->samples[0] == data->samples[1] && !data->waveformPeaks.empty(),
+          "long mono source becomes stereo and receives background waveform cache");
+    for (auto bounds : {std::pair<size_t, size_t>{0, 2000},
+                        {73, 2001},
+                        {1024, 4096},
+                        {size_t(frames) - 701, size_t(frames)}}) {
+        std::array<float, 2> slow{};
+        for (size_t i = bounds.first; i < bounds.second; ++i) {
+            slow[0] = std::min(slow[0], data->samples[0][i]);
+            slow[1] = std::max(slow[1], data->samples[0][i]);
+        }
+        check(data->rangePeaks(0, bounds.first, bounds.second) == slow,
+              "cached waveform extrema match actual PCM at chunk boundaries");
+    }
+    TemporaryFile preset(".logisth");
+    check(p.savePresetFile(preset.getFile()).wasOk(), "long sample preset saves");
+    check(sample.getFile().deleteFile(), "original long sample removed before preset reload");
+    p.clearSource(2);
+    check(p.loadPresetFile(preset.getFile()).wasOk() && p.sourceData(2)->samples == data->samples,
+          "long embedded sample reloads after deleting original media");
+    auto intact = p.sourceData(2);
+    auto malformed = p.state.copyState();
+    MemoryOutputStream compressed;
+    {
+        GZIPCompressorOutputStream zip(compressed);
+        zip.writeDouble(48000);
+        zip.writeInt(128);
+        zip.writeInt(256);
+        zip.writeString("truncated");
+        zip.writeFloat(.5f);
+    }
+    ValueTree broken("SOURCE");
+    broken.setProperty("slot", 0, nullptr);
+    broken.setProperty("audio", var(compressed.getMemoryBlock()), nullptr);
+    malformed.addChild(broken, -1, nullptr);
+    MemoryBlock invalid;
+    AudioProcessor::copyXmlToBinary(*malformed.createXml(), invalid);
+    check(!p.applyState(invalid.getData(), int(invalid.getSize())) && p.sourceData(2) == intact,
+          "truncated streaming PCM rejects without replacing any current source");
+    TemporaryFile bad(".wav");
+    bad.getFile().replaceWithText("invalid audio");
+    selector->setSelectedId(2, sendNotificationSync); // A2 remains Classic
+    drop->filesDropped({bad.getFile().getFullPathName()}, 40, 60);
+    for (int i = 0; i < 500 && p.sourceStatus() == "Loading " + bad.getFile().getFileName() + "...";
+         ++i)
+        Thread::sleep(10);
+    check(p.sourceData(1) == SourceData::factory() &&
+              p.state.getRawParameterValue("o2engine")->load() == 0,
+          "failed waveform drop leaves source and engine selection intact");
+    std::cout << "PASS long samples and waveform drop: 60-second import, selected-slot routing, "
+                 "frame size, mono/stereo, background peaks, portable preset reload, invalid-file "
+                 "recovery and memory boundaries\n";
+}
+
 int main(int argc, char **argv) {
     try {
         juce::ScopedJuceInitialiser_GUI gui;
@@ -453,6 +559,7 @@ int main(int argc, char **argv) {
         checkHybridProcessor();
         checkStudioProcessor();
         checkPointerInteraction();
+        checkLongSourceAndDrop();
         LogisthProcessor p;
         p.setRateAndBufferSizeDetails(48000, 512);
         p.prepareToPlay(48000, 512);

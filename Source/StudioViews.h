@@ -290,11 +290,12 @@ class GraphView : public Component {
         }
     }
 };
-class WaveView : public Component {
+class WaveView : public Component, public FileDragAndDropTarget {
     LogisthProcessor &p;
     LogisthColours &colours;
     FontMaker font;
     int slot = 0;
+    bool draggingFile = false;
     double zoom = 1, offset = 0;
     uint64_t cachedRevision = 0;
     std::array<std::array<float, 520>, 2> minima{}, maxima{};
@@ -307,14 +308,9 @@ class WaveView : public Component {
                        b = std::min(size,
                                     std::max(a + 1, size_t((offset + double(x + 1) / 520 / zoom) *
                                                            double(size))));
-                float lo = 0, hi = 0;
-                for (size_t i = a; i < b; ++i) {
-                    float sample = source.samples[size_t(ch)][i];
-                    lo = std::min(lo, sample);
-                    hi = std::max(hi, sample);
-                }
-                minima[size_t(ch)][size_t(x)] = lo;
-                maxima[size_t(ch)][size_t(x)] = hi;
+                auto peaks = source.rangePeaks(ch, a, b);
+                minima[size_t(ch)][size_t(x)] = peaks[0];
+                maxima[size_t(ch)][size_t(x)] = peaks[1];
             }
         cachedRevision = source.revision;
     }
@@ -324,6 +320,24 @@ class WaveView : public Component {
     }
 
   public:
+    std::function<void(int, const File &)> onFileDropped;
+    bool isInterestedInFileDrag(const StringArray &files) override {
+        return files.size() == 1 && File(files[0]).hasFileExtension("wav;aif;aiff;flac");
+    }
+    void fileDragEnter(const StringArray &files, int, int) override {
+        draggingFile = isInterestedInFileDrag(files);
+        repaint();
+    }
+    void fileDragExit(const StringArray &) override {
+        draggingFile = false;
+        repaint();
+    }
+    void filesDropped(const StringArray &files, int, int) override {
+        draggingFile = false;
+        if (isInterestedInFileDrag(files) && onFileDropped)
+            onFileDropped(slot, File(files[0]));
+        repaint();
+    }
     WaveView(LogisthProcessor &processor, LogisthColours &palette, FontMaker f)
         : p(processor), colours(palette), font(std::move(f)) {
         setComponentID("sample.waveform");
@@ -393,8 +407,19 @@ class WaveView : public Component {
             }
         }
         g.setColour(colours.mint.withAlpha(.65f));
-        g.drawText("Latest voice  /  click: Start  /  wheel: zoom  /  Shift+wheel: pan", 0, 181,
+        g.drawText("Drop sample here  /  click: Start  /  wheel: zoom  /  Shift+wheel: pan", 0, 181,
                    getWidth(), 18, Justification::centredLeft);
+        if (draggingFile) {
+            g.setColour(colours.mint.withAlpha(.12f));
+            g.fillRect(getLocalBounds());
+            g.setColour(colours.mint);
+            g.drawRect(getLocalBounds().reduced(1), 2);
+            g.fillRoundedRectangle(float(getWidth() / 2 - 120), 70, 240, 38, 4);
+            g.setColour(colours.screen);
+            g.setFont(font(13));
+            g.drawText("Load sample into " + StringArray{"A1", "A2", "B1", "B2"}[slot],
+                       getWidth() / 2 - 116, 72, 232, 34, Justification::centred);
+        }
     }
     void mouseDown(const MouseEvent &e) override {
         if (e.position.y > 24 && e.position.y < 177)

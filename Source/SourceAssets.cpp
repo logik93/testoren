@@ -11,16 +11,24 @@ void LogisthProcessor::serviceAssets() {
         retiredChords.clear();
     }
 }
-void LogisthProcessor::publishSource(int index, std::shared_ptr<const SourceData> data) {
+bool LogisthProcessor::publishSource(int index, std::shared_ptr<const SourceData> data) {
     if (index < 0 || index >= 4 || !data)
-        return;
+        return false;
     const ScopedLock lock(assetLock);
+    uint64_t bytes = data == SourceData::factory() ? 0 : data->samples[0].size() * 8ull;
+    for (int i = 0; i < 4; ++i)
+        if (i != index && sourceOwners[size_t(i)] &&
+            sourceOwners[size_t(i)] != SourceData::factory())
+            bytes += sourceOwners[size_t(i)]->samples[0].size() * 8ull;
+    if (bytes > sampleMemoryBudget)
+        return false;
     if (sourceOwners[size_t(index)])
         retiredSources.push_back(sourceOwners[size_t(index)]);
     sourceOwners[size_t(index)] = std::move(data);
     sourcePointers[size_t(index)].store(sourceOwners[size_t(index)].get());
     if (assetReaders.load() == 0)
         retiredSources.clear();
+    return true;
 }
 std::shared_ptr<const SourceData> LogisthProcessor::sourceData(int index) const {
     const ScopedLock lock(assetLock);
@@ -33,7 +41,7 @@ String LogisthProcessor::sourceStatus() const {
     const ScopedLock lock(assetLock);
     return assetStatus;
 }
-Result LogisthProcessor::loadSource(int index, const File &file, int frameSize) {
+Result LogisthProcessor::loadSource(int index, const File &file, int frameSize) try {
     if (index < 0 || index >= 4)
         return Result::fail("Invalid source slot");
     if (frameSize != 256 && frameSize != 512 && frameSize != 1024 && frameSize != 2048)
@@ -44,25 +52,35 @@ Result LogisthProcessor::loadSource(int index, const File &file, int frameSize) 
     if (!reader)
         return Result::fail("Cannot decode this audio file. Use WAV, AIFF or FLAC.");
     if (!std::isfinite(reader->sampleRate) || reader->sampleRate < 8000 ||
-        reader->sampleRate > 96000 || reader->lengthInSamples < 2 ||
-        reader->lengthInSamples > reader->sampleRate * 12 || reader->numChannels < 1)
-        return Result::fail("Use an audio file up to 12 seconds long, at 8-96 kHz.");
+        reader->sampleRate > 96000 || reader->lengthInSamples < 2 || reader->numChannels < 1)
+        return Result::fail("Use an audio file at 8-96 kHz.");
+    uint64_t otherBytes = 0;
+    {
+        const ScopedLock lock(assetLock);
+        for (int i = 0; i < 4; ++i)
+            if (i != index && sourceOwners[size_t(i)] != SourceData::factory())
+                otherBytes += sourceOwners[size_t(i)]->samples[0].size() * 8ull;
+    }
+    if (!fitsSampleMemory(uint64_t(reader->lengthInSamples), otherBytes))
+        return Result::fail("The four sources exceed the 512 MiB decoded-audio memory budget.");
     int n = int(reader->lengthInSamples);
-    AudioBuffer<float> buffer(2, n);
-    if (!reader->read(&buffer, 0, n, 0, true, true))
-        return Result::fail("Audio file could not be read");
     auto data = std::make_shared<SourceData>();
     data->sampleRate = reader->sampleRate;
     data->name = file.getFileNameWithoutExtension().toStdString();
-    for (int ch = 0; ch < 2; ++ch) {
-        data->samples[size_t(ch)].resize(size_t(n));
-        const float *input = buffer.getReadPointer(reader->numChannels == 1 ? 0 : ch);
-        for (int i = 0; i < n; ++i) {
-            if (!std::isfinite(input[i]))
+    for (auto &channel : data->samples)
+        channel.resize(size_t(n));
+    float *channels[] = {data->samples[0].data(), data->samples[1].data()};
+    AudioBuffer<float> buffer(channels, 2, n);
+    if (!reader->read(&buffer, 0, n, 0, true, true))
+        return Result::fail("Audio file could not be read");
+    if (reader->numChannels == 1)
+        std::copy(data->samples[0].begin(), data->samples[0].end(), data->samples[1].begin());
+    for (auto &channel : data->samples)
+        for (auto &sample : channel) {
+            if (!std::isfinite(sample))
                 return Result::fail("Audio contains non-finite samples");
-            data->samples[size_t(ch)][size_t(i)] = jlimit(-8.f, 8.f, input[i]);
+            sample = jlimit(-8.f, 8.f, sample);
         }
-    }
     data->buildTables(frameSize);
     data->analyseTransients();
     int cueCount =
@@ -76,16 +94,27 @@ Result LogisthProcessor::loadSource(int index, const File &file, int frameSize) 
     std::sort(data->regions.begin(), data->regions.end());
     data->regions.erase(std::unique(data->regions.begin(), data->regions.end()),
                         data->regions.end());
-    publishSource(index, data);
+    if (!publishSource(index, data))
+        return Result::fail("The four sources exceed the 512 MiB decoded-audio memory budget.");
     return Result::ok();
+} catch (const std::bad_alloc &) {
+    return Result::fail("Not enough memory to load this sample; the previous source was kept.");
 }
-void LogisthProcessor::loadSourceAsync(int index, const File &file, int frameSize) {
+void LogisthProcessor::loadSourceAsync(int index, const File &file, int frameSize,
+                                       bool switchClassicToSampler) {
     {
         const ScopedLock lock(assetLock);
         assetStatus = "Loading " + file.getFileName() + "...";
     }
-    importWorkers.addJob([this, index, file, frameSize] {
+    importWorkers.addJob([this, index, file, frameSize, switchClassicToSampler] {
         auto result = loadSource(index, file, frameSize);
+        if (result.wasOk() && switchClassicToSampler) {
+            auto id = "o" + String(index + 1) + "engine";
+            if (state.getRawParameterValue(id)->load() == 0) {
+                auto *parameter = state.getParameter(id);
+                parameter->setValueNotifyingHost(parameter->convertTo0to1(2));
+            }
+        }
         const ScopedLock lock(assetLock);
         assetStatus = result.wasOk() ? "Loaded " + file.getFileName() : result.getErrorMessage();
     });
@@ -246,18 +275,21 @@ void LogisthProcessor::saveAssets(ValueTree &tree) {
         const auto &data = owners[size_t(slot)];
         if (data == SourceData::factory())
             continue;
-        MemoryOutputStream raw;
-        raw.writeDouble(data->sampleRate);
-        raw.writeInt(int(data->samples[0].size()));
-        raw.writeInt(data->frameSize);
-        raw.writeString(data->name);
-        for (int ch = 0; ch < 2; ++ch)
-            for (float x : data->samples[size_t(ch)])
-                raw.writeFloat(x);
         MemoryOutputStream compressed;
         {
             GZIPCompressorOutputStream zip(compressed);
-            zip.write(raw.getData(), raw.getDataSize());
+            zip.writeDouble(data->sampleRate);
+            zip.writeInt(int(data->samples[0].size()));
+            zip.writeInt(data->frameSize);
+            zip.writeString(data->name);
+            for (const auto &channel : data->samples) {
+#if JUCE_BIG_ENDIAN
+                for (float sample : channel)
+                    zip.writeFloat(sample);
+#else
+                zip.write(channel.data(), channel.size() * sizeof(float));
+#endif
+            }
         }
         ValueTree node("SOURCE");
         node.setProperty("slot", slot, nullptr);
@@ -294,40 +326,64 @@ bool LogisthProcessor::restoreAssets(const ValueTree &tree) {
         map->set(key, 1);
     std::array<ValueTree, 12> restoredPatterns;
     std::array<bool, 4> seen{};
+    uint64_t totalDecoded = 0;
     for (auto node : tree) {
         if (node.hasType("SOURCE")) {
             int slot = int(node.getProperty("slot", -1));
             const auto *blob = node["audio"].getBinaryData();
             if (slot < 0 || slot > 3 || seen[size_t(slot)] || !blob ||
-                blob->getSize() > 12 * 1024 * 1024)
+                blob->getSize() > sourceBlobLimit)
                 return false;
             seen[size_t(slot)] = true;
             MemoryInputStream input(*blob, false);
             GZIPDecompressorInputStream zip(input);
-            MemoryBlock unpacked;
-            zip.readIntoMemoryBlock(unpacked, 10 * 1024 * 1024 + 1);
-            if (unpacked.getSize() > 10 * 1024 * 1024 || unpacked.getSize() < 18)
+            double sr = zip.readDouble();
+            int n = zip.readInt(), frameSize = zip.readInt();
+            std::array<char, 4096> nameBytes{};
+            size_t nameLength = 0;
+            for (; nameLength < nameBytes.size(); ++nameLength) {
+                if (zip.read(&nameBytes[nameLength], 1) != 1)
+                    return false;
+                if (nameBytes[nameLength] == 0)
+                    break;
+            }
+            if (nameLength == nameBytes.size())
                 return false;
-            MemoryInputStream raw(unpacked, false);
-            double sr = raw.readDouble();
-            int n = raw.readInt(), frameSize = raw.readInt();
-            String name = raw.readString();
-            if (!std::isfinite(sr) || sr < 8000 || sr > 96000 || n < 2 || n > sr * 12 ||
-                name.length() > 512 ||
-                (frameSize != 256 && frameSize != 512 && frameSize != 1024 && frameSize != 2048) ||
-                raw.getNumBytesRemaining() != int64(n) * 8)
+            String name = String::fromUTF8(nameBytes.data(), int(nameLength));
+            if (!std::isfinite(sr) || sr < 8000 || sr > 96000 || n < 2 ||
+                !fitsSampleMemory(uint64_t(n), totalDecoded) || name.length() > 512 ||
+                (frameSize != 256 && frameSize != 512 && frameSize != 1024 && frameSize != 2048))
                 return false;
+            totalDecoded += uint64_t(n) * 8;
             auto data = std::make_shared<SourceData>();
             data->sampleRate = sr;
             data->name = name.toStdString();
             for (auto &channel : data->samples) {
                 channel.resize(size_t(n));
+                auto *bytes = reinterpret_cast<char *>(channel.data());
+                size_t remaining = channel.size() * sizeof(float);
+                while (remaining > 0) {
+                    int read = zip.read(bytes, int(std::min<size_t>(remaining, 65536)));
+                    if (read <= 0)
+                        return false;
+                    bytes += read;
+                    remaining -= size_t(read);
+                }
+#if JUCE_BIG_ENDIAN
                 for (auto &value : channel) {
-                    value = raw.readFloat();
+                    uint32 bits;
+                    std::memcpy(&bits, &value, sizeof(bits));
+                    bits = ByteOrder::swap(bits);
+                    std::memcpy(&value, &bits, sizeof(bits));
+                }
+#endif
+                for (float value : channel)
                     if (!std::isfinite(value) || std::abs(value) > 8)
                         return false;
-                }
             }
+            char extra;
+            if (zip.read(&extra, 1) != 0)
+                return false;
             data->buildTables(frameSize);
             data->analyseTransients();
             auto markers = StringArray::fromTokens(node["regions"].toString(), " ", "");
@@ -369,11 +425,18 @@ bool LogisthProcessor::restoreAssets(const ValueTree &tree) {
             restoredPatterns[size_t(slot)] = node.createCopy();
         }
     }
-    for (int slot = 0; slot < 4; ++slot)
-        publishSource(slot, sources[size_t(slot)]);
-    publishChords(map);
     {
         const ScopedLock lock(assetLock);
+        retiredSources.reserve(retiredSources.size() + 4);
+        retiredChords.reserve(retiredChords.size() + 1);
+        for (int slot = 0; slot < 4; ++slot) {
+            retiredSources.push_back(sourceOwners[size_t(slot)]);
+            sourceOwners[size_t(slot)] = std::move(sources[size_t(slot)]);
+            sourcePointers[size_t(slot)].store(sourceOwners[size_t(slot)].get());
+        }
+        publishChords(map);
+        if (assetReaders.load() == 0)
+            retiredSources.clear();
         patterns = std::move(restoredPatterns);
         currentPattern = jlimit(0, 11, int(tree.getProperty("currentPattern", 0)));
     }

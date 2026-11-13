@@ -34,7 +34,7 @@ String LogisthProcessor::currentPresetName() const {
     const ScopedLock lock(assetLock);
     return presetName;
 }
-Result LogisthProcessor::savePresetFile(const File &file) {
+Result LogisthProcessor::savePresetFile(const File &file) try {
     if (!file.hasFileExtension("logisth"))
         return Result::fail("Use the .logisth preset extension");
     auto tree = state.copyState();
@@ -43,8 +43,8 @@ Result LogisthProcessor::savePresetFile(const File &file) {
     saveAssets(tree);
     MemoryBlock data;
     copyXmlToBinary(*tree.createXml(), data);
-    if (data.getSize() > 64 * 1024 * 1024)
-        return Result::fail("Preset exceeds the 64 MiB state limit");
+    if (data.getSize() > stateMemoryLimit)
+        return Result::fail("Preset exceeds the 1 GiB state limit");
     auto folder = file.getParentDirectory().createDirectory();
     if (folder.failed())
         return folder;
@@ -59,9 +59,11 @@ Result LogisthProcessor::savePresetFile(const File &file) {
     }
     ++presetRevision;
     return Result::ok();
+} catch (const std::bad_alloc &) {
+    return Result::fail("Not enough memory to save this preset.");
 }
-Result LogisthProcessor::loadPresetFile(const File &file) {
-    if (!file.existsAsFile() || file.getSize() <= 0 || file.getSize() > 64 * 1024 * 1024)
+Result LogisthProcessor::loadPresetFile(const File &file) try {
+    if (!file.existsAsFile() || file.getSize() <= 0 || file.getSize() > stateMemoryLimit)
         return Result::fail("Preset is missing or too large");
     MemoryBlock data;
     if (!file.loadFileAsData(data) || !applyState(data.getData(), int(data.getSize())))
@@ -73,6 +75,8 @@ Result LogisthProcessor::loadPresetFile(const File &file) {
     }
     ++presetRevision;
     return Result::ok();
+} catch (const std::bad_alloc &) {
+    return Result::fail("Not enough memory to load this preset.");
 }
 void LogisthProcessor::savePresetAsync(const File &file) {
     {

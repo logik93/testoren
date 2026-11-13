@@ -154,6 +154,14 @@ inline void run(bool verify, const juce::File &folder = {}) {
                         "documented gain/pan/summing calibration");
             return result;
         };
+        cleanSine(p);
+        set(p, "o1phase", 90);
+        juce::AudioBuffer<float> onset;
+        auto instant = measure(p, 48000, {69}, 1, 2, &onset);
+        row("instant_attack", 48000, instant);
+        if (verify)
+            require(onset.getSample(0, 0) > .9999f && onset.getSample(1, 0) > .9999f,
+                    "no hidden startup master fade attenuates the first sample");
         for (const auto *id : {"master", "mixA", "o1level"}) {
             cleanSine(p);
             set(p, id, .5f);
@@ -178,6 +186,18 @@ inline void run(bool verify, const juce::File &folder = {}) {
         auto right = test("pan_right", 3.0103);
         if (verify)
             require(right.peak[0] == 0, "hard-right pan silences left channel");
+        cleanSine(p);
+        set(p, "compon", 1);
+        set(p, "compthreshold", -12);
+        set(p, "compratio", 4);
+        set(p, "compattack", .1f);
+        set(p, "comprelease", 100);
+        auto compressed = measure(p, 48000);
+        row("compressor_at_unity", 48000, compressed);
+        if (verify)
+            require(
+                compressed.dbPeak() < -8 && compressed.dbPeak() > -10,
+                "compressor receives the calibrated engine level and applies expected reduction");
         cleanSine(p);
         set(p, "o1level", 0);
         set(p, "o3level", 1);
@@ -235,7 +255,7 @@ inline void run(bool verify, const juce::File &folder = {}) {
         }
     if (folder != juce::File{}) {
         folder.createDirectory();
-        require(folder.getChildFile("measurements.csv").replaceWithText(report),
+        require(folder.getChildFile("measurements.csv").replaceWithText(report, false, false, "\n"),
                 "calibration report export");
     }
 }

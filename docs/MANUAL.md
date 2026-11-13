@@ -1,4 +1,4 @@
-# logisth 0.5.2 — User Manual
+# logisth 0.6.0 — User Manual
 
 A two-part polyphonic subtractive synthesizer for VST3, CLAP and standalone use.
 This manual describes logisth's own controls and behaviour. logisth is an independent
@@ -148,7 +148,13 @@ START sets the initial location; automation moves the active scanner. LOOP wraps
 over the sample to END; TIME HOLD keeps creating grains at the current location.
 
 Click an oscillator's waveform strip or select SAMPLE in the rack for the larger
-waveform view. Choose A1/A2/B1/B2. It draws the actual stereo amplitude envelope,
+waveform view. Choose A1/A2/B1/B2. Drop a WAV/AIFF/FLAC onto the waveform or its
+header to replace that selected slot. The slot selection is independent of the
+Part A/B editing tab. The existing frame-size choice is used. A Classic slot
+switches to Sampler after a successful import; Wavetable/Sampler/Granular retain
+their mode. An invalid file keeps the previous source and mode. While dragging,
+the waveform highlights the destination. Loading and waveform-peak generation
+run in the background; long samples keep waveform zoom/pan responsive. It draws the actual stereo amplitude envelope,
 region markers, start/end and the most recent active voice's scanner, plus up to
 16 active grain positions. Click to change START; wheel zooms around the cursor;
 Shift-wheel pans. The display is a view of playback, not a sample editor.
@@ -158,14 +164,16 @@ and release. A part's shared envelope still limits its final output. New
 Position A/B/A+B and Grain size A/B/A+B modulation destinations scan frames or
 sample locations and scale grain duration. Position changes are smoothed.
 
-IMPORT accepts WAV, AIFF and FLAC at 8–96 kHz, up to 12 seconds per source.
+IMPORT accepts WAV, AIFF and FLAC at 8–96 kHz, without a fixed duration limit.
+The four imported sources share a 512 MiB decoded-stereo-PCM budget. Temporary
+decoding, wavetable, waveform-cache and state-saving buffers use additional RAM.
 Alternatively, drop one file onto an oscillator panel: a Classic slot switches
 to Sampler, while the other engine selections are retained. Import decoding and
 table preparation run on a worker, and the footer reports completion or errors.
 RESET returns the slot's material to the factory glass sample/table. The waveform
 strip previews the loaded material. No original media path is needed on project
-recall: imported PCM data is compressed into the plug-in state, with a 64 MiB
-state-input limit. Save larger libraries separately; this is a single-sample
+recall: imported PCM data is compressed into the plug-in state, with a 1 GiB
+serialized-state limit. Save larger libraries separately; this is a single-sample
 source rather than a multisample instrument.
 
 ## 4. Filters and shared Filter Control
@@ -344,7 +352,7 @@ after effects, MAIN and MIDI ONLY. It is a sum, not an average. The scope uses
 zero-crossing alignment and automatic visual scaling; the peak label gives the
 unscaled peak. Selecting a source changes only the view and is saved in state.
 
-### Output calibration (0.5.2)
+### Output calibration (0.6.0)
 
 One centred Classic sine, one unison voice, MIDI note 69 at velocity 127,
 source Volume / Mix / Main at 100%, amplitude sustain at 100%, bypassed filters
@@ -352,11 +360,14 @@ and effects, and no modulation produces **0 dBFS peak on each output channel**.
 The unweighted RMS is -3.0103 dBFS (a full-scale sine has RMS 1/sqrt(2)).
 This is a unity reference, rather than a normal listening preset.
 
-A fixed output calibration follows the shared FX, preserving their input level
-and drive/compression behaviour. At the same controls the change is +19.49 dB
-from 0.5.1. Factory presets have individually adjusted Main settings; the initial
-Main default is now 42%. Existing user presets keep their saved fader values and
-will be louder. Reduce Main for patches that overload the output.
+The source bus is calibrated before the shared FX. The previous 0.15 attenuator
+and the duplicate engine Master ramp have been removed. Main is applied once,
+after effects. Reset starts its smoothing at the chosen Main value, so an
+instant attack is not reduced by a hidden startup fade. Knob changes remain
+smoothed. Distortion and compressor thresholds therefore respond to the actual
+source-bus level. Levels and effect drive have been retuned together; older
+patches can sound different. Factory Main trims provide headroom; the initial Main default is 38%. Reduce Main
+for louder layered edits.
 
 The test reference for factory presets is a six-second C3/G3/C4/E4 chord (MIDI
 48/55/60/64), velocity 102, including the attack. At 48 kHz most factory presets
@@ -413,7 +424,7 @@ Presets contain all 936 audio parameters, routing, compressed audio for all four
 slots, WAV regions, chord mappings, twelve named patterns, theme and scope
 selection. The original sample files are unnecessary on recall. Saving uses a
 temporary file and atomic replacement. Invalid files leave the current patch
-intact. State/preset files are limited to 64 MiB. These are logisth's own files;
+intact. State/preset files are limited to 1 GiB. These are logisth's own files;
 renaming another format to .logisth does not convert it.
 
 All 936 parameters are available for host automation. The first 514 parameter

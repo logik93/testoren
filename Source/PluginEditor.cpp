@@ -804,8 +804,13 @@ class LogisthEditor::Console : public Component,
             };
             addChildComponent(clear);
             auto &frame = sourceFrame[size_t(i)];
+            frame.setComponentID("source.frame." + String(i));
             frame.addItemList({"256", "512", "1024", "2048"}, 1);
-            frame.setSelectedId(4);
+            int loadedFrameSize = processor.sourceData(i)->frameSize;
+            frame.setSelectedId(loadedFrameSize == 256    ? 1
+                                : loadedFrameSize == 512  ? 2
+                                : loadedFrameSize == 1024 ? 3
+                                                          : 4);
             frame.setTooltip("Samples per wavetable frame on import");
             addChildComponent(frame);
         }
@@ -868,6 +873,10 @@ class LogisthEditor::Console : public Component,
             processor.setPatternName(patternSlot.getSelectedId() - 1, patternTitle.getText());
         };
         addChildComponent(patternTitle);
+        waveView.onFileDropped = [this](int slot, const File &file) {
+            importDroppedSource(slot, file);
+        };
+        waveSlot.setComponentID("sample.slot");
         waveSlot.addItemList({"A1", "A2", "B1", "B2"}, 1);
         waveSlot.setSelectedId(1);
         waveSlot.onChange = [this] { waveView.setSlot(waveSlot.getSelectedId() - 1); };
@@ -992,6 +1001,10 @@ class LogisthEditor::Console : public Component,
     void filesDropped(const StringArray &files, int x, int y) override {
         if (!isInterestedInFileDrag(files))
             return;
+        if (rack == 9 && Rectangle<int>(414, 289, 520, 244).contains(x, y)) {
+            importDroppedSource(waveView.selectedSlot(), File(files[0]));
+            return;
+        }
         int slot = y >= 82 && y <= 266 ? (x >= 16 && x <= 476     ? selectedPart * 2
                                           : x >= 764 && x <= 1224 ? selectedPart * 2 + 1
                                                                   : -1)
@@ -1001,17 +1014,11 @@ class LogisthEditor::Console : public Component,
             repaint();
             return;
         }
-        auto *engine = processor.state.getParameter("o" + String(slot + 1) + "engine");
-        if (processor.state.getRawParameterValue("o" + String(slot + 1) + "engine")->load() == 0) {
-            engine->beginChangeGesture();
-            engine->setValueNotifyingHost(engine->convertTo0to1(2));
-            engine->endChangeGesture();
-        }
-        sourceViews[size_t(slot)].setSelectedId(2, dontSendNotification);
-        processor.loadSourceAsync(slot, File(files[0]),
-                                  256 << (sourceFrame[size_t(slot)].getSelectedId() - 1));
-        layout();
-        repaint();
+        importDroppedSource(slot, File(files[0]));
+    }
+    void importDroppedSource(int slot, const File &file) {
+        processor.loadSourceAsync(slot, file,
+                                  256 << (sourceFrame[size_t(slot)].getSelectedId() - 1), true);
     }
     void setDarkTheme(bool enabled, bool persist = true) {
         choosePalette(enabled);
@@ -1964,10 +1971,12 @@ class LogisthEditor::Console : public Component,
         }
 
         float outputLevel = processor.peak.load();
-        drawCaption(
-            g, outputLevel > 0 ? String(20 * std::log10(outputLevel), 1) + " dBFS" : "-inf dBFS",
-            {1140, 517, 76, 16}, 9, outputLevel > 1 ? Colour(0xffd35f55) : muted,
-            Justification::centred);
+        float outputDb = outputLevel > 0 ? 20 * std::log10(outputLevel) : -100;
+        if (std::abs(outputDb) < .05f)
+            outputDb = 0;
+        drawCaption(g, outputLevel > 0 ? String(outputDb, 1) + " dBFS" : "-inf dBFS",
+                    {1140, 517, 76, 16}, 9, outputLevel > 1 ? Colour(0xffd35f55) : muted,
+                    Justification::centred);
 
         g.setColour(screen);
         g.fillRoundedRectangle(Rectangle<float>(280, 278, 668, 258), 8);

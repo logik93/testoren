@@ -10,7 +10,8 @@ class LogisthProcessor : public juce::AudioProcessor {
     LogisthProcessor();
     ~LogisthProcessor() override;
     juce::Result loadSource(int, const juce::File &, int frameSize = 2048);
-    void loadSourceAsync(int, const juce::File &, int frameSize = 2048);
+    void loadSourceAsync(int, const juce::File &, int frameSize = 2048,
+                         bool switchClassicToSampler = false);
     void clearSource(int);
     std::shared_ptr<const logisth::SourceData> sourceData(int) const;
     juce::String sourceStatus() const;
@@ -115,7 +116,7 @@ class LogisthProcessor : public juce::AudioProcessor {
     logisth::EffectsParams effectsSnapshot() const;
     logisth::ArpParams arpSnapshot() const;
     std::array<std::atomic<float> *, logisth::parameterCount> raw{};
-    void publishSource(int, std::shared_ptr<const logisth::SourceData>);
+    bool publishSource(int, std::shared_ptr<const logisth::SourceData>);
     void publishChords(std::shared_ptr<const logisth::ChordMap>);
     void saveAssets(juce::ValueTree &);
     bool restoreAssets(const juce::ValueTree &);

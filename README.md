@@ -1,4 +1,4 @@
-# logisth 0.5.2
+# logisth 0.6.0
 
 **A two-part polyphonic subtractive synthesizer with a compact single-window console.**
 VST3, CLAP and Standalone for Windows, macOS and Linux. Built with JUCE and an
@@ -6,17 +6,24 @@ independent synthesis engine; not affiliated with LennarDigital.
 
 ![logisth dark interface](docs/images/logisth-dark.png)
 
-## Output calibration in 0.5.2
+## New in 0.6.0
 
-- A centred full-scale sine reaches 0 dBFS peak per output channel at unity
-  source, Mix and Main settings (previously -19.49 dBFS).
-- Output calibration follows the shared effects, retaining their operating level.
-- Factory Main trims provide headroom; the mixer shows an output dBFS reading.
-- [Measurement report](docs/CALIBRATION.md), repeatable tests, reference audio
-  and a calibration preset are included with the release.
+- Calibrated source bus: one centred full-scale sine reaches 0 dBFS peak per
+  channel before effects and at unity Main. Shared effects receive that same
+  reference; there is no hidden attenuator, reciprocal boost or startup fade.
+- Factory Main trims provide headroom; the mixer displays output dBFS.
+- Drop audio directly onto the large SAMPLE waveform or its header to load
+  the selected A1/A2/B1/B2 slot. Successful Classic drops select Sampler;
+  invalid files leave the source and mode intact.
+- No fixed sample-duration limit. Active imported stereo PCM has a 512 MiB
+  aggregate memory budget; portable state/presets allow up to 1 GiB.
+- Long-file waveform peaks are computed on the import worker for fast zoom/pan.
+- [Calibration report](docs/CALIBRATION.md), independent reference WAV, rendered
+  sine and calibration preset are included with the release.
 
-Older saved patches retain their fader values and are approximately 19.49 dB
-louder at identical settings. Reduce Main when reopening a hot or layered patch.
+Levels and effect drive have been recalibrated together. Existing patches may
+sound different; use the new factory presets and check Main when loading older
+sounds. Parameter IDs remain stable; preserving old sound is not the objective.
 
 ## Fixed in 0.5.1
 
@@ -43,7 +50,7 @@ louder at identical settings. Reduce Main when reopening a hot or layered patch.
 
 [English manual](docs/MANUAL.md) · [PDF manual](docs/logisth-Manual-English.pdf) ·
 [Implementation references](docs/STUDIO-0.5.md) ·
-[Download 0.5.2](https://github.com/logik93/logisth/releases/tag/v0.5.2)
+[Download 0.6.0](https://github.com/logik93/logisth/releases/tag/v0.6.0)
 
 Native archives are built and tested on Windows, macOS and Linux. Each package
 contains the English manual and build metadata. Publication requires all platform

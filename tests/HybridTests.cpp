@@ -46,7 +46,6 @@ int main() {
         }
         p.osc[0].level = .7f;
         p.osc[0].retrigger = true;
-        p.master = 1;
         for (int engine : {0, 1}) {
             p.osc[0].engine = engine;
             p.osc[0].phase = 90;

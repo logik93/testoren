@@ -1,13 +1,12 @@
 #pragma once
 namespace logisth {
-// Keep the existing operating level of the shared FX, then restore unity on output.
-// One full-scale mono oscillator is attenuated by the equal-power centre pan law
-// and this internal headroom factor. At unity source/mix/main, each final channel
-// must reproduce a sine at 0 dBFS peak (-3.0103 dBFS unweighted RMS).
-inline constexpr float engineHeadroom = .15f;
-inline constexpr float outputCalibration = 1.4142135623730951f / engineHeadroom;
+// Unity per output channel for one centred, full-scale mono source.
+// This compensates the equal-power pan law at the engine boundary, before FX.
+// No arbitrary headroom attenuation or reciprocal post-FX boost is applied.
+inline constexpr float engineOutputCalibration = 1.4142135623730951f;
 // Output-only trims: reference four-note chord, velocity .8, all FX as authored.
-// Quiet presets stop at unity; there is no note-count-dependent gain control.
-inline constexpr float factoryMainLevels[10] = {.42f,  .628f, .0586f, .407f, .461f,
-                                                .830f, .582f, .677f,  1.f,   1.f};
+// The dense distorted bass uses a lower peak trim; quieter presets stop at unity.
+// No note-count-dependent gain control is applied.
+inline constexpr float factoryMainLevels[10] = {.38f,  .628f, .2f,   .407f, .346f,
+                                                .830f, .582f, .593f, 1.f,   1.f};
 } // namespace logisth

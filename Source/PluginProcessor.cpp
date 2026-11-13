@@ -137,7 +137,6 @@ Params LogisthProcessor::snapshot() const {
     p.filterResonance = get(Param::filterres);
     p.keytrack = get(Param::keytrack);
     p.warmDrive = get(Param::warmdrive) > 0;
-    p.master = 1;
     p.portamento = get(Param::portamento);
     p.portaMode = int(get(Param::portamode));
     p.bendRange = get(Param::bendrange);
@@ -287,7 +286,7 @@ void LogisthProcessor::reset() {
     chordsWereEnabled = false;
     effects.reset();
     arp.reset();
-    masterSmooth = 0;
+    masterSmooth = get(Param::master);
     wasPlaying = false;
     expectedSample = -1;
     peak = 0;
@@ -352,15 +351,14 @@ void LogisthProcessor::processBlock(AudioBuffer<float> &audio, MidiBuffer &midi)
             for (int s = 0; s < count; ++s) {
                 masterSmooth += smoothing * (masterTarget - masterSmooth);
                 for (auto *ch : {l, r}) {
-                    float x =
-                        get(Param::gmuteaudio) > 0 ? 0 : ch[s] * masterSmooth * outputCalibration;
+                    float x = get(Param::gmuteaudio) > 0 ? 0 : ch[s] * masterSmooth;
                     ch[s] = std::isfinite(x) ? x : 0;
                     maximum = jmax(maximum, std::abs(ch[s]));
                     const size_t channel = ch == l ? 0 : 1;
                     maxima[channel] = jmax(maxima[channel], std::abs(ch[s]));
                 }
-                scope.push(partScopeA[size_t(s)] * masterSmooth * outputCalibration,
-                           partScopeB[size_t(s)] * masterSmooth * outputCalibration, l[s] + r[s]);
+                scope.push(partScopeA[size_t(s)] * masterSmooth,
+                           partScopeB[size_t(s)] * masterSmooth, l[s] + r[s]);
             }
             const auto &views = engine.playbackPictures();
             for (int i = 0; i < 4; ++i)
@@ -498,18 +496,22 @@ void LogisthProcessor::processBlock(AudioBuffer<float> &audio, MidiBuffer &midi)
     channelPeaks[1] = maxima[1];
     voices = engine.activeVoices();
 }
-void LogisthProcessor::getStateInformation(MemoryBlock &dest) {
+void LogisthProcessor::getStateInformation(MemoryBlock &dest) try {
     auto tree = state.copyState();
     tree.setProperty("schema", 4, nullptr);
     tree.setProperty("presetName", currentPresetName(), nullptr);
     saveAssets(tree);
     copyXmlToBinary(*tree.createXml(), dest);
+    if (dest.getSize() > size_t(stateMemoryLimit))
+        dest.reset();
+} catch (const std::bad_alloc &) {
+    dest.reset();
 }
 void LogisthProcessor::setStateInformation(const void *data, int size) {
     applyState(data, size);
 }
-bool LogisthProcessor::applyState(const void *data, int size) {
-    if (size <= 0 || size > 64 * 1024 * 1024)
+bool LogisthProcessor::applyState(const void *data, int size) try {
+    if (size <= 0 || size > stateMemoryLimit)
         return false;
     auto xml = getXmlFromBinary(data, size);
     if (!xml)
@@ -594,6 +596,8 @@ bool LogisthProcessor::applyState(const void *data, int size) {
     set("choruson", oldValue("chorus", 0) > 0 ? 1 : 0);
     set("delayon", oldValue("delay", 0) > 0 ? 1 : 0);
     return restore(migrated);
+} catch (const std::bad_alloc &) {
+    return false;
 }
 void LogisthProcessor::loadPreset(int index) {
     for (auto *parameter : getParameters()) {
