@@ -1,10 +1,20 @@
-# logisth 0.5.0
+# logisth 0.5.1
 
 **A two-part polyphonic subtractive synthesizer with a compact single-window console.**
 VST3, CLAP and Standalone for Windows, macOS and Linux. Built with JUCE and an
 independent synthesis engine; not affiliated with LennarDigital.
 
 ![logisth dark interface](docs/images/logisth-dark.png)
+
+## Fixed in 0.5.1
+
+- Buttons and menus stay stable between GUI refreshes; Retrig, Invert and the
+  arp enable switch respond to each click.
+- The arp playhead clears on disable in all three engines; latch, sustain and
+  scheduled notes are checked by regression tests.
+- Larger embedded text, a minimum 11 px base font and taller popup menu rows.
+- Press/refresh/release tests cover both parts and both themes, plus audio
+  checks for retrigger phase and inversion polarity.
 
 ## What's new in 0.5.0
 
@@ -21,7 +31,7 @@ independent synthesis engine; not affiliated with LennarDigital.
 
 [English manual](docs/MANUAL.md) · [PDF manual](docs/logisth-Manual-English.pdf) ·
 [Implementation references](docs/STUDIO-0.5.md) ·
-[Download 0.5.0](https://github.com/logik93/logisth/releases/tag/v0.5.0)
+[Download 0.5.1](https://github.com/logik93/logisth/releases/tag/v0.5.1)
 
 Native archives are built and tested on Windows, macOS and Linux. Each package
 contains the English manual and build metadata. Publication requires all platform

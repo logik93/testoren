@@ -239,6 +239,42 @@ int main() {
               "non-retrigger clock aligns with host PPQ");
         p.transportPlaying = false;
         check(ons(sequence(p)).empty(), "synchronised graphs respect stopped host transport");
+        for (int mode = 0; mode < 3; ++mode) {
+            auto params = ArpParams{};
+            params.enabled = true;
+            params.pattern = mode > 0;
+            params.graphs.enabled = mode == 2;
+            params.sync = false;
+            params.latch = true;
+            Arpeggiator arp;
+            arp.prepare(1000);
+            std::vector<MidiEvent> events;
+            auto emit = [&](MidiEvent e) { events.push_back(e); };
+            arp.begin(params, emit);
+            arp.input({0, EventType::NoteOn, 1, 60, 1}, params, emit);
+            arp.input({0, EventType::Controller, 1, 64, 127}, params, emit);
+            arp.input({0, EventType::NoteOff, 1, 60, 0}, params, emit);
+            arp.advance(0, 30, params, emit);
+            check(arp.playhead() >= 0, "arp starts before disable test");
+            params.enabled = false;
+            events.clear();
+            arp.begin(params, emit);
+            check(arp.playhead() == -1, "disable clears playhead in every arp engine");
+            arp.advance(0, 1000, params, emit);
+            check(ons(events).empty(),
+                  "disable cancels latched/sustained steps and pending repeats");
+            check(std::any_of(events.begin(), events.end(),
+                              [](auto e) {
+                                  return e.type == EventType::Controller && e.key == 64 &&
+                                         e.value == 0;
+                              }),
+                  "disable releases sustain for downstream instruments");
+            events.clear();
+            arp.input({0, EventType::NoteOn, 1, 67, .7f}, params, emit);
+            arp.input({20, EventType::NoteOff, 1, 67, 0}, params, emit);
+            check(ons(events).size() == 1 && ons(events)[0].key == 67,
+                  "disabled arp passes fresh notes through normally");
+        }
         ScopeBuffer scope;
         for (int i = 0; i < 10000; ++i)
             scope.push(float(i), -float(i), 0);

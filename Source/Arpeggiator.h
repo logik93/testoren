@@ -226,6 +226,8 @@ class Arpeggiator {
             repeatsLeft = 0;
             untilRepeat = -1;
             latched = false;
+            latchWasEnabled = false;
+            currentStep = -1;
             step = position = 0;
             untilStep = 0;
             enabled = p.enabled;

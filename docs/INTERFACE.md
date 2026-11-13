@@ -34,3 +34,11 @@ SAMPLE is the tenth rack page with source selection, actual waveform, live curso
 and grain markers. Pattern + GRAPHS shows one of eight 32-step graphs, independent
 length/divider, mute/reset, pitch masks and A-L named memories in the same rack.
 GRAPHS off retains the earlier Pattern grid. The mixer scope is always visible.
+
+Version 0.5.1 increases embedded font sizes by 18%, with an 11 px base minimum
+and 28 px popup rows. The console uses one shared layout-state comparison for
+refresh and layout; unchanged audio/UI state does not hide and rebuild controls.
+Regression tests exercise 100 toggle interaction cases across timer ticks in both parts
+and both themes, checking both directions of each switch. The cached layout
+previously omitted granular model state used by the refresh comparison, causing
+a permanent mismatch with default patches.

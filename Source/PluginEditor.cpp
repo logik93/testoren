@@ -13,7 +13,7 @@ Typeface::Ptr embeddedFace(bool bold) {
     return bold ? semiboldFace : regularFace;
 }
 Font font(float size, bool bold = false) {
-    return Font(FontOptions(embeddedFace(bold)).withHeight(size));
+    return Font(FontOptions(embeddedFace(bold)).withHeight(jmax(11.f, size * 1.18f)));
 }
 
 bool dark(const Component &c) {
@@ -111,7 +111,7 @@ Font LogisthLook::getPopupMenuFont() {
 }
 PopupMenu::Options LogisthLook::getOptionsForComboBoxPopupMenu(ComboBox &box, Label &label) {
     auto options =
-        LookAndFeel_V4::getOptionsForComboBoxPopupMenu(box, label).withStandardItemHeight(24);
+        LookAndFeel_V4::getOptionsForComboBoxPopupMenu(box, label).withStandardItemHeight(28);
     if (bool(box.getProperties()["routing"]))
         return options.withMinimumNumColumns(3).withMaximumNumColumns(3).withMinimumWidth(420);
     return options;
@@ -1430,7 +1430,8 @@ class LogisthEditor::Console : public Component,
             controls[size_t(Param(size_t(Param::o1retrig) + size_t(number - 1) * 12))]->enable(
                 value(Param(size_t(Param::o1engine) + slot * 16)) <= 1);
             controls[size_t(Param(size_t(Param::o1phase) + size_t(number - 1) * 12))]->enable(
-                value(Param(size_t(Param::o1retrig) + size_t(number - 1) * 12)) > 0);
+                value(Param(size_t(Param::o1retrig) + size_t(number - 1) * 12)) > 0 &&
+                value(Param(size_t(Param::o1engine) + slot * 16)) <= 1);
         } else {
             for (int i = 0; i < 3; ++i)
                 control(id + StringArray{"octave", "tune", "fine"}[i],
@@ -1810,12 +1811,18 @@ class LogisthEditor::Console : public Component,
         parts[1].repaint();
         for (auto &b : rackButtons)
             b->repaint();
-        clockSignature = int(value(Param::sync)) * 8 + int(value(Param::lfo1free)) * 4 +
-                         int(value(Param::lfo2free)) * 2 + int(value(Param::arpmode) >= 8) +
-                         int(value(Param::arppattern)) * 16 + int(value(Param::arpgraphs)) * 32;
-        for (int o = 0; o < 4; ++o)
-            clockSignature += int(value(Param(size_t(Param::o1engine) + size_t(o) * 16)))
-                              << (6 + o * 2);
+        layoutStamp = currentLayoutState();
+    }
+    std::array<int, 15> currentLayoutState() const {
+        std::array<int, 15> state{int(value(Param::sync)),       int(value(Param::lfo1free)),
+                                  int(value(Param::lfo2free)),   int(value(Param::arpmode) >= 8),
+                                  int(value(Param::arppattern)), int(value(Param::arpgraphs)),
+                                  int(value(Param::glink))};
+        for (int o = 0; o < 4; ++o) {
+            state[size_t(7 + o)] = int(value(Param(size_t(Param::o1engine) + size_t(o) * 16)));
+            state[size_t(11 + o)] = int(value(Param(size_t(Param::o1gmodel) + size_t(o) * 15)));
+        }
+        return state;
     }
     void timerCallback() override {
         processor.serviceAssets();
@@ -1853,14 +1860,7 @@ class LogisthEditor::Console : public Component,
             waveView.repaint();
         if (rack == 8)
             refreshChord();
-        int signature = int(value(Param::sync)) * 8 + int(value(Param::lfo1free)) * 4 +
-                        int(value(Param::lfo2free)) * 2 + int(value(Param::arpmode) >= 8) +
-                        int(value(Param::arppattern)) * 16 + int(value(Param::arpgraphs)) * 32;
-        for (int o = 0; o < 4; ++o) {
-            signature += int(value(Param(size_t(Param::o1engine) + size_t(o) * 16))) << (6 + o * 2);
-            signature += int(value(Param(size_t(Param::o1gmodel) + size_t(o) * 15))) << (16 + o);
-        }
-        if (signature != clockSignature)
+        if (currentLayoutState() != layoutStamp)
             layout();
         for (int i = 0; i < 4; ++i)
             controls[size_t(Param(size_t(Param::o1phase) + size_t(i) * 12))]->enable(
@@ -2071,7 +2071,8 @@ class LogisthEditor::Console : public Component,
     TooltipWindow tooltips;
     String readout, lastStatus;
     std::array<uint64_t, 4> displayedRevisions{};
-    int selectedPart = 0, rack = 0, stepPage = 0, clockSignature = -1, previewSync = -1;
+    std::array<int, 15> layoutStamp{};
+    int selectedPart = 0, rack = 0, stepPage = 0, previewSync = -1;
 };
 LogisthEditor::LogisthEditor(LogisthProcessor &p) : AudioProcessorEditor(p) {
     setLookAndFeel(&look);

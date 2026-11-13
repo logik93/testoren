@@ -1,4 +1,4 @@
-# logisth 0.5.0 — User Manual
+# logisth 0.5.1 — User Manual
 
 A two-part polyphonic subtractive synthesizer for VST3, CLAP and standalone use.
 This manual describes logisth's own controls and behaviour. logisth is an independent

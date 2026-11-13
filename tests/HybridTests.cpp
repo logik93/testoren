@@ -47,6 +47,25 @@ int main() {
         p.osc[0].level = .7f;
         p.osc[0].retrigger = true;
         p.master = 1;
+        for (int engine : {0, 1}) {
+            p.osc[0].engine = engine;
+            p.osc[0].phase = 90;
+            const auto reference = render(p);
+            check(difference(reference, render(p)) < 1e-6,
+                  "Retrig repeats the selected start phase");
+            p.osc[0].phase = 180;
+            check(difference(reference, render(p)) > 1, "Retrig phase changes audible waveform");
+            p.osc[0].phase = 90;
+            p.osc[0].invert = true;
+            const auto inverted = render(p);
+            double error = 0;
+            for (size_t i = 0; i < reference.size(); ++i)
+                error += std::abs(reference[i] + inverted[i]);
+            check(error < 1e-5, "Invert reverses audio polarity in Classic and Wavetable engines");
+            p.osc[0].invert = false;
+        }
+        p.osc[0].engine = 0;
+        p.osc[0].phase = 0;
         for (double sr : {44100., 48000., 96000.})
             for (int slot = 0; slot < 4; ++slot)
                 for (int mode = 0; mode < 4; ++mode) {

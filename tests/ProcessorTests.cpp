@@ -345,12 +345,106 @@ void checkStudioProcessor() {
            "user preset files, malformed file rejection, real sum scope and grain telemetry\n";
 }
 
+void checkPointerInteraction() {
+    using namespace juce;
+    LogisthProcessor p;
+    p.loadPreset(0);
+    std::unique_ptr<AudioProcessorEditor> ui(p.createEditor());
+    ui->setSize(1240, 860);
+    auto *console = ui->getChildComponent(0);
+    auto tick = [] {
+        Thread::sleep(55);
+        Timer::callPendingTimersSynchronously();
+    };
+    auto event = [](Component &c, bool down) {
+        auto at = c.getLocalBounds().getCentre().toFloat();
+        return MouseEvent(Desktop::getInstance().getMainMouseSource(), at,
+                          ModifierKeys(down ? ModifierKeys::leftButtonModifier : 0), 1, 0, 0, 0, 0,
+                          &c, &c, Time::getCurrentTime(), at, Time::getCurrentTime(), 1, false);
+    };
+    struct Probe : ComponentListener {
+        int changes = 0;
+        void componentVisibilityChanged(Component &) override {
+            ++changes;
+        }
+    };
+    auto click = [&](Button &button, Component &field, bool wait) {
+        Probe probe;
+        field.addComponentListener(&probe);
+        static_cast<Component &>(button).mouseDown(event(button, true));
+        check(button.isDown(), "mouse down reaches enabled button");
+        if (wait)
+            tick();
+        field.removeComponentListener(&probe);
+        check(probe.changes == 0,
+              "idle refresh must not hide/show a held button or its popup parent");
+        check(button.isDown(), "refresh must preserve pressed button state until mouse up");
+        // Paint the down state, as a native peer would, to avoid JUCE's synthetic flash timer.
+        button.createComponentSnapshot(button.getLocalBounds());
+        static_cast<Component &>(button).mouseUp(event(button, false));
+    };
+    auto *editor = dynamic_cast<LogisthEditor *>(ui.get());
+    int tested = 0;
+    for (bool dark : {false, true}) {
+        editor->setDarkTheme(dark);
+        for (int part = 0; part < 2; ++part) {
+            for (auto *child : console->getChildren())
+                if (auto *button = dynamic_cast<Button *>(child))
+                    if (button->getButtonText() == (part == 0 ? "A" : "B") && child->getY() < 80)
+                        click(*button, *button, false);
+            tick();
+            for (const auto &spec : logisth::parameterSpecs) {
+                auto *field = console->findChildWithID(spec.id);
+                if (!field || !field->isVisible() || !field->isEnabled())
+                    continue;
+                for (auto *child : field->getChildren())
+                    if (auto *button = dynamic_cast<ToggleButton *>(child))
+                        if (button->isVisible()) {
+                            float before = p.state.getRawParameterValue(spec.id)->load();
+                            click(*button, *field, true);
+                            check(p.state.getRawParameterValue(spec.id)->load() != before,
+                                  "every held-and-released toggle changes its parameter on first "
+                                  "click");
+                            tick();
+                            click(*button, *field, true);
+                            check(p.state.getRawParameterValue(spec.id)->load() == before,
+                                  "second click restores toggle without extra clicks");
+                            tick();
+                            ++tested;
+                        }
+            }
+        }
+    }
+    // All four model selectors, including host changes, must settle to one stable layout.
+    for (int model : {0, 1}) {
+        for (int i = 1; i <= 4; ++i) {
+            auto *param = p.state.getParameter("o" + String(i) + "gmodel");
+            param->setValueNotifyingHost(param->convertTo0to1(float(model)));
+        }
+        tick();
+        Probe probe;
+        auto *field = console->findChildWithID("p2type");
+        check(field && field->isVisible(), "visible filter menu selected for stability check");
+        field->addComponentListener(&probe);
+        tick();
+        tick();
+        field->removeComponentListener(&probe);
+        check(probe.changes == 0,
+              "menu parent stays stable across refreshes for either grain model");
+    }
+    check(tested >= 60, "buttons tested on both parts and in both themes");
+    std::cout << "PASS pointer interaction: " << tested
+              << " toggles, press/refresh/release and immediate on/off, both parts/themes, stable "
+                 "menu parents\n";
+}
+
 int main(int argc, char **argv) {
     try {
         juce::ScopedJuceInitialiser_GUI gui;
         checkEffects();
         checkHybridProcessor();
         checkStudioProcessor();
+        checkPointerInteraction();
         LogisthProcessor p;
         p.setRateAndBufferSizeDetails(48000, 512);
         p.prepareToPlay(48000, 512);
