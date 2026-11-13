@@ -3,5 +3,19 @@
   "automation_commit": "bde89b223fcbfee80c0b68959617ad6d07b439cc",
   "run_id": "43506282500",
   "run_url": "https://github.com/logik93/logisth/actions/runs/43506282500",
-  "phase": "building"
+  "phase": "failed",
+  "jobs": {
+    "started": {
+      "result": "success",
+      "outputs": {}
+    },
+    "plugins": {
+      "result": "success",
+      "outputs": {}
+    },
+    "publish": {
+      "result": "failure",
+      "outputs": {}
+    }
+  }
 }
