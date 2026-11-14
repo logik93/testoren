@@ -1,4 +1,5 @@
 #pragma once
+#include "Envelope.h"
 #include "Gain.h"
 #include "Granular.h"
 #include "Modulation.h"
@@ -42,56 +43,6 @@ struct Params {
             e.sustain = 0;
     }
 };
-class Envelope {
-    enum Stage { off, attack, decay, sustain, release } stage = off;
-    float value = 0, releaseStep = 0;
-
-  public:
-    void reset() {
-        stage = off;
-        value = 0;
-    }
-    void on() {
-        stage = attack;
-        value = 0;
-    }
-    void releaseNote(float seconds, double sr) {
-        releaseStep = value / float(std::max(1., seconds * sr));
-        stage = release;
-    }
-    bool active() const {
-        return stage != off;
-    }
-    float tick(const EnvelopeParams &p, double sr) {
-        switch (stage) {
-        case off:
-            return 0;
-        case attack:
-            value += float(1 / std::max(1., p.attack * sr));
-            if (value >= 1) {
-                value = 1;
-                stage = decay;
-            }
-            break;
-        case decay:
-            value -= float((1 - p.sustain) / std::max(1., p.decay * sr));
-            if (value <= p.sustain) {
-                value = p.sustain;
-                stage = sustain;
-            }
-            break;
-        case sustain:
-            value = p.sustain;
-            break;
-        case release:
-            value -= releaseStep;
-            if (value <= 0)
-                reset();
-            break;
-        }
-        return value;
-    }
-};
 struct Filter {
     float ic1 = 0, ic2 = 0;
     float tick(float input, float cutoff, float resonance, int type, double sr, float drive,
@@ -123,8 +74,9 @@ class Engine {
         uint64_t age = 0;
         float velocity = 0, pressure = -1, random = 0, pitch = 60, glideStep = 0;
         std::array<std::array<double, 8>, 4> phases{};
-        std::array<Envelope, 2> amp, env;
-        std::array<Envelope, 4> sourceEnv;
+        std::array<AudioEnvelope, 2> amp;
+        std::array<Envelope, 2> env;
+        std::array<AudioEnvelope, 4> sourceEnv;
         std::array<float, 4> sourcePosition{};
         std::array<int, 4> sourceModes{-1, -1, -1, -1};
         std::array<std::array<SourcePlayback, 8>, 4> playback{};

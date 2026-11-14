@@ -9,6 +9,57 @@ void check(bool ok, const char *message) {
     if (!ok)
         throw std::runtime_error(message);
 }
+void checkEnvelopeMidiEdges() {
+    using namespace juce;
+    for (double rate : {44100., 48000., 96000.})
+        for (int wave = 0; wave < 8; ++wave)
+            for (float sustain : {0.f, 1.f}) {
+                AudioBuffer<float> reference;
+                for (int blockSize : {1, 31, 257, 512}) {
+                    // Fresh instances share the same initial RNG state, so even
+                    // the noise waveform can be compared sample for sample.
+                    LogisthProcessor p;
+                    gain_test::cleanSine(p);
+                    gain_test::set(p, "o1wave", float(wave));
+                    gain_test::set(p, "o1phase", 90);
+                    gain_test::set(p, "p1amps", sustain);
+                    gain_test::set(p, "p1ampr", 0);
+                    gain_test::set(p, "p2ampr", 0);
+                    p.prepareToPlay(rate, blockSize);
+                    AudioBuffer<float> output(2, 1024);
+                    output.clear();
+                    AudioBuffer<float> block(2, blockSize);
+                    for (int offset = 0; offset < output.getNumSamples(); offset += blockSize) {
+                        int length = std::min(blockSize, output.getNumSamples() - offset);
+                        block.setSize(2, length, false, false, true);
+                        MidiBuffer midi;
+                        if (offset <= 37 && offset + length > 37)
+                            midi.addEvent(MidiMessage::noteOn(1, 69, 1.f), 37 - offset);
+                        if (offset <= 301 && offset + length > 301)
+                            midi.addEvent(MidiMessage::noteOff(1, 69), 301 - offset);
+                        p.processBlock(block, midi);
+                        for (int ch = 0; ch < 2; ++ch)
+                            output.copyFrom(ch, offset, block, ch, 0, length);
+                    }
+                    for (int ch = 0; ch < 2; ++ch)
+                        for (int i = 0; i < output.getNumSamples(); ++i) {
+                            float value = output.getSample(ch, i);
+                            check(std::isfinite(value), "anti-click processor output is finite");
+                            if (sustain == 0 || i <= 37 || i > 301 + int(std::ceil(.0011 * rate)))
+                                check(
+                                    value == 0,
+                                    "zero ADSR and sample-accurate smoothed MIDI edges are silent");
+                            if (blockSize != 1)
+                                check(std::abs(value - reference.getSample(ch, i)) < 1e-6f,
+                                      "ADSR edges are invariant across host buffer sizes");
+                        }
+                    if (blockSize == 1)
+                        reference.makeCopyOf(output);
+                }
+            }
+    std::cout << "PASS processor anti-click: all waves, three rates, four host buffers, MIDI "
+                 "on/off at samples 37/301\n";
+}
 void checkEffects() {
     using namespace logisth;
     Effects effects;
@@ -885,6 +936,7 @@ int main(int argc, char **argv) {
                            juce::File(juce::String::fromUTF8(argv[2])));
             return 0;
         }
+        checkEnvelopeMidiEdges();
         gain_test::run(true);
         checkEffects();
         checkHybridProcessor();

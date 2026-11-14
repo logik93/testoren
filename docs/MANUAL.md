@@ -1,4 +1,4 @@
-# logisth 0.8.0 — User Manual
+# logisth 0.8.1 — User Manual
 
 A two-part polyphonic subtractive synthesizer for VST3, CLAP and standalone use.
 This manual describes logisth's own controls and behaviour. logisth is an independent
@@ -109,6 +109,13 @@ The amplitude envelope for each part has attack, decay, sustain and release.
 Attack rises from silence, decay approaches sustain, and release fades after
 note-off. Sustain is a level; the other three are times. The line above the
 faders illustrates the current envelope. Amp Env A and B remain independent.
+Zero-time attack and decay enter sustain without emitting
+an extra peak sample. With A, D and S at zero, the note is silent. Amplitude
+envelopes use a short, approximately 1 ms anti-click smoothing window, so zero
+Attack/Release avoid an abrupt gate at an arbitrary waveform phase. This also
+smooths other amplitude-envelope transitions and adds a bounded tail of up to
+approximately 1 ms. The settled level is unchanged; modulation envelopes retain
+their unsmoothed control values.
 The preview uses a proportional time axis, with a 0.5-second illustrative held
 segment. Zero-millisecond attack draws a vertical rise; a larger attack time
 makes the rise take longer. Zero decay/release also draw vertical transitions.
@@ -384,9 +391,10 @@ This is a unity reference, rather than a normal listening preset.
 
 The source bus is calibrated before the shared FX. The previous 0.15 attenuator
 and the duplicate engine Master ramp have been removed. Main is applied once,
-after effects. Reset starts its smoothing at the chosen Main value, so an
-instant attack is not reduced by a hidden startup fade. Knob changes remain
-smoothed. Distortion and compressor thresholds therefore respond to the actual
+after effects. Reset starts its smoothing at the chosen Main value. Each voice's
+amplitude envelope has its own approximately 1 ms anti-click edge; there is no
+extra startup fade on Main. Knob changes remain smoothed. Distortion and
+compressor thresholds therefore respond to the actual
 source-bus level. Levels and effect drive have been retuned together; older
 patches can sound different. Factory Main trims provide headroom; new instances start with Main at 65%. Reduce Main
 for louder layered edits.

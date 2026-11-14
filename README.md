@@ -1,10 +1,19 @@
-# logisth 0.8.0
+# logisth 0.8.1
 
 **A two-part polyphonic subtractive synthesizer with a compact single-window console.**
 VST3, CLAP and Standalone for Windows, macOS and Linux. Built with JUCE and an
 independent synthesis engine; not affiliated with LennarDigital.
 
 ![logisth dark interface](docs/images/logisth-dark.png)
+
+## Fixed in 0.8.1
+
+- Zero attack/decay now enters the requested sustain immediately. An all-zero
+  ADSR produces silence instead of a single full-amplitude sample.
+- Part and optional oscillator amplitude envelopes have a short (~1 ms)
+  anti-click edge, including zero Release. Steady-state gain remains unchanged;
+  modulation envelopes retain instantaneous zero-time transitions.
+- [Anti-click regression notes](docs/ANTICLICK.md).
 
 ## New in 0.8.0
 
@@ -88,7 +97,7 @@ sounds. Parameter IDs remain stable; preserving old sound is not the objective.
 
 [English manual](docs/MANUAL.md) · [PDF manual](docs/logisth-Manual-English.pdf) ·
 [Implementation references](docs/STUDIO-0.5.md) ·
-[Download 0.8.0](https://github.com/logik93/logisth/releases/tag/v0.8.0)
+[Download 0.8.1](https://github.com/logik93/logisth/releases/tag/v0.8.1)
 
 Native archives are built and tested on Windows, macOS and Linux. Each package
 contains the English manual and build metadata. Publication requires all platform

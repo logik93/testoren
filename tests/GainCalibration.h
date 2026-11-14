@@ -159,9 +159,17 @@ inline void run(bool verify, const juce::File &folder = {}) {
         juce::AudioBuffer<float> onset;
         auto instant = measure(p, 48000, {69}, 1, 2, &onset);
         row("instant_attack", 48000, instant);
-        if (verify)
-            require(onset.getSample(0, 0) > .9999f && onset.getSample(1, 0) > .9999f,
-                    "no hidden startup master fade attenuates the first sample");
+        if (verify) {
+            require(onset.getSample(0, 0) == 0 && onset.getSample(1, 0) == 0,
+                    "zero attack starts at silence with a nonzero-phase carrier");
+            for (int s = 49; s < 150; ++s) {
+                float reference = float(std::cos(2 * logisth::pi * 440 * s / 48000.));
+                require(std::abs(onset.getSample(0, s) - reference) < 1e-5f &&
+                            std::abs(onset.getSample(1, s) - reference) < 1e-5f,
+                        "per-voice anti-click edge reaches unity within 1 ms without master fade");
+            }
+            require(std::abs(instant.dbPeak()) < .002, "anti-click edge retains unity steady gain");
+        }
         for (const auto *id : {"master", "mixA", "o1level"}) {
             cleanSine(p);
             set(p, id, .5f);

@@ -198,7 +198,7 @@ def main():
     metadata = json.dumps(info, indent=2) + '\n'
     (stage / 'BUILD_INFO.json').write_text(metadata)
     (output / f'build-info-{args.platform}.json').write_text(metadata)
-    for name in ['README.md', 'docs/IMPLEMENTATION.md', 'docs/STUDIO-0.5.md', 'docs/CALIBRATION.md', 'docs/INTERFACE.md', 'docs/MANUAL.md', 'docs/logisth-Manual-English.pdf',
+    for name in ['README.md', 'docs/IMPLEMENTATION.md', 'docs/STUDIO-0.5.md', 'docs/CALIBRATION.md', 'docs/ANTICLICK.md', 'docs/INTERFACE.md', 'docs/MANUAL.md', 'docs/logisth-Manual-English.pdf',
                  'assets/fonts/LICENSE.txt', 'assets/fonts/NOTICE.txt']:
         if not (source / name).is_file():
             continue

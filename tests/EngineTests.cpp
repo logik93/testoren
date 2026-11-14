@@ -1,4 +1,5 @@
 #include "Engine.h"
+#include "EnvelopeClickTests.h"
 #include "EnvelopePlot.h"
 #include <iostream>
 #include <stdexcept>
@@ -18,6 +19,7 @@ float energy(const std::vector<float> &a) {
 }
 int main() {
     try {
+        envelope_click_test::run();
         auto instant = envelopePlot({0, .2f, .7f, .3f});
         require(instant[0].x == instant[1].x && instant[0].level == 0 && instant[1].level == 1,
                 "zero-ms ADSR attack is vertical with no artificial diagonal segment");

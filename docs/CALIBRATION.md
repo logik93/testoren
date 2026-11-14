@@ -1,7 +1,7 @@
-# logisth output calibration — 0.8.0
+# logisth output calibration — 0.8.1
 
-The gain staging introduced in 0.6 is retained in 0.8. These measurements are
-regenerated with individual WT routing and the new clean-saw Init at Main 65%.
+The gain staging introduced in 0.6 is retained in 0.8.1. These measurements are
+regenerated with the amplitude-envelope anti-click fix and clean-saw Init at Main 65%.
 
 The reference is one full-scale 440 Hz sine, centred, at source Volume = Mix =
 Main = 1, velocity 127, sustain 1, one unison voice, no modulation, filters bypassed
@@ -10,7 +10,7 @@ including envelopes, panning, FX bypass and output gain. One second of settling
 is followed by a one-second measurement. Peak and RMS use full scale = 1; RMS
 is not AES17-offset.
 
-| Sample rate | 0.5.1 peak dBFS | 0.8.0 peak dBFS | 0.8.0 RMS dBFS |
+| Sample rate | 0.5.1 peak dBFS | 0.8.1 peak dBFS | 0.8.1 RMS dBFS |
 | --- | --- | --- | --- |
 | 44,100 Hz | -19.4886 | 0.0000 | -3.0103 |
 | 48,000 Hz | -19.4886 | 0.0000 | -3.0103 |
@@ -21,7 +21,10 @@ centre pan law. The new source bus removes the arbitrary attenuator and applies
 sqrt(2) once to establish unity per centred output channel before the effects.
 There is no reciprocal post-FX booster. Main is the single post-FX output gain.
 The duplicate engine Master ramp is removed, and Main smoothing starts at the
-chosen value on reset: instant-attack sounds retain their first sample.
+chosen value on reset. The 0.8.1 anti-click fix adds approximately 1 ms of
+smoothing to each voice's amplitude envelopes, including zero Attack/Release.
+The first sample of a new note is now silent; settled gain remains unity.
+There is no additional startup fade on Main. See [anti-click notes](ANTICLICK.md).
 
 Shared effects now receive a calibrated bus. A 0 dBFS sine into the compressor
 at threshold -12 dB, ratio 4, attack 0.1 ms and release 100 ms peaks near -9 dBFS,
@@ -44,12 +47,12 @@ measurements, not LUFS matching or guarantees for every chord or patch edit.
 | Wide supersaw | -25.19 | -6.00 |
 | Sub bass | -4.60 | -13.98 |
 | Slow atmosphere | -21.43 | -6.01 |
-| Pulse pluck | -22.51 | -6.00 |
-| Step sequence | -27.62 | -6.01 |
+| Pulse pluck | -22.51 | -5.98 |
+| Step sequence | -27.62 | -6.26 |
 | Morph glass | -24.54 | -6.02 |
-| Sample keys | -25.85 | -6.01 |
+| Sample keys | -25.85 | -6.00 |
 | Grain cloud | -30.07 | -6.84 |
-| Chord pulse | -31.93 | -8.57 |
+| Chord pulse | -31.93 | -8.54 |
 
 All ten sounds are additionally tested at 44.1 and 96 kHz. Nine authored sounds
 retain a minimum 3 dB of reference-chord headroom. Init is now a single raw saw
@@ -62,7 +65,8 @@ Main default is 65%. Saved projects and presets retain their stored Main value.
 
 ## Regression checks
 
-- Instant-attack first-sample amplitude with no hidden startup fade.
+- Silent onset with a nonzero-phase carrier, unity amplitude after the short
+  per-voice anti-click edge, and no additional startup fade on Main.
 - Compressor reduction at the calibrated source-bus level.
 - Full processor sine peak and RMS at 44.1, 48 and 96 kHz; stereo channel equality.
 - Half source/Mix/Main gain: -6.0206 dB each.
