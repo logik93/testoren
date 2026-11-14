@@ -1,0 +1,18 @@
+{
+  "format": "logisth-theme",
+  "version": 1,
+  "name": "Cobalt",
+  "dark": true,
+  "colours": {
+    "body": "#0C1725",
+    "panel": "#11243A",
+    "border": "#28486A",
+    "text": "#DCF4FF",
+    "muted": "#94B5CC",
+    "accent": "#50C7EE",
+    "highlight": "#8DE2FF",
+    "screen": "#071423",
+    "screenBorder": "#264862",
+    "screenText": "#DEF6FF"
+  }
+}

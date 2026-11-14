@@ -1,9 +1,10 @@
 #pragma once
 #include "Modulation.h"
+#include "Reverb.h"
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <vector>
 namespace logisth {
-struct EffectsParams {
+struct EffectsParams : ReverbControls {
     bool distortion = false, phaser = false, chorus = false, eq = false, reverb = true,
          delay = false, compressor = false, sync = true, dual = false, pingpong = false;
     int distortionType = 0, phaserDivision = 12, chorusDivision = 12, delayDivisionL = 8,
@@ -67,6 +68,10 @@ class Effects {
     std::array<std::array<Biquad, 2>, 2> shelves{};
     std::array<float, 512> wetL{}, wetR{};
     juce::Reverb room;
+    std::array<CharacterReverb, 4> reverbModels;
+    std::array<float, 5> reverbWeights{};
+    std::array<float, 512> reverbInputL{}, reverbInputR{};
+    bool reverbStarted = false;
     float crushCountdown = 0, detector = 0, drive = 0, distMix = 1, delayMix = 0, reverbMix = 0;
     static float read(const std::vector<float> &data, size_t pos, double samples) {
         double at = double(pos) - samples;
@@ -93,6 +98,8 @@ class Effects {
         for (auto &b : chorusLines)
             b.assign(size_t(sr * .1) + 4, 0);
         room.setSampleRate(sr);
+        for (int i = 0; i < 4; ++i)
+            reverbModels[size_t(i)].prepare(sr, i + 1);
         reset();
     }
     void reset() {
@@ -108,6 +115,10 @@ class Effects {
         smearState = {};
         shelves = {};
         room.reset();
+        for (auto &model : reverbModels)
+            model.reset();
+        reverbWeights = {};
+        reverbStarted = false;
         crushCountdown = detector = drive = delayMix = reverbMix = 0;
         distMix = 1;
     }
@@ -233,11 +244,40 @@ class Effects {
             rp.wetLevel = 1;
             rp.dryLevel = 0;
             room.setParameters(rp);
+            std::copy_n(wetL.begin(), n, reverbInputL.begin());
+            std::copy_n(wetR.begin(), n, reverbInputR.begin());
             room.processStereo(wetL.data(), wetR.data(), n);
+            int selected = std::clamp(p.reverbType, 0, 4);
+            if (!reverbStarted) {
+                reverbWeights[size_t(selected)] = 1;
+                reverbStarted = true;
+            }
+            for (auto &model : reverbModels)
+                model.configure(p, p.reverbSize, p.reverbDamp);
+            const float fade = float(1 / (.1 * sr));
             for (int s = 0; s < n; ++s) {
+                float total = 0, wet[2]{};
+                for (int i = 0; i < 5; ++i) {
+                    float &weight = reverbWeights[size_t(i)];
+                    float old = weight;
+                    weight =
+                        i == selected ? std::min(1.f, weight + fade) : std::max(0.f, weight - fade);
+                    total += weight;
+                    if (i == 0) {
+                        wet[0] += wetL[size_t(s)] * weight;
+                        wet[1] += wetR[size_t(s)] * weight;
+                    } else if (weight > 0) {
+                        auto sample = reverbModels[size_t(i - 1)].tick(reverbInputL[size_t(s)],
+                                                                       reverbInputR[size_t(s)]);
+                        width(sample[0], sample[1], p.reverbWidth);
+                        wet[0] += sample[0] * weight;
+                        wet[1] += sample[1] * weight;
+                    } else if (old > 0)
+                        reverbModels[size_t(i - 1)].reset();
+                }
                 reverbMix += smooth * (p.reverbMix - reverbMix);
-                l[s] += (wetL[s] - l[s]) * reverbMix;
-                r[s] += (wetR[s] - r[s]) * reverbMix;
+                l[s] += (wet[0] / total - l[s]) * reverbMix;
+                r[s] += (wet[1] / total - r[s]) * reverbMix;
             }
         }
         const double dl =

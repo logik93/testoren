@@ -90,6 +90,6 @@ def footer(canvas, doc):
 
 SimpleDocTemplate(str(root / 'docs/logisth-Manual-English.pdf'), pagesize=A4,
                   rightMargin=42, leftMargin=42, topMargin=42, bottomMargin=44,
-                  title=f'logisth {version} — User Manual', author='Testoren').build(
+                  title=f'logisth {version} — User Manual', author='wavelogik').build(
                       story, onFirstPage=footer, onLaterPages=footer)
 print('Rendered docs/logisth-Manual-English.pdf')

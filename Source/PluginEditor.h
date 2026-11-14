@@ -1,5 +1,6 @@
 #pragma once
 #include "PluginProcessor.h"
+#include "ThemeSettings.h"
 
 struct LogisthColours {
     juce::Colour body{0xffe8e9e2}, panel{0xfff4f3ed}, line{0xffced2c9}, ink{0xff283632},
@@ -8,6 +9,7 @@ struct LogisthColours {
     bool darkTheme = false;
     int themeId = 0;
     void choosePalette(int);
+    void applyPalette(const logisth::ThemeDefinition &);
 };
 
 class LogisthLook : public juce::LookAndFeel_V4, public LogisthColours {
@@ -15,6 +17,7 @@ class LogisthLook : public juce::LookAndFeel_V4, public LogisthColours {
     LogisthLook();
     void setDarkTheme(bool);
     void setTheme(int);
+    void setPalette(const logisth::ThemeDefinition &);
     juce::Typeface::Ptr getTypefaceForFont(const juce::Font &) override;
     void drawRotarySlider(juce::Graphics &, int, int, int, int, float, float, float,
                           juce::Slider &) override;
@@ -36,7 +39,7 @@ class LogisthLook : public juce::LookAndFeel_V4, public LogisthColours {
     juce::Typeface::Ptr regular, semibold;
 };
 
-class LogisthEditor : public juce::AudioProcessorEditor {
+class LogisthEditor : public juce::AudioProcessorEditor, private juce::Timer {
   public:
     explicit LogisthEditor(LogisthProcessor &);
     ~LogisthEditor() override;
@@ -48,9 +51,16 @@ class LogisthEditor : public juce::AudioProcessorEditor {
     void setTheme(int);
     int selectedTheme() const;
     bool isDarkTheme() const;
+    void setUIScale(double percent);
+    double uiScale() const {
+        return scalePercent;
+    }
 
   private:
     class Console;
     LogisthLook look;
     std::unique_ptr<Console> console;
+    void timerCallback() override;
+    double scalePercent = 100;
+    bool rememberSize = false, applyingScale = false, sizeDirty = false;
 };

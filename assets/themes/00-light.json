@@ -1,0 +1,18 @@
+{
+  "format": "logisth-theme",
+  "version": 1,
+  "name": "Light",
+  "dark": false,
+  "colours": {
+    "body": "#E8E9E2",
+    "panel": "#F4F3ED",
+    "border": "#CED2C9",
+    "text": "#283632",
+    "muted": "#667268",
+    "accent": "#406F5D",
+    "highlight": "#BDD8BB",
+    "screen": "#243430",
+    "screenBorder": "#41514B",
+    "screenText": "#E6ECE1"
+  }
+}

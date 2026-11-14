@@ -1,0 +1,18 @@
+{
+  "format": "logisth-theme",
+  "version": 1,
+  "name": "Midnight Blue",
+  "dark": true,
+  "colours": {
+    "body": "#0D1118",
+    "panel": "#151D29",
+    "border": "#283A50",
+    "text": "#E0EDFF",
+    "muted": "#9AADC5",
+    "accent": "#62ACFF",
+    "highlight": "#91C8FF",
+    "screen": "#080D15",
+    "screenBorder": "#243952",
+    "screenText": "#E0EDFF"
+  }
+}

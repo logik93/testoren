@@ -1,0 +1,18 @@
+{
+  "format": "logisth-theme",
+  "version": 1,
+  "name": "Forest",
+  "dark": true,
+  "colours": {
+    "body": "#18201C",
+    "panel": "#232D27",
+    "border": "#354238",
+    "text": "#E0E7D8",
+    "muted": "#9AA99A",
+    "accent": "#B0C9A5",
+    "highlight": "#BFD6B3",
+    "screen": "#101A15",
+    "screenBorder": "#35483B",
+    "screenText": "#E3EADC"
+  }
+}

@@ -1,6 +1,6 @@
-# logisth 0.8.1 — User Manual
+# logisth 0.9.0 — User Manual
 
-A two-part polyphonic subtractive synthesizer for VST3, CLAP and standalone use.
+wavelogik logisth is a two-part polyphonic subtractive synthesizer for VST3, CLAP and standalone use.
 This manual describes logisth's own controls and behaviour. logisth is an independent
 instrument and is not affiliated with LennarDigital. It does not load Sylenth1
 presets or reproduce its sound exactly.
@@ -66,15 +66,37 @@ SOLO, POLY, SYNC and SETTINGS. Filters are on the left, the rack in the centre, 
 the mixer on the right. Mod Env, LFO and Misc routing remain visible below them.
 The bottom row contains wheels, the keyboard and mono/portamento controls.
 
-Drag the bottom-right resize handle to scale the console from 80% to 150%.
-The nominal size is 1240 by 860 pixels. Initial size adapts to the display.
-SETTINGS opens appearance and About inside the central rack. Choose Light,
-Midnight Blue, Cobalt, Graphite or Forest. The latter four are dark palettes;
-Midnight Blue is the default black/blue theme. Appearance is saved as a user
-preference and recalled by new instances. Existing instances follow changes in
-the same host process. Loading a preset or project keeps the selected colour;
-appearance does not alter audio parameters. User settings are stored in
-`logisth/appearance.json` under the system user application-data directory.
+Drag the bottom-right resize handle, or open SETTINGS / APPEARANCE and enter
+UI SCALE from 80% to 200%. Decimal values such as 137.5% are accepted. The
+nominal size is 1240 by 860 pixels. The displayed percentage shows the last valid
+scale; invalid/out-of-range entries restore it. Exact window dimensions and the
+entered percentage are saved and restored when the editor or a new instance
+opens. A fresh installation adapts the initial size to its display. Each open
+window keeps its own size; changing one sets the default for subsequent windows.
+
+SETTINGS has APPEARANCE, THEME EDITOR and ABOUT tabs inside the central rack.
+The five standard themes are Light, Midnight Blue, Cobalt, Graphite and Forest.
+Midnight Blue is the default. Theme selection is shared by open instances and
+recalled by new ones; loading audio presets/projects preserves theme and scale.
+User preferences live in `logisth/appearance.json` under the system user
+application-data directory, independently of the audio patch.
+
+OPEN FOLDER reveals the adjacent `themes` folder. All five standard themes are
+written there as JSON files on first use. To create a variation, choose a theme,
+click EDIT / NEW, give it a name, and select one of ten colour roles. Use the
+colour picker or enter a six-digit RGB hex colour (for example #62ACFF), then
+press Enter. DARK CONTROLS chooses light/dark control styling. Edits preview in
+the instrument; SAVE AS NEW writes and selects a custom copy. RESET EDITS recalls
+the selected saved file. Standard files are retained when custom copies are saved.
+
+To install a shared theme, copy its .json file into the folder. The folder is
+scanned every two seconds; RESCAN refreshes it immediately. Existing selections
+use stable file identities, so adding files does not select a different theme.
+Invalid files are ignored. If the selected file is removed, selection falls back
+to Midnight Blue. Missing standard files are recreated. Theme files use format
+`logisth-theme`, version 1, a name, a boolean dark flag and ten RGB colour entries;
+copy a standard file in assets/themes as a template. See docs/THEMES.md for a
+complete example and the colour roles.
 
 The editable comment box below SOUND LIBRARY belongs to the sound. Type a note
 there, then save the user preset or DAW project. Comments support Unicode and up
@@ -361,9 +383,29 @@ or enable it. All seven effects are global after the A/B mix.
 | Phaser | Six-stage stereo phasing with centre frequency, spread, L/R offset, width, LFO, feedback and Dry/Wet. Its frequency is a modulation destination. |
 | Chorus | Delay, depth, rate, feedback, dual mode, width and Dry/Wet thicken a sound. |
 | Equalizer | Bass and treble shelves with frequency controls and optional positive-gain compensation. |
-| Reverb | Size, damping, predelay, width and Dry/Wet shape the room tail. |
+| Reverb | Hall, Room, Spring, Vintage and Shimmer, with shared size/damping/predelay/width/mix and mode-specific controls. |
 | Delay | Independent left/right times or divisions, feedback, ping-pong, spread, width, low/high cut, smear and Dry/Wet. |
 | Compressor | Stereo-linked threshold, ratio, attack and release control dynamics. |
+
+### Reverb types
+
+TYPE selects five algorithms. Hall retains the original JUCE Reverb character;
+Size sets its decay/space. Room combines early reflections with a feedback delay
+network. Spring uses frequency-dependent all-pass dispersion for a resonant,
+spring-like tail. Vintage adds dark filtering, saturated feedback and modulated
+delay lengths. Shimmer combines a diffuse space with dual-window granular pitch
+shifting in its excitation and feedback, producing rising or falling harmonics.
+
+Size, Damp, Predelay (0–200 ms), Width and Dry/Wet are shared. Room, Spring,
+Vintage and Shimmer also expose Decay (0.2–20 seconds, nominal; damping changes
+frequency-dependent decay). Spring adds Dispersion. Vintage adds Wow / Flutter.
+Shimmer adds Shimmer amount and Pitch (-12 to +24 semitones); +12 shifts up an
+octave, +7 adds a fifth and -12 shifts down an octave. Pitch-shifted tails are
+intentionally diffuse. Controls irrelevant to the selected type are hidden.
+
+Type changes crossfade over approximately 100 ms, with storage prepared before
+playback. Presets and DAW state save the type and all model settings, including
+those currently hidden. Main calibration is unchanged.
 
 When SYNC is on, rate/time fields that support synchronization become division
 menus. Turning SYNC off exposes their independent Hz/time values again. Bypass
@@ -450,15 +492,15 @@ library; it does not relocate files. Load file can open a preset from elsewhere.
 Save/load run on a worker, with completion/errors in the footer. Wait for the
 completion message before closing the instance or moving a newly saved file.
 
-Presets contain all 575 audio parameters, routing, compressed audio for all four
+Presets contain all 581 audio parameters, routing, compressed audio for all four
 slots, WAV regions, chord mappings, twelve named patterns, the preset comment and
-scope selection. The colour theme is a separate user preference and is retained
-when sounds change. The original sample files are unnecessary on recall. Saving uses a
+scope selection. Theme and editor size are separate user preferences and are
+retained when sounds change. The original sample files are unnecessary on recall. Saving uses a
 temporary file and atomic replacement. Invalid files leave the current patch
 intact. State/preset files are limited to 1 GiB. These are logisth's own files;
 renaming another format to .logisth does not convert it.
 
-All 575 parameters are available for host automation. The first 514 parameter
+All 581 parameters are available for host automation. The first 514 parameter
 IDs and order from 0.4 are retained. Granulizer and global MIDI-only controls
 follow them; the former Graphs parameter block is removed. A/B views, rack pages,
 theme and scope source do not change the patch's audio settings. DAW state
@@ -531,7 +573,17 @@ smoke test does not replace testing in your particular DAW. Native macOS tests
 run on Intel; Universal architecture checks establish that arm64 code is present,
 not that it has been auditioned on Apple Silicon hardware.
 
-The filter is an independent SVF design; reverb uses JUCE Reverb. Modulation
+The filter is an independent SVF design. Hall uses JUCE Reverb; the other four
+reverb algorithms are original wavelogik implementations. Modulation
 scales and some sequencer behaviour are implementation choices. No sample-exact
 comparison with Sylenth1 has been performed. Third-party font notices are included
 in assets/fonts. The original Sylenth1 manual and graphics are not redistributed.
+
+## License and manufacturer
+
+Manufacturer: wavelogik. Product: logisth. Original code and documentation are
+Copyright (c) 2026 wavelogik, licensed under MIT. Libraries, SDKs and fonts retain
+their upstream licenses; see LICENSE and THIRD_PARTY_NOTICES.md. The current
+plug-in identifiers use com.wavelogik.logisth and manufacturer code Wvlg. This
+changes the host instrument identity from earlier builds; .logisth sound files
+remain readable.

@@ -1,0 +1,18 @@
+{
+  "format": "logisth-theme",
+  "version": 1,
+  "name": "Graphite",
+  "dark": true,
+  "colours": {
+    "body": "#111216",
+    "panel": "#1C1E25",
+    "border": "#373C4B",
+    "text": "#E5E9F2",
+    "muted": "#A4AAB8",
+    "accent": "#8AAAFF",
+    "highlight": "#BBCAFF",
+    "screen": "#0B0C10",
+    "screenBorder": "#343A49",
+    "screenText": "#E5E9F2"
+  }
+}

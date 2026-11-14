@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(Logisth VERSION 0.8.1 LANGUAGES C CXX)
+project(Logisth VERSION 0.9.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include(CTest)
@@ -10,7 +10,7 @@ if(BUILD_TESTING)
   add_executable(engine_tests tests/EngineTests.cpp)
   target_include_directories(engine_tests PRIVATE Source)
   add_test(NAME engine COMMAND engine_tests)
-  foreach(suite IN ITEMS Modulation Arpeggiator Hybrid Studio)
+  foreach(suite IN ITEMS Modulation Arpeggiator Hybrid Studio Reverb)
     add_executable(${suite}_tests tests/${suite}Tests.cpp)
     target_include_directories(${suite}_tests PRIVATE Source)
     add_test(NAME ${suite} COMMAND ${suite}_tests)
@@ -30,8 +30,8 @@ if(LOGISTH_VST2)
   juce_set_vst2_sdk_path("${VST2_SDK_PATH}")
   list(APPEND formats VST)
 endif()
-juce_add_plugin(Logisth COMPANY_NAME "Testoren" BUNDLE_ID "com.testoren.logisth"
-  PLUGIN_MANUFACTURER_CODE Tstr PLUGIN_CODE Lgst
+juce_add_plugin(Logisth COMPANY_NAME "wavelogik" BUNDLE_ID "com.wavelogik.logisth"
+  PLUGIN_MANUFACTURER_CODE Wvlg PLUGIN_CODE Lgst
   FORMATS ${formats} PRODUCT_NAME "logisth"
   IS_SYNTH TRUE NEEDS_MIDI_INPUT TRUE NEEDS_MIDI_OUTPUT TRUE
   IS_MIDI_EFFECT FALSE EDITOR_WANTS_KEYBOARD_FOCUS FALSE
@@ -44,7 +44,7 @@ target_compile_definitions(Logisth PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUC
 target_link_libraries(Logisth PRIVATE juce::juce_audio_utils juce::juce_dsp PUBLIC juce::juce_recommended_config_flags)
 FetchContent_Declare(clap_juce_extensions GIT_REPOSITORY https://github.com/free-audio/clap-juce-extensions.git GIT_TAG 6bde108329ff9fc24404b79b8b397261a75cf6a8)
 FetchContent_MakeAvailable(clap_juce_extensions)
-clap_juce_extensions_plugin(TARGET Logisth CLAP_ID "com.testoren.logisth" CLAP_FEATURES instrument synthesizer stereo)
+clap_juce_extensions_plugin(TARGET Logisth CLAP_ID "com.wavelogik.logisth" CLAP_FEATURES instrument synthesizer stereo)
 if(BUILD_TESTING)
   add_executable(processor_tests tests/ProcessorTests.cpp)
   target_include_directories(processor_tests PRIVATE Source)

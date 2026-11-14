@@ -3,6 +3,8 @@
 import hashlib
 import re
 import sys
+import tarfile
+import zipfile
 from pathlib import Path
 
 
@@ -32,10 +34,23 @@ def verify(tag: str) -> None:
     actual = {p.name for p in folder.iterdir()
               if p.is_file() and p.name not in {"SHA256SUMS", "README.md"}}
     required = {f"logisth-{version}-source.tar.gz", "logisth-demo.wav", "logisth.png"}
+    required |= {"logisth-Manual-English.pdf", "logisth-Manual-English.md",
+                 "logisth-LICENSE-MIT.txt", "logisth-ThirdPartyNotices.md",
+                 f"logisth-{version}-themes.zip", f"logisth-{version}-calibration.zip"}
     if names != actual or not required.issubset(names):
         raise ValueError("Release manifest does not cover all expected assets")
     if not (root / "docs" / f"RELEASE-{tag}.md").is_file():
         raise ValueError("Missing release notes")
+    with tarfile.open(folder / f"logisth-{version}-source.tar.gz") as archive:
+        for name in ["LICENSE", "THIRD_PARTY_NOTICES.md", "docs/logisth-Manual-English.pdf"]:
+            if archive.extractfile("logisth/" + name).read() != (root / name).read_bytes():
+                raise ValueError(f"Source archive is missing the current file: {name}")
+    if (folder / "logisth-LICENSE-MIT.txt").read_bytes() != (root / "LICENSE").read_bytes():
+        raise ValueError("Release MIT license differs from source")
+    with zipfile.ZipFile(folder / f"logisth-{version}-themes.zip") as archive:
+        for file in (root / "assets/themes").glob("*.json"):
+            if archive.read(file.name) != file.read_bytes():
+                raise ValueError(f"Theme archive mismatch: {file.name}")
     print(f"Verified {len(names)} release assets for {tag}")
 
 

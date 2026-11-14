@@ -2,7 +2,7 @@
 
 The complete console occupies one 1240 × 860 canvas, with no vertical scrolling.
 Its initial size adapts to the monitor. Drag the lower-right corner to resize
-proportionally from 80% to 150%.
+proportionally from 80% to 200%.
 
 SETTINGS opens in the central rack and offers Light, Midnight Blue, Cobalt,
 Graphite and Forest, plus About. Menus, editors, keyboard and controls follow the
@@ -22,7 +22,7 @@ three grouped columns. Hover for tooltips and the bottom value readout.
 Numeric values support units such as kHz, ms and percent. Sync displays musical
 divisions instead of free time/rate controls. Arp steps use 01–08 and 09–16 views.
 
-The current engine exposes 575 audio parameters. Tests check access, bounds, click
+The current engine exposes 581 audio parameters. Tests check access, bounds, click
 targets, view changes, bindings, scaling and independent theme persistence.
 See [the English user manual](MANUAL.md) for full operation.
 
@@ -61,3 +61,9 @@ select Init / saw with Main 65%; restoring an existing sound keeps its saved lev
 WT Pos / Start targets include individual A1/A2/B1/B2 plus A, B and A+B groups.
 The ADSR curve uses actual attack/decay/release durations and a 0.5-second held
 segment; zero-length stages are vertical rather than forced to diagonal lines.
+
+0.9.0 update: Settings includes editable percentage scaling and remembers
+the last editor dimensions. Appearance, Theme Editor and About use tabs in the
+central rack. Themes are editable JSON files, including the five factory themes;
+the folder is scanned automatically. Reverb shows only the controls for its
+selected Hall/Room/Spring/Vintage/Shimmer algorithm. Manufacturer: wavelogik.

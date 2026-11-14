@@ -1,10 +1,34 @@
-# logisth 0.8.1
+# logisth 0.9.0
 
-**A two-part polyphonic subtractive synthesizer with a compact single-window console.**
+**wavelogik logisth — a two-part polyphonic subtractive synthesizer with a compact single-window console.**
 VST3, CLAP and Standalone for Windows, macOS and Linux. Built with JUCE and an
 independent synthesis engine; not affiliated with LennarDigital.
 
 ![logisth dark interface](docs/images/logisth-dark.png)
+
+## New in 0.9.0
+
+- Manufacturer: **wavelogik**; product: **logisth**. Original code/documentation
+  use the MIT license. Plug-in metadata uses `com.wavelogik.logisth` and the new
+  manufacturer code; hosts see a new instrument identity. Existing .logisth
+  sound presets remain readable.
+- SETTINGS / APPEARANCE remembers exact window dimensions and typed scaling
+  from **80–200%**, including decimals. The last percentage remains visible and
+  new/reopened instances restore it. Resizing does not affect the audio patch.
+- Five standard themes are written as editable JSON files in the user's
+  `logisth/themes` folder. Theme Editor previews all ten palette roles, accepts
+  RGB hex colours, and saves custom copies. Open Folder and Rescan are available;
+  automatic scans discover installed/edited files every two seconds.
+- REVERB adds **Room, Spring, Vintage and Shimmer** alongside Hall. Room has
+  early reflections, Spring uses dispersive all-passes, Vintage has filtered,
+  saturated feedback and wow/flutter, and Shimmer uses granular pitch-shifted
+  feedback/excitation. Relevant Decay, Dispersion, Wow/Flutter and Shimmer/Pitch
+  controls appear for their respective modes. Type changes crossfade over 100 ms.
+- 581 automatable audio parameters; the six new reverb IDs are appended.
+
+[Theme editor](docs/images/logisth-theme-editor.png) ·
+[Shimmer controls](docs/images/logisth-reverb-shimmer.png) ·
+[About / licenses](docs/images/logisth-about.png) · [Theme file format](docs/THEMES.md)
 
 ## Fixed in 0.8.1
 
@@ -92,12 +116,12 @@ sounds. Parameter IDs remain stable; preserving old sound is not the objective.
 - Earlier releases included an experimental Graphs arp, removed in 0.7.0.
   Twelve A–L pattern memories remain available for Legacy and Pattern.
 - User preset library: save/load/delete .logisth files with embedded audio,
-  chords, all patterns and UI preferences. 575 current automatable audio parameters.
+  chords, all patterns and UI preferences. 581 current automatable audio parameters.
 - Compact single-window interface with light/dark themes.
 
 [English manual](docs/MANUAL.md) · [PDF manual](docs/logisth-Manual-English.pdf) ·
 [Implementation references](docs/STUDIO-0.5.md) ·
-[Download 0.8.1](https://github.com/logik93/logisth/releases/tag/v0.8.1)
+[Download 0.9.0](https://github.com/logik93/logisth/releases/tag/v0.9.0)
 
 Native archives are built and tested on Windows, macOS and Linux. Each package
 contains the English manual and build metadata. Publication requires all platform
@@ -154,7 +178,7 @@ ctest --test-dir build --output-on-failure
 ```
 
 Output: `build/Logisth_artefacts/Release/{VST3,CLAP,Standalone}`.
-Product name: logisth. Bundle/CLAP ID: `com.testoren.logisth`.
+Product name: logisth. Bundle/CLAP ID: `com.wavelogik.logisth`.
 To regenerate the PDF, install `reportlab` and run `python scripts/build_manual.py`.
 For an engine-only build, configure with `-DLOGISTH_PLUGINS=OFF`.
 For optional VST2, pass `-DLOGISTH_VST2=ON -DVST2_SDK_PATH=/path/to/licensed/sdk`;
@@ -181,3 +205,16 @@ menu is included. See the manual for DSP and performance limitations.
 JUCE: AGPLv3 or commercial JUCE license; consult the upstream license and choose
 a compliant distribution model. CLAP and clap-juce-extensions: MIT. Open Sans:
 Apache-2.0, with license/attribution in `assets/fonts`. VST2 SDK terms are separate.
+
+## License
+
+The original logisth code and documentation are Copyright (c) 2026 wavelogik,
+licensed under the [MIT License](LICENSE). Third-party libraries, plug-in SDKs
+and fonts retain their own licenses; see [Third-party notices](THIRD_PARTY_NOTICES.md).
+
+## Maintainer workflow
+
+After completing requested changes, build/test all supported systems and publish
+a new version automatically, as requested by the project owner. Follow
+[the release workflow](docs/DEVELOPMENT.md); a later instruction to wait or avoid
+publishing takes precedence.

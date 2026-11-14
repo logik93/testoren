@@ -183,6 +183,12 @@ EffectsParams LogisthProcessor::effectsSnapshot() const {
     p.bassFreq = get(Param::eqbassfreq);
     p.treble = get(Param::eqtreble);
     p.trebleFreq = get(Param::eqtreblefreq);
+    p.reverbType = int(get(Param::reverbtype));
+    p.reverbDecay = get(Param::reverbdecay);
+    p.shimmerAmount = get(Param::shimmeramount);
+    p.shimmerPitch = get(Param::shimmerpitch);
+    p.springDispersion = get(Param::springdispersion);
+    p.vintageMod = get(Param::vintagemod);
     p.reverbSize = get(Param::reverbsize);
     p.reverbDamp = get(Param::reverbdamp);
     p.reverbPredelay = get(Param::reverbpredelay);

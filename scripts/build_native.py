@@ -147,7 +147,7 @@ def main():
     import xml.etree.ElementTree as ET
     tests = ET.parse(result_file).getroot()
     count = int(tests.attrib.get('tests', '0'))
-    if count < (8 if args.platform == 'linux-x86_64' else 6):
+    if count < (9 if args.platform == 'linux-x86_64' else 7):
         raise ValueError('Required tests did not execute')
     if any(int(tests.attrib.get(key, '0')) for key in ('failures', 'errors', 'skipped', 'disabled')):
         raise ValueError('Failed, skipped or disabled tests prevent packaging')
@@ -198,13 +198,16 @@ def main():
     metadata = json.dumps(info, indent=2) + '\n'
     (stage / 'BUILD_INFO.json').write_text(metadata)
     (output / f'build-info-{args.platform}.json').write_text(metadata)
-    for name in ['README.md', 'docs/IMPLEMENTATION.md', 'docs/STUDIO-0.5.md', 'docs/CALIBRATION.md', 'docs/ANTICLICK.md', 'docs/INTERFACE.md', 'docs/MANUAL.md', 'docs/logisth-Manual-English.pdf',
+    for name in ['README.md', 'LICENSE', 'THIRD_PARTY_NOTICES.md', 'docs/IMPLEMENTATION.md', 'docs/STUDIO-0.5.md', 'docs/CALIBRATION.md', 'docs/ANTICLICK.md', 'docs/THEMES.md', 'docs/INTERFACE.md', 'docs/MANUAL.md', 'docs/logisth-Manual-English.pdf',
                  'assets/fonts/LICENSE.txt', 'assets/fonts/NOTICE.txt']:
         if not (source / name).is_file():
             continue
         destination = stage / name
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source / name, destination)
+    for directory in ['licenses', 'assets/themes']:
+        if (source / directory).is_dir():
+            shutil.copytree(source / directory, stage / directory, dirs_exist_ok=True)
     images = source / 'docs' / 'images'
     if images.is_dir():
         shutil.copytree(images, stage / 'docs' / 'images', dirs_exist_ok=True)

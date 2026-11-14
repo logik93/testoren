@@ -1,3 +1,5 @@
+#include "AppearanceTests.h"
+#include "EffectsReverbTests.h"
 #include "GainCalibration.h"
 #include "PluginEditor.h"
 #include "PluginProcessor.h"
@@ -926,6 +928,18 @@ int main(int argc, char **argv) {
         juce::ScopedJuceInitialiser_GUI gui;
         juce::TemporaryFile themePreferences(".json");
         logisth::ThemeSettings::useStorageFileForTests(themePreferences.getFile());
+        if (argc > 2 && juce::String(argv[1]) == "--feature-preview") {
+            appearance_test::preview(juce::File(juce::String::fromUTF8(argv[2])));
+            return 0;
+        }
+        if (argc > 1 && juce::String(argv[1]) == "--reverb-check") {
+            effects_reverb_test::run();
+            return 0;
+        }
+        if (argc > 1 && juce::String(argv[1]) == "--appearance-check") {
+            appearance_test::run();
+            return 0;
+        }
         if (argc > 1 && juce::String(argv[1]) == "--customization-check") {
             checkStartupCommentsAndThemes();
             return 0;
@@ -936,9 +950,11 @@ int main(int argc, char **argv) {
                            juce::File(juce::String::fromUTF8(argv[2])));
             return 0;
         }
+        appearance_test::run();
         checkEnvelopeMidiEdges();
         gain_test::run(true);
         checkEffects();
+        effects_reverb_test::run();
         checkHybridProcessor();
         checkStudioProcessor();
         checkPointerInteraction();
@@ -1171,7 +1187,7 @@ int main(int argc, char **argv) {
             };
             auto *logisthEditor = dynamic_cast<LogisthEditor *>(editor.get());
             check(logisthEditor != nullptr, "editor type");
-            for (int page = 0; page < 14; ++page) {
+            for (int page = 0; page < 19; ++page) {
                 previewAudio(page < 4 ? 0 : page == 4 || page == 9 ? 1 : page == 8 ? 2 : 3);
                 auto full = logisthEditor->snapshotPage(page);
                 juce::FileOutputStream out(

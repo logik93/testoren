@@ -55,41 +55,21 @@ void capsule(Graphics &g, Rectangle<float> b, Colour fill, Colour outline) {
 #include "StudioViews.h"
 
 void LogisthColours::choosePalette(int selected) {
-    themeId = jlimit(0, 4, selected);
-    darkTheme = themeId != 0;
-    if (!darkTheme) {
-        body = Colour(0xffe8e9e2);
-        panel = Colour(0xfff4f3ed);
-        line = Colour(0xffced2c9);
-        ink = Colour(0xff283632);
-        muted = Colour(0xff667268);
-        green = Colour(0xff406f5d);
-        mint = Colour(0xffbdd8bb);
-        screen = Colour(0xff243430);
-        screenLine = Colour(0xff41514b);
-        screenText = Colour(0xffe6ece1);
-        return;
-    }
-    static constexpr uint32 palettes[4][10] = {
-        {0xff0d1118, 0xff151d29, 0xff283a50, 0xffe0edff, 0xff9aadc5, 0xff62acff, 0xff91c8ff,
-         0xff080d15, 0xff243952, 0xffe0edff},
-        {0xff0c1725, 0xff11243a, 0xff28486a, 0xffdcf4ff, 0xff94b5cc, 0xff50c7ee, 0xff8de2ff,
-         0xff071423, 0xff264862, 0xffdef6ff},
-        {0xff111216, 0xff1c1e25, 0xff373c4b, 0xffe5e9f2, 0xffa4aab8, 0xff8aaaff, 0xffbbcaff,
-         0xff0b0c10, 0xff343a49, 0xffe5e9f2},
-        {0xff18201c, 0xff232d27, 0xff354238, 0xffe0e7d8, 0xff9aa99a, 0xffb0c9a5, 0xffbfd6b3,
-         0xff101a15, 0xff35483b, 0xffe3eadc}};
-    auto &c = palettes[themeId - 1];
-    body = Colour(c[0]);
-    panel = Colour(c[1]);
-    line = Colour(c[2]);
-    ink = Colour(c[3]);
-    muted = Colour(c[4]);
-    green = Colour(c[5]);
-    mint = Colour(c[6]);
-    screen = Colour(c[7]);
-    screenLine = Colour(c[8]);
-    screenText = Colour(c[9]);
+    themeId = jlimit(0, ThemeSettings::names().size() - 1, selected);
+    applyPalette(ThemeSettings::theme(themeId));
+}
+void LogisthColours::applyPalette(const ThemeDefinition &theme) {
+    darkTheme = theme.dark;
+    body = theme.colours[0];
+    panel = theme.colours[1];
+    line = theme.colours[2];
+    ink = theme.colours[3];
+    muted = theme.colours[4];
+    green = theme.colours[5];
+    mint = theme.colours[6];
+    screen = theme.colours[7];
+    screenLine = theme.colours[8];
+    screenText = theme.colours[9];
 }
 LogisthLook::LogisthLook() {
     regular = embeddedFace(false);
@@ -101,6 +81,10 @@ void LogisthLook::setDarkTheme(bool enabled) {
 }
 void LogisthLook::setTheme(int selected) {
     choosePalette(selected);
+    setPalette(ThemeSettings::theme(themeId));
+}
+void LogisthLook::setPalette(const ThemeDefinition &theme) {
+    applyPalette(theme);
     setColour(TextEditor::highlightedTextColourId, darkTheme ? screen : ink);
     setColour(ComboBox::textColourId, ink);
     setColour(TextButton::buttonColourId, darkTheme ? screenLine : Colour(0xffe9ede5));
@@ -273,7 +257,8 @@ class LogisthEditor::Console : public Component,
                                private Timer,
                                public LogisthColours,
                                public FileDragAndDropTarget,
-                               private ThemeSettings::Listener {
+                               private ThemeSettings::Listener,
+                               private ChangeListener {
     enum class Style { Knob, Trim, Fader, Number, Menu, Toggle };
     class Control : public Component {
       public:
@@ -823,28 +808,7 @@ class LogisthEditor::Console : public Component,
         addAndMakeVisible(presetNotes);
         settingsPanel.setComponentID("settings.panel");
         addChildComponent(settingsPanel);
-        themeChoice.setComponentID("settings.theme");
-        themeChoice.setName("Colour theme");
-        themeChoice.addItemList({"Light", "Midnight Blue", "Cobalt", "Graphite", "Forest"}, 1);
-        themeChoice.getProperties().set("dark", true);
-        themeChoice.onChange = [this] { setTheme(themeChoice.getSelectedId() - 1); };
-        settingsPanel.addAndMakeVisible(themeChoice);
-        settingsPanel.addAndMakeVisible(themeLabel);
-        themeLabel.setText("COLOUR THEME", dontSendNotification);
-        themeLabel.setFont(font(10));
-        settingsPanel.addAndMakeVisible(themeHelp);
-        themeHelp.setFont(font(10));
-        themeHelp.setText("Saved for new instances. Changing presets keeps your theme.",
-                          dontSendNotification);
-        settingsPanel.addAndMakeVisible(aboutLabel);
-        aboutLabel.setFont(font(11, true));
-        aboutLabel.setText("ABOUT", dontSendNotification);
-        settingsPanel.addAndMakeVisible(aboutInfo);
-        aboutInfo.setFont(font(11));
-        aboutInfo.setText("logisth  " + String(JucePlugin_VersionString) +
-                              "\nPolyphonic instrument / VST3, CLAP, Standalone\nBuilt with JUCE, "
-                              "CLAP extensions and Open Sans.",
-                          dontSendNotification);
+        initialiseSettings();
         for (int i = 0; i < 4; ++i) {
             auto &view = sourceViews[size_t(i)];
             view.setComponentID("source.view." + String(i));
@@ -1010,6 +974,7 @@ class LogisthEditor::Console : public Component,
         startTimerHz(24);
     }
     ~Console() override {
+        colourPicker.removeChangeListener(this);
         ThemeSettings::removeListener(this);
         stopTimer();
         for (auto &c : controls)
@@ -1044,6 +1009,15 @@ class LogisthEditor::Console : public Component,
         setTheme(enabled ? 1 : 0, persist);
     }
     void themeChanged(int selected) override {
+        auto next = ThemeSettings::theme(selected);
+        if (next.key == savedTheme.key && next.name == savedTheme.name &&
+            next.dark == savedTheme.dark && next.colours == savedTheme.colours) {
+            themeId = selected;
+            look.themeId = selected;
+            preferenceRevision = ThemeSettings::revision();
+            refreshThemeChoices();
+            return;
+        }
         setTheme(selected, false);
     }
     void setTheme(int selected, bool persist = true) {
@@ -1051,9 +1025,27 @@ class LogisthEditor::Console : public Component,
             readout = "Theme changed; user settings could not be saved.";
         preferenceRevision = ThemeSettings::revision();
         choosePalette(selected);
-        look.setTheme(selected);
-        themeChoice.setSelectedId(themeId + 1, dontSendNotification);
+        refreshThemeChoices();
+        savedTheme = ThemeSettings::theme(themeId);
+        draftTheme = savedTheme;
+        themeName.setText(draftTheme.name, false);
+        themeDark.setToggleState(draftTheme.dark, dontSendNotification);
+        updateColourEditor();
+        applyThemePalette(draftTheme);
+    }
+    void applyThemePalette(const ThemeDefinition &theme) {
+        applyPalette(theme);
+        look.themeId = themeId;
+        look.setPalette(theme);
         keyboard.applyTheme();
+        for (ComboBox *box : {&themeChoice, &scaleChoice, &colourRole})
+            box->setColour(ComboBox::textColourId, screenText);
+        for (TextEditor *editor : {&themeName, &colourHex}) {
+            editor->setColour(TextEditor::backgroundColourId, panel);
+            editor->applyColourToAllText(ink, true);
+            editor->setColour(TextEditor::outlineColourId, line);
+        }
+        colourPicker.setColour(ColourSelector::backgroundColourId, screen);
         waveSlot.setColour(ComboBox::textColourId, screenText);
         for (ComboBox *box : {&patternSlot, &chordTrigger, &chordType})
             box->setColour(ComboBox::textColourId, screenText);
@@ -1061,7 +1053,8 @@ class LogisthEditor::Console : public Component,
             button->setColour(TextButton::buttonColourId, screenLine);
             button->setColour(TextButton::textColourOffId, screenText);
         }
-        for (Label *label : {&themeLabel, &themeHelp, &aboutLabel, &aboutInfo})
+        for (Label *label : {&themeLabel, &themeHelp, &aboutLabel, &aboutInfo, &scaleLabel,
+                             &nameLabel, &roleLabel, &hexLabel})
             label->setColour(Label::textColourId, screenText);
         presetNotes.setColour(TextEditor::backgroundColourId, panel);
         presetNotes.applyColourToAllText(ink, true);
@@ -1071,6 +1064,12 @@ class LogisthEditor::Console : public Component,
         layout();
         repaint();
     }
+    std::function<void(double)> onScaleRequested;
+    void displayScale(double percent) {
+        scaleChoice.setText(String(percent, 2).trimCharactersAtEnd("0").trimCharactersAtEnd(".") +
+                                "%",
+                            dontSendNotification);
+    }
     bool isDarkTheme() const {
         return darkTheme;
     }
@@ -1078,6 +1077,13 @@ class LogisthEditor::Console : public Component,
         settingsOpen = enabled;
         layout();
         repaint();
+    }
+    int settingsPage() const {
+        return settingsTab;
+    }
+    void showSettingsPage(int page) {
+        settingsTab = jlimit(0, 2, page);
+        layoutSettings();
     }
     bool showingSettings() const {
         return settingsOpen;
@@ -1094,6 +1100,16 @@ class LogisthEditor::Console : public Component,
         repaint();
     }
     void showScenario(int index) {
+        previewReverb = -1;
+        if (index >= 14 && index < 19) {
+            settingsOpen = false;
+            rack = 5;
+            previewReverb = index - 14;
+            layout();
+            repaint();
+            return;
+        }
+
         if (index >= 8) {
             selectedPart = 0;
             rack = index == 8 || index == 9 ? 9 : 0;
@@ -1167,6 +1183,12 @@ class LogisthEditor::Console : public Component,
         };
         for (auto &v : sourceViews)
             v.setSelectedId(1, dontSendNotification);
+        rack = 5;
+        for (int mode = 0; mode < 5; ++mode) {
+            previewReverb = mode;
+            inspect();
+        }
+        previewReverb = -1;
         previewPattern = 0;
         previewSource = 0;
         for (int clock = 0; clock < 2; ++clock) {
@@ -1216,6 +1238,204 @@ class LogisthEditor::Console : public Component,
     }
 
   private:
+    void initialiseSettings() {
+        const StringArray tabs{"APPEARANCE", "THEME EDITOR", "ABOUT"};
+        for (int i = 0; i < 3; ++i) {
+            auto &b = settingsTabs[size_t(i)];
+            b.setButtonText(tabs[i]);
+            b.setComponentID("settings.tab." + String(i));
+            b.onClick = [this, i] {
+                settingsTab = i;
+                layoutSettings();
+            };
+            settingsPanel.addAndMakeVisible(b);
+        }
+        for (Label *l : {&themeLabel, &themeHelp, &aboutLabel, &aboutInfo, &scaleLabel, &nameLabel,
+                         &roleLabel, &hexLabel}) {
+            l->setFont(font(10));
+            settingsPanel.addAndMakeVisible(*l);
+        }
+        themeLabel.setText("COLOUR THEME", dontSendNotification);
+        scaleLabel.setText("UI SCALE / %", dontSendNotification);
+        nameLabel.setText("NAME", dontSendNotification);
+        roleLabel.setText("COLOUR", dontSendNotification);
+        hexLabel.setText("HEX / RGB", dontSendNotification);
+        themeChoice.setComponentID("settings.theme");
+        themeChoice.setName("Colour theme");
+        themeChoice.getProperties().set("dark", true);
+        themeChoice.onChange = [this] {
+            if (themeChoice.getSelectedId() > 0)
+                setTheme(themeChoice.getSelectedId() - 1);
+        };
+        settingsPanel.addAndMakeVisible(themeChoice);
+        scaleChoice.setComponentID("settings.scale");
+        scaleChoice.setName("Interface scale percent");
+        scaleChoice.addItemList({"80%", "90%", "100%", "110%", "125%", "150%", "175%", "200%"}, 1);
+        scaleChoice.setEditableText(true);
+        scaleChoice.getProperties().set("dark", true);
+        scaleChoice.setTooltip(
+            "Enter 80-200%, including decimal values. The last size is restored on reopen.");
+        scaleChoice.onChange = [this] {
+            auto input =
+                scaleChoice.getText().trim().trimCharactersAtEnd("%").trim().replace(",", ".");
+            if (input.isNotEmpty() && input.containsOnly("0123456789.") &&
+                input.retainCharacters(".").length() <= 1 && onScaleRequested)
+                onScaleRequested(input.getDoubleValue());
+            else {
+                readout = "Enter a scale between 80 and 200%.";
+                if (onScaleRequested)
+                    onScaleRequested(std::numeric_limits<double>::quiet_NaN());
+                repaint();
+            }
+        };
+        settingsPanel.addAndMakeVisible(scaleChoice);
+        auto button = [&](TextButton &b, const char *id, const char *text) {
+            b.setComponentID(id);
+            b.setButtonText(text);
+            settingsPanel.addAndMakeVisible(b);
+        };
+        button(themeEdit, "settings.theme.edit", "EDIT / NEW");
+        button(themeScan, "settings.theme.scan", "RESCAN");
+        button(themeFolder, "settings.theme.folder", "OPEN FOLDER");
+        button(themeSave, "settings.theme.save", "SAVE AS NEW");
+        button(themeReset, "settings.theme.reset", "RESET EDITS");
+        themeEdit.onClick = [this] {
+            if (draftTheme.factory)
+                themeName.setText("My " + draftTheme.name, false);
+            settingsTab = 1;
+            layoutSettings();
+        };
+        themeScan.onClick = [this] {
+            ThemeSettings::scan(true);
+            refreshThemeChoices();
+            readout = "Theme folder scanned / " + String(ThemeSettings::names().size()) + " themes";
+            repaint();
+        };
+        themeFolder.onClick = [] { ThemeSettings::folder().revealToUser(); };
+        themeSave.onClick = [this] {
+            draftTheme.name = themeName.getText();
+            auto result = ThemeSettings::saveAs(draftTheme, this);
+            if (result.wasOk()) {
+                setTheme(ThemeSettings::current(), false);
+                readout = "Theme saved to " + ThemeSettings::folder().getFullPathName();
+            } else
+                readout = result.getErrorMessage();
+            repaint();
+        };
+        themeReset.onClick = [this] { setTheme(themeId, false); };
+        themeName.setComponentID("settings.theme.name");
+        themeName.setFont(font(11));
+        themeName.setInputRestrictions(64);
+        settingsPanel.addAndMakeVisible(themeName);
+        themeDark.setButtonText("DARK CONTROLS");
+        themeDark.setComponentID("settings.theme.dark");
+        themeDark.onClick = [this] {
+            draftTheme.dark = themeDark.getToggleState();
+            applyThemePalette(draftTheme);
+        };
+        settingsPanel.addAndMakeVisible(themeDark);
+        colourRole.setComponentID("settings.theme.role");
+        colourRole.addItemList(ThemeSettings::colourNames, 1);
+        colourRole.setSelectedId(6, dontSendNotification);
+        colourRole.getProperties().set("dark", true);
+        colourRole.onChange = [this] { updateColourEditor(); };
+        settingsPanel.addAndMakeVisible(colourRole);
+        colourHex.setComponentID("settings.theme.hex");
+        colourHex.setFont(font(11));
+        colourHex.setInputRestrictions(7, "#0123456789abcdefABCDEF");
+        colourHex.onReturnKey = [this] {
+            Colour c;
+            if (ThemeSettings::colour(colourHex.getText(), c)) {
+                draftTheme.colours[size_t(jlimit(0, 9, colourRole.getSelectedId() - 1))] = c;
+                colourPicker.setCurrentColour(c, dontSendNotification);
+                applyThemePalette(draftTheme);
+            } else {
+                readout = "Use a six-digit RGB colour, for example #62ACFF.";
+                updateColourEditor();
+                repaint();
+            }
+        };
+        colourHex.onFocusLost = colourHex.onReturnKey;
+        settingsPanel.addAndMakeVisible(colourHex);
+        colourPicker.setComponentID("settings.theme.picker");
+        colourPicker.addChangeListener(this);
+        settingsPanel.addAndMakeVisible(colourPicker);
+        aboutLabel.setFont(font(11, true));
+        aboutLabel.setText("WAVELOGIK / LOGISTH", dontSendNotification);
+        aboutInfo.setFont(font(11));
+        aboutInfo.setText("wavelogik / logisth  " + String(JucePlugin_VersionString) +
+                              "\nPolyphonic instrument / VST3, CLAP, Standalone"
+                              "\nOriginal code: MIT / (c) 2026 wavelogik"
+                              "\nBuilt with JUCE, CLAP extensions and Open Sans."
+                              "\nDependencies retain their respective licenses."
+                              "\n\nTheme and size are independent of audio presets.",
+                          dontSendNotification);
+    }
+    void refreshThemeChoices() {
+        auto names = ThemeSettings::names();
+        bool different = themeChoice.getNumItems() != names.size();
+        for (int i = 0; i < names.size() && !different; ++i)
+            different = themeChoice.getItemText(i) != names[i];
+        if (different) {
+            themeChoice.clear(dontSendNotification);
+            themeChoice.addItemList(names, 1);
+        }
+        themeChoice.setSelectedId(themeId + 1, dontSendNotification);
+        themeHelp.setText(String(names.size()) + " themes / scanned every 2 seconds\n" +
+                              ThemeSettings::folder().getFullPathName(),
+                          dontSendNotification);
+        themeHelp.setTooltip(ThemeSettings::folder().getFullPathName());
+    }
+    void updateColourEditor() {
+        auto c = draftTheme.colours[size_t(jlimit(0, 9, colourRole.getSelectedId() - 1))];
+        colourHex.setText("#" + c.toDisplayString(false), false);
+        colourPicker.setCurrentColour(c, dontSendNotification);
+    }
+    void changeListenerCallback(ChangeBroadcaster *source) override {
+        if (source == &colourPicker) {
+            draftTheme.colours[size_t(jlimit(0, 9, colourRole.getSelectedId() - 1))] =
+                colourPicker.getCurrentColour().withAlpha(1.f);
+            updateColourEditor();
+            applyThemePalette(draftTheme);
+        }
+    }
+    void layoutSettings() {
+        for (auto *c : settingsPanel.getChildren())
+            c->setVisible(false);
+        auto show = [](Component &c, Rectangle<int> b) {
+            c.setBounds(b);
+            c.setVisible(true);
+        };
+        for (int i = 0; i < 3; ++i) {
+            auto &b = settingsTabs[size_t(i)];
+            show(b, {i * 174, 0, 164, 24});
+            b.setToggleState(settingsTab == i, dontSendNotification);
+        }
+        if (settingsTab == 0) {
+            show(themeLabel, {0, 40, 145, 25});
+            show(themeChoice, {157, 40, 348, 28});
+            show(scaleLabel, {0, 82, 145, 25});
+            show(scaleChoice, {157, 82, 152, 28});
+            show(themeEdit, {0, 125, 152, 26});
+            show(themeScan, {165, 125, 152, 26});
+            show(themeFolder, {330, 125, 175, 26});
+            show(themeHelp, {0, 165, 510, 60});
+        } else if (settingsTab == 1) {
+            show(nameLabel, {0, 33, 208, 19});
+            show(themeName, {0, 54, 208, 25});
+            show(themeDark, {0, 84, 208, 23});
+            show(roleLabel, {0, 110, 208, 18});
+            show(colourRole, {0, 131, 208, 25});
+            show(hexLabel, {0, 161, 92, 24});
+            show(colourHex, {95, 161, 113, 25});
+            show(themeSave, {0, 199, 108, 27});
+            show(themeReset, {114, 199, 94, 27});
+            show(colourPicker, {224, 33, 290, 194});
+        } else {
+            show(aboutLabel, {0, 40, 510, 25});
+            show(aboutInfo, {0, 74, 510, 150});
+        }
+    }
     friend class Control;
     void shell(Graphics &g, Rectangle<int> b, const String &title, const String &hint = {}) {
         paintShell(g, b, title, hint, *this);
@@ -1224,6 +1444,8 @@ class LogisthEditor::Console : public Component,
                                                   Param::choruson, Param::eqon,   Param::reverbon,
                                                   Param::delayon,  Param::compon, Param::chordon};
     float value(Param p) const {
+        if (previewReverb >= 0 && p == Param::reverbtype)
+            return float(previewReverb);
         if (previewGran >= 0 && String(parameterSpecs[size_t(p)].id).endsWith("gmodel"))
             return float(previewGran);
         if (previewSource >= 0 && String(parameterSpecs[size_t(p)].id).endsWith("engine"))
@@ -1591,11 +1813,7 @@ class LogisthEditor::Console : public Component,
         settingsPanel.setVisible(settingsOpen);
         if (settingsOpen) {
             settingsPanel.setBounds(414, 289, 520, 234);
-            themeLabel.setBounds(0, 31, 145, 26);
-            themeChoice.setBounds(157, 31, 227, 28);
-            themeHelp.setBounds(0, 73, 515, 32);
-            aboutLabel.setBounds(0, 116, 515, 23);
-            aboutInfo.setBounds(0, 145, 515, 76);
+            layoutSettings();
             settingsPanel.toFront(false);
             return;
         }
@@ -1723,7 +1941,18 @@ class LogisthEditor::Console : public Component,
                                 id == "delaydivL" || id == "delaydivR";
                 if ((seconds && sync) || (division && !sync))
                     continue;
+                int reverbType = int(value(Param::reverbtype));
+                if ((id == "reverbdecay" && reverbType == 0) ||
+                    ((id == "shimmeramount" || id == "shimmerpitch") && reverbType != 4) ||
+                    (id == "springdispersion" && reverbType != 2) ||
+                    (id == "vintagemod" && reverbType != 3))
+                    continue;
                 list.push_back(i);
+            }
+            if (group == "REVERB") {
+                auto type = std::find(list.begin(), list.end(), size_t(Param::reverbtype));
+                if (type != list.end())
+                    std::rotate(list.begin(), type, type + 1);
             }
             const int columns = list.size() <= 6 ? int(list.size()) : int((list.size() + 1) / 2);
             int rows = int((list.size() + size_t(columns) - 1) / size_t(columns));
@@ -1843,17 +2072,23 @@ class LogisthEditor::Console : public Component,
             b->repaint();
         layoutStamp = currentLayoutState();
     }
-    std::array<int, 13> currentLayoutState() const {
-        std::array<int, 13> state{int(value(Param::sync)), int(value(Param::lfo1free)),
+    std::array<int, 14> currentLayoutState() const {
+        std::array<int, 14> state{int(value(Param::sync)), int(value(Param::lfo1free)),
                                   int(value(Param::lfo2free)), int(value(Param::arpmode) >= 8),
                                   int(value(Param::arppattern))};
         for (int o = 0; o < 4; ++o) {
             state[size_t(5 + o)] = int(value(Param(size_t(Param::o1engine) + size_t(o) * 16)));
             state[size_t(9 + o)] = int(value(Param(size_t(Param::o1gmodel) + size_t(o) * 15)));
         }
+        state[13] = int(value(Param::reverbtype));
         return state;
     }
     void timerCallback() override {
+        auto now = Time::getMillisecondCounter();
+        if (now - lastThemeScan >= 2000) {
+            lastThemeScan = now;
+            ThemeSettings::scan();
+        }
         processor.serviceAssets();
         auto status = processor.sourceStatus();
         if (status != lastStatus) {
@@ -2082,7 +2317,7 @@ class LogisthEditor::Console : public Component,
         drawCaption(g, "MOD", {60, 769, 29, 13}, 7, muted, Justification::centred);
         drawCaption(g, "GLIDE", {1060, 818, 53, 16}, 8, muted, Justification::centredRight);
         drawCaption(g, readout, {120, 846, 870, 12}, 8, muted);
-        drawCaption(g, "LOGISTH  /  VIRTUAL ANALOG", {990, 846, 234, 12}, 7.5f, muted,
+        drawCaption(g, "WAVELOGIK  /  LOGISTH", {990, 846, 234, 12}, 7.5f, muted,
                     Justification::centredRight);
     }
     LogisthProcessor &processor;
@@ -2098,13 +2333,22 @@ class LogisthEditor::Console : public Component,
     std::array<Slider, 8> chordNotes;
     bool updatingChord = false;
     std::unique_ptr<FileChooser> sourceChooser;
-    int previewSource = -1, previewPattern = -1, previewGran = -1;
+    int previewSource = -1, previewPattern = -1, previewGran = -1, previewReverb = -1;
     ComboBox presets;
     TextButton settings;
     TextEditor presetNotes;
     Component settingsPanel;
     ComboBox themeChoice;
-    Label themeLabel, themeHelp, aboutLabel, aboutInfo;
+    Label themeLabel, themeHelp, aboutLabel, aboutInfo, scaleLabel, nameLabel, roleLabel, hexLabel;
+    ComboBox scaleChoice, colourRole;
+    TextEditor themeName, colourHex;
+    ToggleButton themeDark;
+    TextButton themeEdit, themeScan, themeFolder, themeSave, themeReset;
+    std::array<TextButton, 3> settingsTabs;
+    ColourSelector colourPicker{ColourSelector::showColourspace | ColourSelector::showColourAtTop};
+    ThemeDefinition draftTheme, savedTheme;
+    int settingsTab = 0;
+    uint32 lastThemeScan = 0;
     bool settingsOpen = false;
     uint64_t preferenceRevision = 0;
     int commentStamp = -1, notesRevision = -1;
@@ -2124,7 +2368,7 @@ class LogisthEditor::Console : public Component,
     TooltipWindow tooltips;
     String readout, lastStatus;
     std::array<uint64_t, 4> displayedRevisions{};
-    std::array<int, 13> layoutStamp{};
+    std::array<int, 14> layoutStamp{};
     int selectedPart = 0, rack = 0, stepPage = 0, previewSync = -1;
 };
 LogisthEditor::LogisthEditor(LogisthProcessor &p) : AudioProcessorEditor(p) {
@@ -2133,24 +2377,68 @@ LogisthEditor::LogisthEditor(LogisthProcessor &p) : AudioProcessorEditor(p) {
     addAndMakeVisible(*console);
     setResizable(true, true);
     getConstrainer()->setFixedAspectRatio(double(canvasWidth) / canvasHeight);
-    setResizeLimits(992, 688, 1860, 1290);
-    float scale = 1.f;
-    if (auto *display = Desktop::getInstance().getDisplays().getPrimaryDisplay())
-        scale = jlimit(.8f, 1.f,
-                       jmin(float(display->userArea.getWidth() - 40) / canvasWidth,
-                            float(display->userArea.getHeight() - 40) / canvasHeight));
-    setSize(roundToInt(canvasWidth * scale), roundToInt(canvasHeight * scale));
+    setResizeLimits(992, 688, 2480, 1720);
+    console->onScaleRequested = [this](double percent) { setUIScale(percent); };
+    auto saved = ThemeSettings::window();
+    if (saved.width > 0) {
+        scalePercent = saved.scale;
+        setSize(saved.width, saved.height);
+    } else {
+        float scale = 1.f;
+        if (auto *display = Desktop::getInstance().getDisplays().getPrimaryDisplay())
+            scale = jlimit(.8f, 1.f,
+                           jmin(float(display->userArea.getWidth() - 40) / canvasWidth,
+                                float(display->userArea.getHeight() - 40) / canvasHeight));
+        scalePercent = scale * 100;
+        setSize(roundToInt(canvasWidth * scale), roundToInt(canvasHeight * scale));
+    }
+    console->displayScale(scalePercent);
+    rememberSize = true;
+    sizeDirty = saved.width == 0;
+    if (sizeDirty)
+        startTimer(300);
 }
 LogisthEditor::~LogisthEditor() {
+    stopTimer();
+    if (rememberSize && sizeDirty)
+        ThemeSettings::saveWindow(getWidth(), getHeight(), scalePercent);
     console.reset();
     setLookAndFeel(nullptr);
 }
 void LogisthEditor::resized() {
+    if (rememberSize && !applyingScale)
+        scalePercent = std::round(double(getWidth()) * 10000 / canvasWidth) / 100;
     if (console) {
+        console->displayScale(scalePercent);
         console->setBounds(0, 0, canvasWidth, canvasHeight);
         console->setTransform(AffineTransform::scale(float(getWidth()) / canvasWidth,
                                                      float(getHeight()) / canvasHeight));
     }
+    if (rememberSize) {
+        sizeDirty = true;
+        startTimer(300);
+    }
+}
+void LogisthEditor::timerCallback() {
+    stopTimer();
+    if (sizeDirty) {
+        ThemeSettings::saveWindow(getWidth(), getHeight(), scalePercent);
+        sizeDirty = false;
+    }
+}
+void LogisthEditor::setUIScale(double percent) {
+    if (!std::isfinite(percent) || percent < 80 || percent > 200) {
+        console->displayScale(scalePercent);
+        return;
+    }
+    scalePercent = std::round(percent * 100) / 100;
+    applyingScale = true;
+    setSize(roundToInt(canvasWidth * scalePercent / 100),
+            roundToInt(canvasHeight * scalePercent / 100));
+    applyingScale = false;
+    console->displayScale(scalePercent);
+    sizeDirty = true;
+    timerCallback();
 }
 Image LogisthEditor::snapshotPage(int scenario) {
     console->setDarkTheme(scenario >= 4 && scenario != 7 && scenario != 13, false);
@@ -2160,11 +2448,14 @@ Image LogisthEditor::snapshotPage(int scenario) {
 Image LogisthEditor::snapshotTheme(int selected) {
     int oldTheme = console->themeId;
     bool oldSettings = console->showingSettings();
+    int oldPage = console->settingsPage();
     console->setTheme(selected, false);
+    console->showSettingsPage(0);
     console->showSettings(true);
     auto result = createComponentSnapshot(getLocalBounds());
     console->setTheme(oldTheme, false);
     console->showSettings(oldSettings);
+    console->showSettingsPage(oldPage);
     return result;
 }
 String LogisthEditor::validateLayout() {

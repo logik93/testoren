@@ -20,6 +20,10 @@ int main(int argc, char **argv) {
     auto *factory = getFactory();
     if (!factory)
         return 1;
+    Steinberg::PFactoryInfo manufacturer{};
+    if (factory->getFactoryInfo(&manufacturer) != 0 ||
+        std::strcmp(manufacturer.vendor, "wavelogik") != 0)
+        return 1;
     bool found = false;
     for (int i = 0; i < factory->countClasses(); ++i) {
         Steinberg::PClassInfo info{};

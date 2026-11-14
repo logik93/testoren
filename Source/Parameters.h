@@ -578,6 +578,12 @@ enum class Param : size_t {
     o4gsync,
     o4gbeats,
     midionly,
+    reverbtype,
+    reverbdecay,
+    shimmeramount,
+    shimmerpitch,
+    springdispersion,
+    vintagemod,
     Count
 };
 constexpr size_t parameterCount = size_t(Param::Count);
@@ -1325,5 +1331,11 @@ inline const std::array<ParameterSpec, parameterCount> parameterSpecs{{
     {"o4gsync", "Stretch sync", 5, "GRANULIZER 4", 0, 1, 0, 1, "Off|On", false},
     {"o4gbeats", "Sample beats", 5, "GRANULIZER 4", 0.25f, 64.0f, 4.0f, 0.4f, "", false},
     {"midionly", "MIDI only", 5, "GLOBAL", 0, 1, 0, 1, "Off|On", false},
+    {"reverbtype", "Type", 3, "REVERB", 0, 4, 0, 1, "Hall|Room|Spring|Vintage|Shimmer", false},
+    {"reverbdecay", "Decay / s", 3, "REVERB", .2f, 20, 3.5f, .4f, "", false},
+    {"shimmeramount", "Shimmer", 3, "REVERB", 0, 1, .45f, 1, "", false},
+    {"shimmerpitch", "Pitch / st", 3, "REVERB", -12, 24, 12, 1, "", true},
+    {"springdispersion", "Dispersion", 3, "REVERB", 0, 1, .6f, 1, "", false},
+    {"vintagemod", "Wow / flutter", 3, "REVERB", 0, 1, .35f, 1, "", false},
 }};
 } // namespace logisth

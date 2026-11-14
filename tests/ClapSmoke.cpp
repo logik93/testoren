@@ -50,8 +50,8 @@ int main(int argc, char **argv) {
         clap_host_t host{};
         host.clap_version = CLAP_VERSION;
         host.name = "Logisth smoke host";
-        host.vendor = "Testoren";
-        host.url = "https://github.com/logik93/testoren";
+        host.vendor = "wavelogik";
+        host.url = "https://github.com/logik93/logisth";
         host.version = "1";
         host.get_extension = [](const clap_host_t *, const char *) -> const void * {
             return nullptr;
@@ -60,7 +60,10 @@ int main(int argc, char **argv) {
         host.request_process = [](const clap_host_t *) {};
         host.request_callback = [](const clap_host_t *) {};
         auto *descriptor = factory->get_plugin_descriptor(factory, 0);
-        check(std::strcmp(descriptor->id, "com.testoren.logisth") == 0, "plugin identity");
+        check(std::strcmp(descriptor->id, "com.wavelogik.logisth") == 0, "plugin identity");
+        check(std::strcmp(descriptor->name, "logisth") == 0 &&
+                  std::strcmp(descriptor->vendor, "wavelogik") == 0,
+              "product and manufacturer branding");
         auto *plugin = factory->create_plugin(factory, &host, descriptor->id);
         check(plugin && plugin->init(plugin), "plugin init");
         auto *ports = static_cast<const clap_plugin_audio_ports_t *>(
