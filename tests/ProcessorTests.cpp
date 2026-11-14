@@ -1,9 +1,11 @@
 #include "AppearanceTests.h"
 #include "EffectsReverbTests.h"
+#include "Features092Tests.h"
 #include "GainCalibration.h"
 #include "PluginEditor.h"
 #include "PluginProcessor.h"
 #include "ProcessorPhaseTests.h"
+#include "ThemeAdvancedTests.h"
 #include "ThemeSettings.h"
 #include <iostream>
 #include <stdexcept>
@@ -929,6 +931,14 @@ int main(int argc, char **argv) {
         juce::ScopedJuceInitialiser_GUI gui;
         juce::TemporaryFile themePreferences(".json");
         logisth::ThemeSettings::useStorageFileForTests(themePreferences.getFile());
+        if (argc > 1 && juce::String(argv[1]) == "--advanced-theme-check") {
+            theme_advanced_test::run();
+            return 0;
+        }
+        if (argc > 1 && juce::String(argv[1]) == "--features092-check") {
+            features092_test::run();
+            return 0;
+        }
         if (argc > 1 && juce::String(argv[1]) == "--phase-check") {
             processor_phase_test::run();
             return 0;
@@ -956,6 +966,8 @@ int main(int argc, char **argv) {
             return 0;
         }
         appearance_test::run();
+        theme_advanced_test::run();
+        features092_test::run();
         processor_phase_test::run();
         checkEnvelopeMidiEdges();
         gain_test::run(true);
@@ -1193,7 +1205,7 @@ int main(int argc, char **argv) {
             };
             auto *logisthEditor = dynamic_cast<LogisthEditor *>(editor.get());
             check(logisthEditor != nullptr, "editor type");
-            for (int page = 0; page < 19; ++page) {
+            for (int page = 0; page < 23; ++page) {
                 previewAudio(page < 4 ? 0 : page == 4 || page == 9 ? 1 : page == 8 ? 2 : 3);
                 auto full = logisthEditor->snapshotPage(page);
                 juce::FileOutputStream out(

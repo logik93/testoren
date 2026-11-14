@@ -1,9 +1,10 @@
-# logisth output calibration — 0.9.1
+# logisth output calibration — 0.9.2
 
-The gain staging introduced in 0.6 is retained in 0.9.1. These measurements are
+The gain staging introduced in 0.6 is retained in 0.9.2. These measurements are
 regenerated with the amplitude-envelope anti-click fix, new reverb controls and
 clean-saw Init at Main 65%. Reverb is bypassed in the unity-sine reference;
-factory presets retain their original Hall algorithm.
+factory presets now use the rebuilt Hall algorithm; their measured levels are
+reported below. The source-bus and Main calibration remain unchanged.
 
 The reference is one full-scale 440 Hz sine, centred, at source Volume = Mix =
 Main = 1, velocity 127, sustain 1, one unison voice, no modulation, filters bypassed
@@ -12,7 +13,7 @@ including envelopes, panning, FX bypass and output gain. One second of settling
 is followed by a one-second measurement. Peak and RMS use full scale = 1; RMS
 is not AES17-offset.
 
-| Sample rate | 0.5.1 peak dBFS | 0.9.1 peak dBFS | 0.9.1 RMS dBFS |
+| Sample rate | 0.5.1 peak dBFS | 0.9.2 peak dBFS | 0.9.2 RMS dBFS |
 | --- | --- | --- | --- |
 | 44,100 Hz | -19.4886 | 0.0000 | -3.0103 |
 | 48,000 Hz | -19.4886 | 0.0000 | -3.0103 |
@@ -40,21 +41,23 @@ reference. Both files are 32-bit float stereo WAV, 48 kHz, one second long.
 ## Factory sound reference
 
 Four held notes: MIDI 48/55/60/64, velocity 102, six seconds, attack included,
-stock effects and routing, with recalibrated factory Main trims. These are peak
+stock effects and routing, with factory Main trims. The rebuilt Hall changes
+wet peak levels; the quieter Grain cloud keeps Main at unity. These readings
+include the new Hall and the corrected Legacy EQ with Auto Gain off. These are peak
 measurements, not LUFS matching or guarantees for every chord or patch edit.
 
 | Factory sound | Before, peak dBFS | After, peak dBFS at 48 kHz |
 | --- | --- | --- |
 | Init / saw | -21.67 | -1.24 |
-| Wide supersaw | -25.19 | -6.00 |
+| Wide supersaw | -25.19 | -7.89 |
 | Sub bass | -4.60 | -13.98 |
-| Slow atmosphere | -21.43 | -6.01 |
-| Pulse pluck | -22.51 | -5.98 |
-| Step sequence | -27.62 | -6.26 |
-| Morph glass | -24.54 | -6.02 |
+| Slow atmosphere | -21.43 | -10.35 |
+| Pulse pluck | -22.51 | -5.97 |
+| Step sequence | -27.62 | -7.18 |
+| Morph glass | -24.54 | -6.40 |
 | Sample keys | -25.85 | -6.00 |
-| Grain cloud | -30.07 | -6.84 |
-| Chord pulse | -31.93 | -8.54 |
+| Grain cloud | -30.07 | -16.00 |
+| Chord pulse | -31.93 | -10.01 |
 
 All ten sounds are additionally tested at 44.1 and 96 kHz. Nine authored sounds
 retain a minimum 3 dB of reference-chord headroom. Init is now a single raw saw

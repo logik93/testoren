@@ -584,6 +584,60 @@ enum class Param : size_t {
     shimmerpitch,
     springdispersion,
     vintagemod,
+    o1fmdepth,
+    o1fmratio,
+    o1amdepth,
+    o1amratio,
+    o1pulsewidth,
+    o1pwmdepth,
+    o1pwmrate,
+    o1stretchmode,
+    o1stretch,
+    o1interpolation,
+    o2fmdepth,
+    o2fmratio,
+    o2amdepth,
+    o2amratio,
+    o2pulsewidth,
+    o2pwmdepth,
+    o2pwmrate,
+    o2stretchmode,
+    o2stretch,
+    o2interpolation,
+    o3fmdepth,
+    o3fmratio,
+    o3amdepth,
+    o3amratio,
+    o3pulsewidth,
+    o3pwmdepth,
+    o3pwmrate,
+    o3stretchmode,
+    o3stretch,
+    o3interpolation,
+    o4fmdepth,
+    o4fmratio,
+    o4amdepth,
+    o4amratio,
+    o4pulsewidth,
+    o4pwmdepth,
+    o4pwmrate,
+    o4stretchmode,
+    o4stretch,
+    o4interpolation,
+    reverbdiffusion,
+    eqmode,
+    eqautogain,
+    eqoutput,
+    eqband0,
+    eqband1,
+    eqband2,
+    eqband3,
+    eqband4,
+    eqband5,
+    eqband6,
+    eqband7,
+    eqband8,
+    eqband9,
     Count
 };
 constexpr size_t parameterCount = size_t(Param::Count);
@@ -597,8 +651,10 @@ struct ParameterSpec {
     bool integer;
 };
 inline const std::array<ParameterSpec, parameterCount> parameterSpecs{{
-    {"o1wave", "Wave", 0, "OSC A1", 0, 7, 1, 1,
-     "Sine|Saw|Pulse|Triangle|Noise|Half pulse|Quarter pulse|Tri-saw", false},
+    {"o1wave", "Wave", 0, "OSC A1", 0, 11, 1, 1,
+     "Sine|Saw|Pulse|Triangle|White noise|Half pulse|Quarter pulse|Tri-saw|Pink noise|Brown "
+     "noise|Organ|Folded sine",
+     false},
     {"o1voices", "Voices", 0, "OSC A1", 0, 8, 1, 1, "", true},
     {"o1level", "Volume", 0, "OSC A1", 0, 1, 0.65f, 1, "", false},
     {"o1octave", "Octave", 0, "OSC A1", -3, 3, 0, 1, "", true},
@@ -610,8 +666,10 @@ inline const std::array<ParameterSpec, parameterCount> parameterSpecs{{
     {"o1pan", "Pan", 0, "OSC A1", -1, 1, 0, 1, "", false},
     {"o1retrig", "Retrigger", 0, "OSC A1", 0, 1, 0, 1, "Off|On", false},
     {"o1invert", "Invert", 0, "OSC A1", 0, 1, 0, 1, "Off|On", false},
-    {"o2wave", "Wave", 0, "OSC A2", 0, 7, 1, 1,
-     "Sine|Saw|Pulse|Triangle|Noise|Half pulse|Quarter pulse|Tri-saw", false},
+    {"o2wave", "Wave", 0, "OSC A2", 0, 11, 1, 1,
+     "Sine|Saw|Pulse|Triangle|White noise|Half pulse|Quarter pulse|Tri-saw|Pink noise|Brown "
+     "noise|Organ|Folded sine",
+     false},
     {"o2voices", "Voices", 0, "OSC A2", 0, 8, 1, 1, "", true},
     {"o2level", "Volume", 0, "OSC A2", 0, 1, 0.3f, 1, "", false},
     {"o2octave", "Octave", 0, "OSC A2", -3, 3, 0, 1, "", true},
@@ -623,8 +681,10 @@ inline const std::array<ParameterSpec, parameterCount> parameterSpecs{{
     {"o2pan", "Pan", 0, "OSC A2", -1, 1, 0, 1, "", false},
     {"o2retrig", "Retrigger", 0, "OSC A2", 0, 1, 0, 1, "Off|On", false},
     {"o2invert", "Invert", 0, "OSC A2", 0, 1, 0, 1, "Off|On", false},
-    {"o3wave", "Wave", 0, "OSC B1", 0, 7, 1, 1,
-     "Sine|Saw|Pulse|Triangle|Noise|Half pulse|Quarter pulse|Tri-saw", false},
+    {"o3wave", "Wave", 0, "OSC B1", 0, 11, 1, 1,
+     "Sine|Saw|Pulse|Triangle|White noise|Half pulse|Quarter pulse|Tri-saw|Pink noise|Brown "
+     "noise|Organ|Folded sine",
+     false},
     {"o3voices", "Voices", 0, "OSC B1", 0, 8, 1, 1, "", true},
     {"o3level", "Volume", 0, "OSC B1", 0, 1, 0, 1, "", false},
     {"o3octave", "Octave", 0, "OSC B1", -3, 3, 0, 1, "", true},
@@ -636,8 +696,10 @@ inline const std::array<ParameterSpec, parameterCount> parameterSpecs{{
     {"o3pan", "Pan", 0, "OSC B1", -1, 1, 0, 1, "", false},
     {"o3retrig", "Retrigger", 0, "OSC B1", 0, 1, 0, 1, "Off|On", false},
     {"o3invert", "Invert", 0, "OSC B1", 0, 1, 0, 1, "Off|On", false},
-    {"o4wave", "Wave", 0, "OSC B2", 0, 7, 1, 1,
-     "Sine|Saw|Pulse|Triangle|Noise|Half pulse|Quarter pulse|Tri-saw", false},
+    {"o4wave", "Wave", 0, "OSC B2", 0, 11, 1, 1,
+     "Sine|Saw|Pulse|Triangle|White noise|Half pulse|Quarter pulse|Tri-saw|Pink noise|Brown "
+     "noise|Organ|Folded sine",
+     false},
     {"o4voices", "Voices", 0, "OSC B2", 0, 8, 1, 1, "", true},
     {"o4level", "Volume", 0, "OSC B2", 0, 1, 0, 1, "", false},
     {"o4octave", "Octave", 0, "OSC B2", -3, 3, 0, 1, "", true},
@@ -685,52 +747,64 @@ inline const std::array<ParameterSpec, parameterCount> parameterSpecs{{
     {"bendrange", "Bend / st", 0, "PERFORMANCE", 0, 24, 2, 1, "", true},
     {"sync", "Host sync", 0, "PERFORMANCE", 0, 1, 1, 1, "Off|On", false},
     {"solo", "Solo", 0, "PERFORMANCE", 0, 2, 0, 1, "Off|Part A|Part B", false},
-    {"env1a", "Attack / s", 1, "MOD ENV 1", 0, 8, 0.008f, 0.3f, "", false},
-    {"env1d", "Decay / s", 1, "MOD ENV 1", 0, 8, 0.25f, 0.3f, "", false},
+    {"env1a", "Attack / s", 1, "MOD ENV 1", 0, 8, 0, 0.3f, "", false},
+    {"env1d", "Decay / s", 1, "MOD ENV 1", 0, 8, 0, 0.3f, "", false},
     {"env1s", "Sustain", 1, "MOD ENV 1", 0, 1, 0, 1, "", false},
-    {"env1r", "Release / s", 1, "MOD ENV 1", 0, 12, 0.35f, 0.3f, "", false},
-    {"env1dest1", "Destination 1", 1, "MOD ENV 1", 0, 37, 13, 1,
+    {"env1r", "Release / s", 1, "MOD ENV 1", 0, 12, 0, 0.3f, "", false},
+    {"env1dest1", "Destination 1", 1, "MOD ENV 1", 0, 58, 13, 1,
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
      "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
      "B|Grain size A|Grain "
      "size B|Grain size A and B|WT Pos / Start A1|WT Pos / Start A2|WT Pos / Start B1|WT Pos / "
-     "Start B2",
+     "Start B2|FM index A1|FM index A2|FM index B1|FM index B2|FM index A|FM index B|FM index "
+     "A+B|AM depth A1|AM depth A2|AM depth B1|AM depth B2|AM depth A|AM depth B|AM depth A+B|Pulse "
+     "width A1|Pulse width A2|Pulse width B1|Pulse width B2|Pulse width A|Pulse width B|Pulse "
+     "width A+B",
      false},
     {"env1amt1", "Amount 1", 1, "MOD ENV 1", -10, 10, 2, 1, "", false},
-    {"env1dest2", "Destination 2", 1, "MOD ENV 1", 0, 37, 0, 1,
+    {"env1dest2", "Destination 2", 1, "MOD ENV 1", 0, 58, 0, 1,
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
      "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
      "B|Grain size A|Grain "
      "size B|Grain size A and B|WT Pos / Start A1|WT Pos / Start A2|WT Pos / Start B1|WT Pos / "
-     "Start B2",
+     "Start B2|FM index A1|FM index A2|FM index B1|FM index B2|FM index A|FM index B|FM index "
+     "A+B|AM depth A1|AM depth A2|AM depth B1|AM depth B2|AM depth A|AM depth B|AM depth A+B|Pulse "
+     "width A1|Pulse width A2|Pulse width B1|Pulse width B2|Pulse width A|Pulse width B|Pulse "
+     "width A+B",
      false},
     {"env1amt2", "Amount 2", 1, "MOD ENV 1", -10, 10, 0, 1, "", false},
-    {"env2a", "Attack / s", 1, "MOD ENV 2", 0, 8, 0.008f, 0.3f, "", false},
-    {"env2d", "Decay / s", 1, "MOD ENV 2", 0, 8, 0.25f, 0.3f, "", false},
+    {"env2a", "Attack / s", 1, "MOD ENV 2", 0, 8, 0, 0.3f, "", false},
+    {"env2d", "Decay / s", 1, "MOD ENV 2", 0, 8, 0, 0.3f, "", false},
     {"env2s", "Sustain", 1, "MOD ENV 2", 0, 1, 0, 1, "", false},
-    {"env2r", "Release / s", 1, "MOD ENV 2", 0, 12, 0.35f, 0.3f, "", false},
-    {"env2dest1", "Destination 1", 1, "MOD ENV 2", 0, 37, 14, 1,
+    {"env2r", "Release / s", 1, "MOD ENV 2", 0, 12, 0, 0.3f, "", false},
+    {"env2dest1", "Destination 1", 1, "MOD ENV 2", 0, 58, 14, 1,
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
      "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
      "B|Grain size A|Grain "
      "size B|Grain size A and B|WT Pos / Start A1|WT Pos / Start A2|WT Pos / Start B1|WT Pos / "
-     "Start B2",
+     "Start B2|FM index A1|FM index A2|FM index B1|FM index B2|FM index A|FM index B|FM index "
+     "A+B|AM depth A1|AM depth A2|AM depth B1|AM depth B2|AM depth A|AM depth B|AM depth A+B|Pulse "
+     "width A1|Pulse width A2|Pulse width B1|Pulse width B2|Pulse width A|Pulse width B|Pulse "
+     "width A+B",
      false},
     {"env2amt1", "Amount 1", 1, "MOD ENV 2", -10, 10, 2, 1, "", false},
-    {"env2dest2", "Destination 2", 1, "MOD ENV 2", 0, 37, 0, 1,
+    {"env2dest2", "Destination 2", 1, "MOD ENV 2", 0, 58, 0, 1,
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
      "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
      "B|Grain size A|Grain "
      "size B|Grain size A and B|WT Pos / Start A1|WT Pos / Start A2|WT Pos / Start B1|WT Pos / "
-     "Start B2",
+     "Start B2|FM index A1|FM index A2|FM index B1|FM index B2|FM index A|FM index B|FM index "
+     "A+B|AM depth A1|AM depth A2|AM depth B1|AM depth B2|AM depth A|AM depth B|AM depth A+B|Pulse "
+     "width A1|Pulse width A2|Pulse width B1|Pulse width B2|Pulse width A|Pulse width B|Pulse "
+     "width A+B",
      false},
     {"env2amt2", "Amount 2", 1, "MOD ENV 2", -10, 10, 0, 1, "", false},
     {"lfo1wave", "Wave", 1, "LFO 1", 0, 9, 0, 1,
@@ -741,24 +815,30 @@ inline const std::array<ParameterSpec, parameterCount> parameterSpecs{{
     {"lfo1gain", "Gain", 1, "LFO 1", 0, 1, 1, 1, "", false},
     {"lfo1offset", "Offset", 1, "LFO 1", -1, 1, 0, 1, "", false},
     {"lfo1free", "Free", 1, "LFO 1", 0, 1, 0, 1, "Off|On", false},
-    {"lfo1dest1", "Destination 1", 1, "LFO 1", 0, 37, 0, 1,
+    {"lfo1dest1", "Destination 1", 1, "LFO 1", 0, 58, 0, 1,
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
      "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
      "B|Grain size A|Grain "
      "size B|Grain size A and B|WT Pos / Start A1|WT Pos / Start A2|WT Pos / Start B1|WT Pos / "
-     "Start B2",
+     "Start B2|FM index A1|FM index A2|FM index B1|FM index B2|FM index A|FM index B|FM index "
+     "A+B|AM depth A1|AM depth A2|AM depth B1|AM depth B2|AM depth A|AM depth B|AM depth A+B|Pulse "
+     "width A1|Pulse width A2|Pulse width B1|Pulse width B2|Pulse width A|Pulse width B|Pulse "
+     "width A+B",
      false},
     {"lfo1amt1", "Amount 1", 1, "LFO 1", -10, 10, 0, 1, "", false},
-    {"lfo1dest2", "Destination 2", 1, "LFO 1", 0, 37, 0, 1,
+    {"lfo1dest2", "Destination 2", 1, "LFO 1", 0, 58, 0, 1,
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
      "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
      "B|Grain size A|Grain "
      "size B|Grain size A and B|WT Pos / Start A1|WT Pos / Start A2|WT Pos / Start B1|WT Pos / "
-     "Start B2",
+     "Start B2|FM index A1|FM index A2|FM index B1|FM index B2|FM index A|FM index B|FM index "
+     "A+B|AM depth A1|AM depth A2|AM depth B1|AM depth B2|AM depth A|AM depth B|AM depth A+B|Pulse "
+     "width A1|Pulse width A2|Pulse width B1|Pulse width B2|Pulse width A|Pulse width B|Pulse "
+     "width A+B",
      false},
     {"lfo1amt2", "Amount 2", 1, "LFO 1", -10, 10, 0, 1, "", false},
     {"lfo2wave", "Wave", 1, "LFO 2", 0, 9, 0, 1,
@@ -769,120 +849,150 @@ inline const std::array<ParameterSpec, parameterCount> parameterSpecs{{
     {"lfo2gain", "Gain", 1, "LFO 2", 0, 1, 1, 1, "", false},
     {"lfo2offset", "Offset", 1, "LFO 2", -1, 1, 0, 1, "", false},
     {"lfo2free", "Free", 1, "LFO 2", 0, 1, 0, 1, "Off|On", false},
-    {"lfo2dest1", "Destination 1", 1, "LFO 2", 0, 37, 0, 1,
+    {"lfo2dest1", "Destination 1", 1, "LFO 2", 0, 58, 0, 1,
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
      "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
      "B|Grain size A|Grain "
      "size B|Grain size A and B|WT Pos / Start A1|WT Pos / Start A2|WT Pos / Start B1|WT Pos / "
-     "Start B2",
+     "Start B2|FM index A1|FM index A2|FM index B1|FM index B2|FM index A|FM index B|FM index "
+     "A+B|AM depth A1|AM depth A2|AM depth B1|AM depth B2|AM depth A|AM depth B|AM depth A+B|Pulse "
+     "width A1|Pulse width A2|Pulse width B1|Pulse width B2|Pulse width A|Pulse width B|Pulse "
+     "width A+B",
      false},
     {"lfo2amt1", "Amount 1", 1, "LFO 2", -10, 10, 0, 1, "", false},
-    {"lfo2dest2", "Destination 2", 1, "LFO 2", 0, 37, 0, 1,
+    {"lfo2dest2", "Destination 2", 1, "LFO 2", 0, 58, 0, 1,
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
      "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
      "B|Grain size A|Grain "
      "size B|Grain size A and B|WT Pos / Start A1|WT Pos / Start A2|WT Pos / Start B1|WT Pos / "
-     "Start B2",
+     "Start B2|FM index A1|FM index A2|FM index B1|FM index B2|FM index A|FM index B|FM index "
+     "A+B|AM depth A1|AM depth A2|AM depth B1|AM depth B2|AM depth A|AM depth B|AM depth A+B|Pulse "
+     "width A1|Pulse width A2|Pulse width B1|Pulse width B2|Pulse width A|Pulse width B|Pulse "
+     "width A+B",
      false},
     {"lfo2amt2", "Amount 2", 1, "LFO 2", -10, 10, 0, 1, "", false},
     {"misc1source", "Source", 1, "MISC 1 / SOURCE 1", 0, 14, 4, 1,
      "None|Velocity|Keytrack|Aftertouch|Mod Wheel|Pitch Wheel|Amp Env A|Amp Env B|Mod Env 1|Mod "
      "Env 2|LFO 1|LFO 2|Step Velocity|Random|Random bipolar",
      false},
-    {"misc1dest1", "Destination 1", 1, "MISC 1 / SOURCE 1", 0, 37, 6, 1,
+    {"misc1dest1", "Destination 1", 1, "MISC 1 / SOURCE 1", 0, 58, 6, 1,
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
      "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
      "B|Grain size A|Grain "
      "size B|Grain size A and B|WT Pos / Start A1|WT Pos / Start A2|WT Pos / Start B1|WT Pos / "
-     "Start B2",
+     "Start B2|FM index A1|FM index A2|FM index B1|FM index B2|FM index A|FM index B|FM index "
+     "A+B|AM depth A1|AM depth A2|AM depth B1|AM depth B2|AM depth A|AM depth B|AM depth A+B|Pulse "
+     "width A1|Pulse width A2|Pulse width B1|Pulse width B2|Pulse width A|Pulse width B|Pulse "
+     "width A+B",
      false},
     {"misc1amt1", "Amount 1", 1, "MISC 1 / SOURCE 1", -10, 10, 0.10416667f, 1, "", false},
-    {"misc1dest2", "Destination 2", 1, "MISC 1 / SOURCE 1", 0, 37, 0, 1,
+    {"misc1dest2", "Destination 2", 1, "MISC 1 / SOURCE 1", 0, 58, 0, 1,
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
      "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
      "B|Grain size A|Grain "
      "size B|Grain size A and B|WT Pos / Start A1|WT Pos / Start A2|WT Pos / Start B1|WT Pos / "
-     "Start B2",
+     "Start B2|FM index A1|FM index A2|FM index B1|FM index B2|FM index A|FM index B|FM index "
+     "A+B|AM depth A1|AM depth A2|AM depth B1|AM depth B2|AM depth A|AM depth B|AM depth A+B|Pulse "
+     "width A1|Pulse width A2|Pulse width B1|Pulse width B2|Pulse width A|Pulse width B|Pulse "
+     "width A+B",
      false},
     {"misc1amt2", "Amount 2", 1, "MISC 1 / SOURCE 1", -10, 10, 0, 1, "", false},
     {"misc2source", "Source", 1, "MISC 1 / SOURCE 2", 0, 14, 0, 1,
      "None|Velocity|Keytrack|Aftertouch|Mod Wheel|Pitch Wheel|Amp Env A|Amp Env B|Mod Env 1|Mod "
      "Env 2|LFO 1|LFO 2|Step Velocity|Random|Random bipolar",
      false},
-    {"misc2dest1", "Destination 1", 1, "MISC 1 / SOURCE 2", 0, 37, 0, 1,
+    {"misc2dest1", "Destination 1", 1, "MISC 1 / SOURCE 2", 0, 58, 0, 1,
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
      "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
      "B|Grain size A|Grain "
      "size B|Grain size A and B|WT Pos / Start A1|WT Pos / Start A2|WT Pos / Start B1|WT Pos / "
-     "Start B2",
+     "Start B2|FM index A1|FM index A2|FM index B1|FM index B2|FM index A|FM index B|FM index "
+     "A+B|AM depth A1|AM depth A2|AM depth B1|AM depth B2|AM depth A|AM depth B|AM depth A+B|Pulse "
+     "width A1|Pulse width A2|Pulse width B1|Pulse width B2|Pulse width A|Pulse width B|Pulse "
+     "width A+B",
      false},
     {"misc2amt1", "Amount 1", 1, "MISC 1 / SOURCE 2", -10, 10, 0, 1, "", false},
-    {"misc2dest2", "Destination 2", 1, "MISC 1 / SOURCE 2", 0, 37, 0, 1,
+    {"misc2dest2", "Destination 2", 1, "MISC 1 / SOURCE 2", 0, 58, 0, 1,
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
      "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
      "B|Grain size A|Grain "
      "size B|Grain size A and B|WT Pos / Start A1|WT Pos / Start A2|WT Pos / Start B1|WT Pos / "
-     "Start B2",
+     "Start B2|FM index A1|FM index A2|FM index B1|FM index B2|FM index A|FM index B|FM index "
+     "A+B|AM depth A1|AM depth A2|AM depth B1|AM depth B2|AM depth A|AM depth B|AM depth A+B|Pulse "
+     "width A1|Pulse width A2|Pulse width B1|Pulse width B2|Pulse width A|Pulse width B|Pulse "
+     "width A+B",
      false},
     {"misc2amt2", "Amount 2", 1, "MISC 1 / SOURCE 2", -10, 10, 0, 1, "", false},
     {"misc3source", "Source", 1, "MISC 2 / SOURCE 1", 0, 14, 0, 1,
      "None|Velocity|Keytrack|Aftertouch|Mod Wheel|Pitch Wheel|Amp Env A|Amp Env B|Mod Env 1|Mod "
      "Env 2|LFO 1|LFO 2|Step Velocity|Random|Random bipolar",
      false},
-    {"misc3dest1", "Destination 1", 1, "MISC 2 / SOURCE 1", 0, 37, 0, 1,
+    {"misc3dest1", "Destination 1", 1, "MISC 2 / SOURCE 1", 0, 58, 0, 1,
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
      "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
      "B|Grain size A|Grain "
      "size B|Grain size A and B|WT Pos / Start A1|WT Pos / Start A2|WT Pos / Start B1|WT Pos / "
-     "Start B2",
+     "Start B2|FM index A1|FM index A2|FM index B1|FM index B2|FM index A|FM index B|FM index "
+     "A+B|AM depth A1|AM depth A2|AM depth B1|AM depth B2|AM depth A|AM depth B|AM depth A+B|Pulse "
+     "width A1|Pulse width A2|Pulse width B1|Pulse width B2|Pulse width A|Pulse width B|Pulse "
+     "width A+B",
      false},
     {"misc3amt1", "Amount 1", 1, "MISC 2 / SOURCE 1", -10, 10, 0, 1, "", false},
-    {"misc3dest2", "Destination 2", 1, "MISC 2 / SOURCE 1", 0, 37, 0, 1,
+    {"misc3dest2", "Destination 2", 1, "MISC 2 / SOURCE 1", 0, 58, 0, 1,
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
      "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
      "B|Grain size A|Grain "
      "size B|Grain size A and B|WT Pos / Start A1|WT Pos / Start A2|WT Pos / Start B1|WT Pos / "
-     "Start B2",
+     "Start B2|FM index A1|FM index A2|FM index B1|FM index B2|FM index A|FM index B|FM index "
+     "A+B|AM depth A1|AM depth A2|AM depth B1|AM depth B2|AM depth A|AM depth B|AM depth A+B|Pulse "
+     "width A1|Pulse width A2|Pulse width B1|Pulse width B2|Pulse width A|Pulse width B|Pulse "
+     "width A+B",
      false},
     {"misc3amt2", "Amount 2", 1, "MISC 2 / SOURCE 1", -10, 10, 0, 1, "", false},
     {"misc4source", "Source", 1, "MISC 2 / SOURCE 2", 0, 14, 0, 1,
      "None|Velocity|Keytrack|Aftertouch|Mod Wheel|Pitch Wheel|Amp Env A|Amp Env B|Mod Env 1|Mod "
      "Env 2|LFO 1|LFO 2|Step Velocity|Random|Random bipolar",
      false},
-    {"misc4dest1", "Destination 1", 1, "MISC 2 / SOURCE 2", 0, 37, 0, 1,
+    {"misc4dest1", "Destination 1", 1, "MISC 2 / SOURCE 2", 0, 58, 0, 1,
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
      "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
      "B|Grain size A|Grain "
      "size B|Grain size A and B|WT Pos / Start A1|WT Pos / Start A2|WT Pos / Start B1|WT Pos / "
-     "Start B2",
+     "Start B2|FM index A1|FM index A2|FM index B1|FM index B2|FM index A|FM index B|FM index "
+     "A+B|AM depth A1|AM depth A2|AM depth B1|AM depth B2|AM depth A|AM depth B|AM depth A+B|Pulse "
+     "width A1|Pulse width A2|Pulse width B1|Pulse width B2|Pulse width A|Pulse width B|Pulse "
+     "width A+B",
      false},
     {"misc4amt1", "Amount 1", 1, "MISC 2 / SOURCE 2", -10, 10, 0, 1, "", false},
-    {"misc4dest2", "Destination 2", 1, "MISC 2 / SOURCE 2", 0, 37, 0, 1,
+    {"misc4dest2", "Destination 2", 1, "MISC 2 / SOURCE 2", 0, 58, 0, 1,
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
      "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
      "B|Grain size A|Grain "
      "size B|Grain size A and B|WT Pos / Start A1|WT Pos / Start A2|WT Pos / Start B1|WT Pos / "
-     "Start B2",
+     "Start B2|FM index A1|FM index A2|FM index B1|FM index B2|FM index A|FM index B|FM index "
+     "A+B|AM depth A1|AM depth A2|AM depth B1|AM depth B2|AM depth A|AM depth B|AM depth A+B|Pulse "
+     "width A1|Pulse width A2|Pulse width B1|Pulse width B2|Pulse width A|Pulse width B|Pulse "
+     "width A+B",
      false},
     {"misc4amt2", "Amount 2", 1, "MISC 2 / SOURCE 2", -10, 10, 0, 1, "", false},
     {"arpon", "Enabled", 2, "ARPEGGIATOR", 0, 1, 0, 1, "Off|On", false},
@@ -1337,5 +1447,63 @@ inline const std::array<ParameterSpec, parameterCount> parameterSpecs{{
     {"shimmerpitch", "Pitch / st", 3, "REVERB", -12, 24, 12, 1, "", true},
     {"springdispersion", "Dispersion", 3, "REVERB", 0, 1, .6f, 1, "", false},
     {"vintagemod", "Wow / flutter", 3, "REVERB", 0, 1, .35f, 1, "", false},
+    {"o1fmdepth", "FM index", 5, "SOURCE 1", 0, 8, 0, 0.5f, "", false},
+    {"o1fmratio", "FM ratio", 5, "SOURCE 1", 0.25f, 16, 1, 0.5f, "", false},
+    {"o1amdepth", "AM depth", 5, "SOURCE 1", 0, 1, 0, 1, "", false},
+    {"o1amratio", "AM ratio", 5, "SOURCE 1", 0.125f, 16, 1, 0.5f, "", false},
+    {"o1pulsewidth", "Pulse width", 5, "SOURCE 1", 0.01f, 0.99f, 0.5f, 1, "", false},
+    {"o1pwmdepth", "PWM depth", 5, "SOURCE 1", 0, 0.45f, 0, 1, "", false},
+    {"o1pwmrate", "PWM / Hz", 5, "SOURCE 1", 0.01f, 20, 0.5f, 0.4f, "", false},
+    {"o1stretchmode", "Stretch", 5, "SOURCE 1", 0, 3, 0, 1, "Off|Tape|Granular|WSOLA", false},
+    {"o1stretch", "Time factor", 5, "SOURCE 1", 0.125f, 8, 1, 0.5f, "", false},
+    {"o1interpolation", "Interpolation", 5, "SOURCE 1", 0, 3, 0, 1, "Linear|Cubic|Sinc 16|Sinc 32",
+     false},
+    {"o2fmdepth", "FM index", 5, "SOURCE 2", 0, 8, 0, 0.5f, "", false},
+    {"o2fmratio", "FM ratio", 5, "SOURCE 2", 0.25f, 16, 1, 0.5f, "", false},
+    {"o2amdepth", "AM depth", 5, "SOURCE 2", 0, 1, 0, 1, "", false},
+    {"o2amratio", "AM ratio", 5, "SOURCE 2", 0.125f, 16, 1, 0.5f, "", false},
+    {"o2pulsewidth", "Pulse width", 5, "SOURCE 2", 0.01f, 0.99f, 0.5f, 1, "", false},
+    {"o2pwmdepth", "PWM depth", 5, "SOURCE 2", 0, 0.45f, 0, 1, "", false},
+    {"o2pwmrate", "PWM / Hz", 5, "SOURCE 2", 0.01f, 20, 0.5f, 0.4f, "", false},
+    {"o2stretchmode", "Stretch", 5, "SOURCE 2", 0, 3, 0, 1, "Off|Tape|Granular|WSOLA", false},
+    {"o2stretch", "Time factor", 5, "SOURCE 2", 0.125f, 8, 1, 0.5f, "", false},
+    {"o2interpolation", "Interpolation", 5, "SOURCE 2", 0, 3, 0, 1, "Linear|Cubic|Sinc 16|Sinc 32",
+     false},
+    {"o3fmdepth", "FM index", 5, "SOURCE 3", 0, 8, 0, 0.5f, "", false},
+    {"o3fmratio", "FM ratio", 5, "SOURCE 3", 0.25f, 16, 1, 0.5f, "", false},
+    {"o3amdepth", "AM depth", 5, "SOURCE 3", 0, 1, 0, 1, "", false},
+    {"o3amratio", "AM ratio", 5, "SOURCE 3", 0.125f, 16, 1, 0.5f, "", false},
+    {"o3pulsewidth", "Pulse width", 5, "SOURCE 3", 0.01f, 0.99f, 0.5f, 1, "", false},
+    {"o3pwmdepth", "PWM depth", 5, "SOURCE 3", 0, 0.45f, 0, 1, "", false},
+    {"o3pwmrate", "PWM / Hz", 5, "SOURCE 3", 0.01f, 20, 0.5f, 0.4f, "", false},
+    {"o3stretchmode", "Stretch", 5, "SOURCE 3", 0, 3, 0, 1, "Off|Tape|Granular|WSOLA", false},
+    {"o3stretch", "Time factor", 5, "SOURCE 3", 0.125f, 8, 1, 0.5f, "", false},
+    {"o3interpolation", "Interpolation", 5, "SOURCE 3", 0, 3, 0, 1, "Linear|Cubic|Sinc 16|Sinc 32",
+     false},
+    {"o4fmdepth", "FM index", 5, "SOURCE 4", 0, 8, 0, 0.5f, "", false},
+    {"o4fmratio", "FM ratio", 5, "SOURCE 4", 0.25f, 16, 1, 0.5f, "", false},
+    {"o4amdepth", "AM depth", 5, "SOURCE 4", 0, 1, 0, 1, "", false},
+    {"o4amratio", "AM ratio", 5, "SOURCE 4", 0.125f, 16, 1, 0.5f, "", false},
+    {"o4pulsewidth", "Pulse width", 5, "SOURCE 4", 0.01f, 0.99f, 0.5f, 1, "", false},
+    {"o4pwmdepth", "PWM depth", 5, "SOURCE 4", 0, 0.45f, 0, 1, "", false},
+    {"o4pwmrate", "PWM / Hz", 5, "SOURCE 4", 0.01f, 20, 0.5f, 0.4f, "", false},
+    {"o4stretchmode", "Stretch", 5, "SOURCE 4", 0, 3, 0, 1, "Off|Tape|Granular|WSOLA", false},
+    {"o4stretch", "Time factor", 5, "SOURCE 4", 0.125f, 8, 1, 0.5f, "", false},
+    {"o4interpolation", "Interpolation", 5, "SOURCE 4", 0, 3, 0, 1, "Linear|Cubic|Sinc 16|Sinc 32",
+     false},
+    {"reverbdiffusion", "Diffusion", 3, "REVERB", 0, 1, .8f, 1, "", false},
+    {"eqmode", "Mode", 3, "EQUALIZER", 0, 1, 0, 1, "Legacy|Graphic", false},
+    {"eqautogain", "Auto gain", 3, "EQUALIZER", 0, 1, 0, 1, "Off|On", false},
+    {"eqoutput", "Output / dB", 3, "EQUALIZER", -18, 18, 0, 1, "", false},
+    {"eqband0", "31 Hz / dB", 3, "EQUALIZER", -18, 18, 0, 1, "", false},
+    {"eqband1", "63 Hz / dB", 3, "EQUALIZER", -18, 18, 0, 1, "", false},
+    {"eqband2", "125 Hz / dB", 3, "EQUALIZER", -18, 18, 0, 1, "", false},
+    {"eqband3", "250 Hz / dB", 3, "EQUALIZER", -18, 18, 0, 1, "", false},
+    {"eqband4", "500 Hz / dB", 3, "EQUALIZER", -18, 18, 0, 1, "", false},
+    {"eqband5", "1000 Hz / dB", 3, "EQUALIZER", -18, 18, 0, 1, "", false},
+    {"eqband6", "2000 Hz / dB", 3, "EQUALIZER", -18, 18, 0, 1, "", false},
+    {"eqband7", "4000 Hz / dB", 3, "EQUALIZER", -18, 18, 0, 1, "", false},
+    {"eqband8", "8000 Hz / dB", 3, "EQUALIZER", -18, 18, 0, 1, "", false},
+    {"eqband9", "16000 Hz / dB", 3, "EQUALIZER", -18, 18, 0, 1, "", false},
 }};
 } // namespace logisth

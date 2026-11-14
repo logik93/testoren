@@ -21,7 +21,7 @@ A later explicit instruction to wait or avoid publishing overrides this default.
    tag, and push the branch/tag atomically. The existing native workflow builds
    VST3, CLAP and Standalone on Windows x64, Linux x64 and macOS Universal.
 7. Wait for every native build/test/architecture check and publication to finish.
-   Current minimum suites: Linux 9, Windows/macOS 7, with no failures or skips.
+   Current minimum suites: Linux 10, Windows/macOS 8, with no failures or skips.
    Read the status branches `ci-build-v<version>-<platform>` and
    `ci-release-v<version>`. If branch HTTP responses are stale, resolve their
    current Git SHA and read status.json at that immutable revision.

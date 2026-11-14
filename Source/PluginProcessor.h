@@ -5,9 +5,14 @@
 #include "Engine.h"
 #include "Parameters.h"
 #include <juce_audio_utils/juce_audio_utils.h>
+namespace logisth {
+struct ThemeDraft;
+}
 class LogisthProcessor : public juce::AudioProcessor {
   public:
     LogisthProcessor();
+    // GUI-only draft, deliberately excluded from sound presets and DAW audio state.
+    std::shared_ptr<logisth::ThemeDraft> appearanceDraft;
     ~LogisthProcessor() override;
     juce::Result loadSource(int, const juce::File &, int frameSize = 0);
     void loadSourceAsync(int, const juce::File &, int frameSize = 0,

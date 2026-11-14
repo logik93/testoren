@@ -6,6 +6,13 @@ struct LogisthColours {
     juce::Colour body{0xffe8e9e2}, panel{0xfff4f3ed}, line{0xffced2c9}, ink{0xff283632},
         muted{0xff667268}, green{0xff406f5d}, mint{0xffbdd8bb}, screen{0xff243430},
         screenLine{0xff41514b}, screenText{0xffe6ece1};
+    juce::Colour knobColour{0xff62acff}, knobTrack{0xff283a50};
+    juce::String fontFamily = "Open Sans";
+    int backgroundStyle = 0, knobStyle = 0;
+    juce::Font font(float size, bool bold = false) const;
+    void drawCaption(juce::Graphics &, const juce::String &, juce::Rectangle<int>, float,
+                     juce::Colour, juce::Justification align = juce::Justification::centredLeft,
+                     bool bold = false) const;
     bool darkTheme = false;
     int themeId = 0;
     void choosePalette(int);

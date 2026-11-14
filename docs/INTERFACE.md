@@ -22,12 +22,12 @@ three grouped columns. Hover for tooltips and the bottom value readout.
 Numeric values support units such as kHz, ms and percent. Sync displays musical
 divisions instead of free time/rate controls. Arp steps use 01–08 and 09–16 views.
 
-The current engine exposes 581 audio parameters. Tests check access, bounds, click
+The current engine exposes 635 audio parameters. Tests check access, bounds, click
 targets, view changes, bindings, scaling and independent theme persistence.
 See [the English user manual](MANUAL.md) for full operation.
 
 The oscillator header selects engine and only its relevant pages: VOICE/ENV for
-Classic, WAVETABLE for the table engine, SOURCE for Sampler, and GRAINS for
+Classic, WAVETABLE for the table engine, SOURCE/PLAYBACK for Sampler, and GRAINS for
 Granular. MOTION/TIME are available only in the Granulizer model. File drops and
 IMPORT load audio into that slot. CHORDS is the ninth rack page. Pattern arp
 uses a seven-row drawing canvas with independent lane lengths, exact cell entry,
@@ -71,3 +71,10 @@ selected Hall/Room/Spring/Vintage/Shimmer algorithm. Manufacturer: wavelogik.
 0.9.1: PHASE is enabled in Classic/Wavetable regardless of RETRIG. Its live cyclic
 offset reaches held notes and automation; RETRIG selects fixed/random new-note
 starts. The GUI refresh timer preserves this availability.
+
+0.9.2 adds MOD to every source (FM/AM plus pulse-only PWM), Sampler PLAYBACK
+stretch/interpolation menus, corrected Legacy and 10-band Graphic EQ with a
+response editor. SETTINGS now has a STYLE tab for font/background/knobs, chosen
+save paths and custom renaming. Unsaved theme drafts survive editor recreation;
+folder scans run every two minutes. All MOD ENV defaults are zero. Reverb adds
+Diffusion and a rebuilt Hall with denser networks and four-window Shimmer.

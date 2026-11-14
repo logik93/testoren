@@ -1,5 +1,6 @@
 #pragma once
 #include "AssetLimits.h"
+#include "Sampler.h"
 #include <algorithm>
 #include <array>
 #include <atomic>
@@ -204,12 +205,15 @@ struct SourcePlayback {
     const SourceData *source = nullptr;
     uint64_t sourceRevision = 0;
     bool finished = false;
+    SamplerPlayer sampler, previousSampler;
+    int samplerMode = -1, samplerQuality = 0, previousQuality = 0, fadeLeft = 0, fadeLength = 1;
     void reset() {
         *this = SourcePlayback{};
     }
     std::array<float, 2> tick(const SourceData &data, int selected, double ratio, double sr,
                               float position, float end, bool loop, bool reverse, float size,
-                              float density, float spray, float scan, float random) {
+                              float density, float spray, float scan, float random,
+                              int stretchMode = 0, float stretch = 1, int interpolation = 0) {
         if (mode != selected || source != &data || sourceRevision != data.revision) {
             reset();
             mode = selected;
@@ -222,30 +226,38 @@ struct SourcePlayback {
         double span = std::max(1., last - first);
         double speed = ratio * data.sampleRate / sr;
         if (selected == 2) {
-            if (finished)
-                return {};
-            if (cursor >= span) {
-                if (loop) {
-                    double fade = std::min(span * .25, data.sampleRate * .005);
-                    cursor = fade + std::fmod(cursor - span, span - fade);
-                } else {
-                    finished = true;
-                    return {};
-                }
+            if (samplerMode < 0) {
+                samplerMode = stretchMode;
+                samplerQuality = interpolation;
             }
-            double at = reverse ? last - 1 - cursor : first + cursor;
-            std::array<float, 2> out{};
-            for (int ch = 0; ch < 2; ++ch) {
-                out[size_t(ch)] = data.sample(at, ch);
-                double fade = std::min(span * .25, data.sampleRate * .005);
-                if (loop && span - cursor < fade) {
-                    float mix = float((span - cursor) / fade);
-                    double head = reverse ? last - 1 - (cursor - (span - fade))
-                                          : first + (cursor - (span - fade));
-                    out[size_t(ch)] = out[size_t(ch)] * mix + data.sample(head, ch) * (1 - mix);
-                }
+            if (fadeLeft == 0 && (samplerMode != stretchMode || samplerQuality != interpolation)) {
+                previousSampler = sampler;
+                previousQuality = samplerQuality;
+                double at = sampler.cursor, factor = sampler.stretch;
+                sampler.reset();
+                sampler.cursor = at;
+                sampler.stretch = factor;
+                sampler.algorithm = stretchMode;
+                samplerMode = stretchMode;
+                samplerQuality = interpolation;
+                fadeLength = std::max(1, int(sr * .02));
+                fadeLeft = fadeLength;
             }
-            cursor += speed;
+            auto out = sampler.tick(data, ratio, sr, position, end, loop, reverse, samplerMode,
+                                    stretch, samplerQuality);
+            if (fadeLeft > 0) {
+                auto old =
+                    previousSampler.tick(data, ratio, sr, position, end, loop, reverse,
+                                         previousSampler.algorithm, stretch, previousQuality);
+                float mix = 1 - float(fadeLeft) / fadeLength;
+                for (int ch = 0; ch < 2; ++ch)
+                    out[size_t(ch)] = old[size_t(ch)] + (out[size_t(ch)] - old[size_t(ch)]) * mix;
+                --fadeLeft;
+            }
+            cursor = sampler.cursor;
+            finished =
+                sampler.finished && std::none_of(sampler.grains.begin(), sampler.grains.end(),
+                                                 [](auto &g) { return g.active; });
             return out;
         }
         std::array<float, 2> out{};

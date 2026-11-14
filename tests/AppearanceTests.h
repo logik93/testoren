@@ -102,9 +102,11 @@ inline void run() {
         Thread::sleep(2100);
         Timer::callPendingTimersSynchronously();
         auto *themes = dynamic_cast<ComboBox *>(panel->findChildWithID("settings.theme"));
+        check(themes->getNumItems() == 7, "theme folder is not polled after only two seconds");
+        dynamic_cast<Button *>(panel->findChildWithID("settings.theme.scan"))->onClick();
         check(themes->getNumItems() == 8 &&
                   ThemeSettings::theme(ThemeSettings::current()).key == activeKey,
-              "automatic folder scanning discovers installed themes without changing stable "
+              "manual folder scanning discovers installed themes without changing stable "
               "selection");
         check(dynamic_cast<LogisthLook &>(ui->getLookAndFeel()).green == Colour(0xffff8040),
               "folder rescans preserve an unsaved palette draft when the saved selection is "
@@ -115,7 +117,7 @@ inline void run() {
         auto revision = ThemeSettings::revision();
         check(!ThemeSettings::scan(true) && revision == ThemeSettings::revision(),
               "unchanged rescans do not rebuild menus or flicker controls");
-        for (int tab = 0; tab < 3; ++tab) {
+        for (int tab = 0; tab < 4; ++tab) {
             dynamic_cast<Button *>(panel->findChildWithID("settings.tab." + String(tab)))
                 ->onClick();
             auto children = panel->getChildren();
@@ -174,7 +176,7 @@ inline void preview(const File &folder) {
     auto *console = ui->getChildComponent(0);
     dynamic_cast<Button *>(console->findChildWithID("ui.settings"))->onClick();
     auto *panel = console->findChildWithID("settings.panel");
-    for (int tab = 0; tab < 3; ++tab) {
+    for (int tab = 0; tab < 4; ++tab) {
         dynamic_cast<Button *>(panel->findChildWithID("settings.tab." + String(tab)))->onClick();
         write("settings-" + String(tab), ui->createComponentSnapshot(ui->getLocalBounds()));
     }
@@ -182,5 +184,7 @@ inline void preview(const File &folder) {
         write("theme-" + String(theme), editor->snapshotTheme(theme));
     for (int type = 0; type < 5; ++type)
         write("reverb-" + String(type), editor->snapshotPage(14 + type));
+    for (int page = 19; page <= 22; ++page)
+        write("feature-" + String(page), editor->snapshotPage(page));
 }
 } // namespace appearance_test

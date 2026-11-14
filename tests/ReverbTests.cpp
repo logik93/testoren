@@ -9,7 +9,7 @@ void check(bool ok, const char *message) {
 using Stereo = std::array<std::vector<float>, 2>;
 Stereo render(int type, double rate, float decay = 2, float amount = .5f, float pitch = 12,
               float damp = .3f, int block = 257, bool tone = false, float dispersion = .6f,
-              float wow = .35f) {
+              float wow = .35f, float diffusion = .8f) {
     CharacterReverb model;
     model.prepare(rate, type);
     ReverbControls p;
@@ -18,6 +18,7 @@ Stereo render(int type, double rate, float decay = 2, float amount = .5f, float 
     p.shimmerPitch = pitch;
     p.springDispersion = dispersion;
     p.vintageMod = wow;
+    p.reverbDiffusion = diffusion;
     int length = int(rate * (tone ? 4 : 3));
     Stereo result{std::vector<float>(size_t(length)), std::vector<float>(size_t(length))};
     for (int offset = 0; offset < length; offset += block) {
@@ -67,8 +68,8 @@ double band(const Stereo &v, double rate, double hz) {
 int main() {
     try {
         for (double rate : {44100., 48000., 96000.}) {
-            std::array<Stereo, 4> impulse;
-            for (int type = 1; type <= 4; ++type) {
+            std::array<Stereo, 5> impulse;
+            for (int type = 0; type <= 4; ++type) {
                 auto response = render(type, rate);
                 check(energy(response, int(rate * .01), int(rate * 3)) > 1e-5,
                       "every model produces a genuine reverberant impulse tail");
@@ -81,15 +82,19 @@ int main() {
                 check(energy(response, int(rate * .5), int(rate * 3)) >
                           energy(shortTail, int(rate * .5), int(rate * 3)) * 2,
                       "Decay controls the measured late tail in every new model");
-                impulse[size_t(type - 1)] = std::move(response);
+                impulse[size_t(type)] = std::move(response);
             }
-            for (int a = 0; a < 4; ++a)
+            for (int a = 0; a < 5; ++a)
                 for (int b = 0; b < a; ++b)
-                    check(difference(impulse[size_t(a)], impulse[size_t(b)]) > .1,
-                          "Room, Spring, Vintage and Shimmer have distinct impulse responses");
+                    check(
+                        difference(impulse[size_t(a)], impulse[size_t(b)]) > .1,
+                        "Hall, Room, Spring, Vintage and Shimmer have distinct impulse responses");
             std::cout << "PASS reverb @ " << rate
                       << ": distinct stereo IRs, decay, finite tails and buffer invariance\n";
         }
+        check(difference(render(0, 48000, 2, .5f, 12, .3f, 257, false, .6f, .35f, 0),
+                         render(0, 48000, 2, .5f, 12, .3f, 257, false, .6f, .35f, 1)) > .1,
+              "Diffusion changes the measured Hall reflection structure");
         const auto dry = render(4, 48000, 6, 0, 12, .1f, 257, true);
         const auto octave = render(4, 48000, 6, 1, 12, .1f, 257, true);
         const auto fifth = render(4, 48000, 6, 1, 7, .1f, 257, true);
@@ -108,7 +113,7 @@ int main() {
         check(difference(render(3, 48000, 2, .5f, 12, .3f, 257, false, .6f, 0),
                          render(3, 48000, 2, .5f, 12, .3f, 257, false, .6f, 1)) > .1,
               "Vintage wow/flutter changes its modulated delay network");
-        for (int type = 1; type <= 4; ++type) {
+        for (int type = 0; type <= 4; ++type) {
             CharacterReverb model;
             model.prepare(96000, type);
             ReverbControls p;

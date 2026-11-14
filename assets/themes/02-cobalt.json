@@ -1,6 +1,6 @@
 {
   "format": "logisth-theme",
-  "version": 1,
+  "version": 2,
   "name": "Cobalt",
   "dark": true,
   "colours": {
@@ -13,6 +13,11 @@
     "highlight": "#8DE2FF",
     "screen": "#071423",
     "screenBorder": "#264862",
-    "screenText": "#DEF6FF"
-  }
+    "screenText": "#DEF6FF",
+    "knob": "#50C7EE",
+    "knobTrack": "#28486A"
+  },
+  "font": "Open Sans",
+  "backgroundStyle": 0,
+  "knobStyle": 0
 }

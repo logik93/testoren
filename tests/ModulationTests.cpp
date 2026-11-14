@@ -43,6 +43,9 @@ double energy(const Render &a) {
 int main() {
     try {
         Params base;
+        for (auto &e : base.envelopes)
+            e = EnvelopeParams{}; // Explicit nonzero envelope fixture; Init now intentionally
+                                  // starts at zero.
         base.osc[1].level = 0;
         base.osc[0].retrigger = true;
         base.osc[2] = base.osc[0];

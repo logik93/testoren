@@ -46,6 +46,27 @@ enum class Destination {
     PositionA2,
     PositionB1,
     PositionB2,
+    FmA1,
+    FmA2,
+    FmB1,
+    FmB2,
+    FmA,
+    FmB,
+    FmAB,
+    AmA1,
+    AmA2,
+    AmB1,
+    AmB2,
+    AmA,
+    AmB,
+    AmAB,
+    WidthA1,
+    WidthA2,
+    WidthB1,
+    WidthB2,
+    WidthA,
+    WidthB,
+    WidthAB,
     Count
 };
 enum class Source {
@@ -84,6 +105,10 @@ struct ModValues {
         for (const auto &r : routes)
             if (r.destination != Destination::None)
                 values[size_t(r.destination)] += source * r.amount * .1f;
+    }
+    float osc(Destination first, int slot) const {
+        return get(Destination(int(first) + slot)) + get(Destination(int(first) + 4 + slot / 2)) +
+               get(Destination(int(first) + 6));
     }
     float pair(Destination first, int part) const {
         return get(Destination(int(first) + part)) + get(Destination(int(first) + 2));

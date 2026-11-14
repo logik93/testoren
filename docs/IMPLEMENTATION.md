@@ -94,7 +94,7 @@ Wszystkie siedem sekcji ma bypass i własne parametry opisane w manualu:
 - Phaser: sześć stopni stereo, Center, Spread, LR Offset, Width, LFO,
   Feedback i Dry/Wet; Center reaguje na macierz modulacji.
 - Chorus: Delay, Depth, Rate, Feedback, Dual, Width i Dry/Wet.
-- EQ: półki Bass/Treble, częstotliwości i kompensacja dodatniego wzmocnienia.
+- EQ (0.9.2): poprawione półki Bass/Treble w trybie Legacy oraz 10-pasmowy Graphic; opcjonalny Auto Gain, krzywa i Output.
 - Reverb: Size, Damp, Predelay, Width i Dry/Wet (algorytm JUCE Reverb).
 - Delay: niezależny L/R, Sync, Feedback, PingPong, Spread, Width, filtry,
   Smear i Dry/Wet. Maksymalna pamięć echa to 16 s na kanał; dłuższe wartości

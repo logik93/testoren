@@ -14,21 +14,12 @@ Typeface::Ptr embeddedFace(bool bold) {
         BinaryData::OpenSansSemibold_ttf, BinaryData::OpenSansSemibold_ttfSize);
     return bold ? semiboldFace : regularFace;
 }
-Font font(float size, bool bold = false) {
-    return Font(FontOptions(embeddedFace(bold)).withHeight(jmax(11.f, size * 1.18f)));
-}
 
 bool dark(const Component &c) {
     for (auto *p = &c; p != nullptr; p = p->getParentComponent())
         if (p->getProperties().contains("dark"))
             return bool(p->getProperties()["dark"]);
     return false;
-}
-void drawCaption(Graphics &g, const String &value, Rectangle<int> bounds, float size, Colour colour,
-                 Justification align = Justification::centredLeft, bool bold = false) {
-    g.setFont(font(size, bold));
-    g.setColour(colour);
-    g.drawText(value, bounds, align, true);
 }
 void paintShell(Graphics &g, Rectangle<int> b, const String &title, const String &hint,
                 const LogisthColours &colours) {
@@ -38,11 +29,11 @@ void paintShell(Graphics &g, Rectangle<int> b, const String &title, const String
     g.fillRoundedRectangle(b.toFloat(), 8);
     g.setColour(colours.line);
     g.drawRoundedRectangle(b.toFloat().reduced(.5f), 8, 1);
-    drawCaption(g, title, b.reduced(12, 0).withY(b.getY() + 8).withHeight(18), 11.5f, colours.ink,
-                Justification::centredLeft, true);
+    colours.drawCaption(g, title, b.reduced(12, 0).withY(b.getY() + 8).withHeight(18), 11.5f,
+                        colours.ink, Justification::centredLeft, true);
     if (hint.isNotEmpty())
-        drawCaption(g, hint, b.reduced(12, 0).withY(b.getY() + 8).withHeight(18), 9, colours.muted,
-                    Justification::centredRight);
+        colours.drawCaption(g, hint, b.reduced(12, 0).withY(b.getY() + 8).withHeight(18), 9,
+                            colours.muted, Justification::centredRight);
 }
 void capsule(Graphics &g, Rectangle<float> b, Colour fill, Colour outline) {
     g.setColour(fill);
@@ -52,6 +43,32 @@ void capsule(Graphics &g, Rectangle<float> b, Colour fill, Colour outline) {
 }
 } // namespace
 
+Font LogisthColours::font(float size, bool bold) const {
+    float h = jmax(11.f, size * 1.18f);
+    if (fontFamily == "Open Sans")
+        return Font(FontOptions(embeddedFace(bold)).withHeight(h));
+    return Font(FontOptions(fontFamily, h, bold ? Font::bold : Font::plain));
+}
+void LogisthColours::drawCaption(Graphics &g, const String &text, Rectangle<int> bounds, float size,
+                                 Colour colour, Justification align, bool bold) const {
+    g.setFont(font(size, bold));
+    g.setColour(colour);
+    g.drawText(text, bounds, align, true);
+}
+class ThemeText {
+    const LogisthColours &theme;
+
+  public:
+    explicit ThemeText(const LogisthColours &c) : theme(c) {}
+    Font font(float s, bool b = false) const {
+        return theme.font(s, b);
+    }
+    void drawCaption(Graphics &g, const String &t, Rectangle<int> r, float s, Colour c,
+                     Justification a = Justification::centredLeft, bool b = false) const {
+        theme.drawCaption(g, t, r, s, c, a, b);
+    }
+};
+#include "EqView.h"
 #include "StudioViews.h"
 
 void LogisthColours::choosePalette(int selected) {
@@ -60,6 +77,11 @@ void LogisthColours::choosePalette(int selected) {
 }
 void LogisthColours::applyPalette(const ThemeDefinition &theme) {
     darkTheme = theme.dark;
+    fontFamily = theme.fontFamily;
+    backgroundStyle = theme.backgroundStyle;
+    knobStyle = theme.knobStyle;
+    knobColour = theme.colours[10];
+    knobTrack = theme.colours[11];
     body = theme.colours[0];
     panel = theme.colours[1];
     line = theme.colours[2];
@@ -85,6 +107,8 @@ void LogisthLook::setTheme(int selected) {
 }
 void LogisthLook::setPalette(const ThemeDefinition &theme) {
     applyPalette(theme);
+    regular = font(12, false).getTypefacePtr();
+    semibold = font(12, true).getTypefacePtr();
     setColour(TextEditor::highlightedTextColourId, darkTheme ? screen : ink);
     setColour(ComboBox::textColourId, ink);
     setColour(TextButton::buttonColourId, darkTheme ? screenLine : Colour(0xffe9ede5));
@@ -127,7 +151,7 @@ void LogisthLook::drawRotarySlider(Graphics &g, int x, int y, int w, int h, floa
     const Colour accent = isDark ? mint : green;
     Path track;
     track.addCentredArc(centre.x, centre.y, radius, radius, 0, start, end, true);
-    g.setColour(isDark ? screenLine : line);
+    g.setColour(knobTrack);
     g.strokePath(track, PathStrokeType(small ? 1.5f : 2.f));
     const double neutral =
         s.getMinimum() < 0 && s.getMaximum() > 0 ? s.valueToProportionOfLength(0) : 0;
@@ -135,7 +159,7 @@ void LogisthLook::drawRotarySlider(Graphics &g, int x, int y, int w, int h, floa
     Path active;
     active.addCentredArc(centre.x, centre.y, radius, radius, 0, jmin(from, angle),
                          jmax(from, angle), true);
-    g.setColour(s.isEnabled() ? accent : accent.withAlpha(.25f));
+    g.setColour(s.isEnabled() ? knobColour : knobColour.withAlpha(.25f));
     g.strokePath(active, PathStrokeType(small ? 1.6f : 2.4f));
     float r = radius - (small ? 3 : 4);
     auto knob = Rectangle<float>(centre.x - r, centre.y - r, 2 * r, 2 * r);
@@ -146,7 +170,11 @@ void LogisthLook::drawRotarySlider(Graphics &g, int x, int y, int w, int h, floa
     g.setGradientFill(ColourGradient(isDark ? panel.brighter(.15f) : Colours::white, centre.x,
                                      knob.getY(), isDark ? body : Colour(0xffdedfd7), centre.x,
                                      knob.getBottom(), false));
-    g.fillEllipse(knob);
+    if (knobStyle != 2) {
+        if (knobStyle == 1)
+            g.setColour(knobColour.interpolatedWith(panel, .65f));
+        g.fillEllipse(knob);
+    }
     g.setColour(isDark ? screenLine : Colour(0xffc4cbbf));
     g.drawEllipse(knob.reduced(.5f), 1);
     float a = angle - MathConstants<float>::halfPi;
@@ -260,10 +288,10 @@ class LogisthEditor::Console : public Component,
                                private ThemeSettings::Listener,
                                private ChangeListener {
     enum class Style { Knob, Trim, Fader, Number, Menu, Toggle };
-    class Control : public Component {
+    class Control : public Component, private ThemeText {
       public:
         Control(Console &o, Param index)
-            : owner(o), spec(parameterSpecs[size_t(index)]), id(index) {
+            : ThemeText(o), owner(o), spec(parameterSpecs[size_t(index)]), id(index) {
             setLookAndFeel(&owner.look);
             setComponentID(spec.id);
             addAndMakeVisible(label);
@@ -473,6 +501,8 @@ class LogisthEditor::Console : public Component,
                 return String(v * 100, 0) + "%";
             if (spec.integer)
                 return (v > 0 && spec.low < 0 ? "+" : "") + String(int(v));
+            if (name.endsWith("stretch"))
+                return String(v, 2) + "x";
             if (name.endsWith("phase"))
                 return String(v, 0) + String(CharPointer_UTF8("°"));
             return String(v, std::abs(v) >= 10 ? 0 : 2);
@@ -490,9 +520,10 @@ class LogisthEditor::Console : public Component,
         std::unique_ptr<AudioProcessorValueTreeState::ComboBoxAttachment> choiceAttachment;
         std::unique_ptr<AudioProcessorValueTreeState::ButtonAttachment> toggleAttachment;
     };
-    class RackButton : public Button {
+    class RackButton : public Button, private ThemeText {
       public:
-        RackButton(Console &c, int i, String n) : Button(n), owner(c), index(i), name(n) {
+        RackButton(Console &c, int i, String n)
+            : Button(n), ThemeText(c), owner(c), index(i), name(n) {
             onClick = [this] { owner.setRack(index); };
         }
         void paintButton(Graphics &g, bool hover, bool) override {
@@ -515,9 +546,9 @@ class LogisthEditor::Console : public Component,
         int index;
         String name;
     };
-    class PatternCanvas : public Component {
+    class PatternCanvas : public Component, private ThemeText {
       public:
-        explicit PatternCanvas(Console &c) : owner(c) {
+        explicit PatternCanvas(Console &c) : ThemeText(c), owner(c) {
             setComponentID("pattern.canvas");
             setName("Draw pattern lanes");
             setWantsKeyboardFocus(true);
@@ -665,10 +696,10 @@ class LogisthEditor::Console : public Component,
         int paintRow = 0, lastColumn = -1, inputRow = 0, inputColumn = 0;
     };
 
-    class Keys : public MidiKeyboardComponent {
+    class Keys : public MidiKeyboardComponent, private ThemeText {
       public:
         Keys(MidiKeyboardState &s, Console &c)
-            : MidiKeyboardComponent(s, horizontalKeyboard), owner(c) {
+            : MidiKeyboardComponent(s, horizontalKeyboard), ThemeText(c), owner(c) {
             applyTheme();
         }
         void applyTheme() {
@@ -700,12 +731,14 @@ class LogisthEditor::Console : public Component,
   public:
     Console(LogisthProcessor &p, LogisthLook &skin)
         : processor(p), look(skin), keyboard(p.keyboard, *this), patternCanvas(*this),
-          waveView(p, *this, [](float h) { return font(h); }),
-          scopeView(p, *this, [](float h) { return font(h); }), tooltips(this, 650) {
+          waveView(p, *this, [this](float h) { return font(h); }),
+          scopeView(p, *this, [this](float h) { return font(h); }),
+          eqView(p, *this, [this] { return int(value(Param::eqmode)); }), tooltips(this, 650) {
         setLookAndFeel(&look);
         addChildComponent(patternCanvas);
         addChildComponent(waveView);
         addAndMakeVisible(scopeView);
+        addChildComponent(eqView);
         setSize(canvasWidth, canvasHeight);
         for (size_t i = 0; i < parameterCount; ++i) {
             controls[i] = std::make_unique<Control>(*this, Param(i));
@@ -812,7 +845,8 @@ class LogisthEditor::Console : public Component,
         for (int i = 0; i < 4; ++i) {
             auto &view = sourceViews[size_t(i)];
             view.setComponentID("source.view." + String(i));
-            view.addItemList({"VOICE", "SOURCE", "ENV", "GRAINS", "MOTION", "TIME"}, 1);
+            view.addItemList(
+                {"VOICE", "SOURCE", "ENV", "GRAINS", "MOTION", "TIME", "MOD", "PLAYBACK"}, 1);
             view.setSelectedId(
                 processor.state.getRawParameterValue("o" + String(i + 1) + "engine")->load() > 0
                     ? 2
@@ -969,11 +1003,26 @@ class LogisthEditor::Console : public Component,
             note.getProperties().set("dark", true);
         refreshChord();
         readout = "Ready  /  Choose a sound or play a note";
+        auto pending = processor.appearanceDraft;
         setTheme(ThemeSettings::reload(), false);
+        if (pending && pending->baseline.same(savedTheme)) {
+            draftTheme = pending->edited;
+            themeName.setText(draftTheme.name, false);
+            themeDark.setToggleState(draftTheme.dark, dontSendNotification);
+            updateColourEditor();
+            applyThemePalette(draftTheme);
+            processor.appearanceDraft = pending;
+            refreshStyleFields();
+        }
+        lastThemeScan = Time::getMillisecondCounter();
         ThemeSettings::addListener(this);
         startTimerHz(24);
     }
     ~Console() override {
+        rememberDraft();
+        colourHex.onFocusLost = nullptr;
+        colourHex.onReturnKey = nullptr;
+        themeName.onTextChange = nullptr;
         colourPicker.removeChangeListener(this);
         ThemeSettings::removeListener(this);
         stopTimer();
@@ -1010,8 +1059,7 @@ class LogisthEditor::Console : public Component,
     }
     void themeChanged(int selected) override {
         auto next = ThemeSettings::theme(selected);
-        if (next.key == savedTheme.key && next.name == savedTheme.name &&
-            next.dark == savedTheme.dark && next.colours == savedTheme.colours) {
+        if (next.same(savedTheme)) {
             themeId = selected;
             look.themeId = selected;
             preferenceRevision = ThemeSettings::revision();
@@ -1028,17 +1076,55 @@ class LogisthEditor::Console : public Component,
         refreshThemeChoices();
         savedTheme = ThemeSettings::theme(themeId);
         draftTheme = savedTheme;
+        processor.appearanceDraft.reset();
         themeName.setText(draftTheme.name, false);
         themeDark.setToggleState(draftTheme.dark, dontSendNotification);
+        refreshStyleFields();
         updateColourEditor();
         applyThemePalette(draftTheme);
+    }
+    ThemeDraft currentDraft() const {
+        return {draftTheme, savedTheme};
+    }
+    void restoreDraft(const ThemeDraft &draft) {
+        if (draft.baseline.same(savedTheme)) {
+            draftTheme = draft.edited;
+            themeName.setText(draftTheme.name, false);
+            themeDark.setToggleState(draftTheme.dark, dontSendNotification);
+            refreshStyleFields();
+            updateColourEditor();
+            applyThemePalette(draftTheme);
+        }
+    }
+    void rememberDraft() {
+        draftTheme.name = themeName.getText();
+        if (!draftTheme.same(savedTheme))
+            processor.appearanceDraft =
+                std::make_shared<ThemeDraft>(ThemeDraft{draftTheme, savedTheme});
+        else
+            processor.appearanceDraft.reset();
     }
     void applyThemePalette(const ThemeDefinition &theme) {
         applyPalette(theme);
         look.themeId = themeId;
         look.setPalette(theme);
+        std::function<void(Component &)> updateFonts = [&](Component &node) {
+            if (auto *label = dynamic_cast<Label *>(&node)) {
+                auto old = label->getFont();
+                auto f = font(old.getHeight() / 1.18f, old.isBold());
+                label->setFont(f);
+            }
+            if (auto *edit = dynamic_cast<TextEditor *>(&node)) {
+                auto old = edit->getFont();
+                edit->setFont(font(old.getHeight() / 1.18f, old.isBold()));
+            }
+            for (auto *child : node.getChildren())
+                updateFonts(*child);
+        };
+        updateFonts(*this);
         keyboard.applyTheme();
-        for (ComboBox *box : {&themeChoice, &scaleChoice, &colourRole})
+        for (ComboBox *box :
+             {&themeChoice, &scaleChoice, &colourRole, &themeFont, &themeBackground, &themeKnobs})
             box->setColour(ComboBox::textColourId, screenText);
         for (TextEditor *editor : {&themeName, &colourHex}) {
             editor->setColour(TextEditor::backgroundColourId, panel);
@@ -1053,13 +1139,15 @@ class LogisthEditor::Console : public Component,
             button->setColour(TextButton::buttonColourId, screenLine);
             button->setColour(TextButton::textColourOffId, screenText);
         }
-        for (Label *label : {&themeLabel, &themeHelp, &aboutLabel, &aboutInfo, &scaleLabel,
-                             &nameLabel, &roleLabel, &hexLabel})
+        for (Label *label :
+             {&themeLabel, &themeHelp, &aboutLabel, &aboutInfo, &scaleLabel, &nameLabel, &roleLabel,
+              &hexLabel, &fontLabel, &backgroundLabel, &knobLabel})
             label->setColour(Label::textColourId, screenText);
         presetNotes.setColour(TextEditor::backgroundColourId, panel);
         presetNotes.applyColourToAllText(ink, true);
         presetNotes.setColour(TextEditor::outlineColourId, line);
         presetNotes.setTextToShowWhenEmpty("Preset comment - click to edit", muted);
+        rememberDraft();
         sendLookAndFeelChange();
         layout();
         repaint();
@@ -1082,7 +1170,7 @@ class LogisthEditor::Console : public Component,
         return settingsTab;
     }
     void showSettingsPage(int page) {
-        settingsTab = jlimit(0, 2, page);
+        settingsTab = jlimit(0, 3, page);
         layoutSettings();
     }
     bool showingSettings() const {
@@ -1100,7 +1188,26 @@ class LogisthEditor::Console : public Component,
         repaint();
     }
     void showScenario(int index) {
-        previewReverb = -1;
+        previewReverb = previewEq = previewWave = -1;
+        if (index >= 19 && index <= 22) {
+            settingsOpen = false;
+            selectedPart = 0;
+            if (index == 19 || index == 20) {
+                rack = 9;
+                previewSource = index == 19 ? 2 : 0;
+                previewWave = index == 20 ? 2 : -1;
+                layout();
+                for (auto &v : sourceViews)
+                    v.setSelectedId(index == 19 ? 8 : 7, dontSendNotification);
+            } else {
+                rack = 4;
+                previewEq = index - 21;
+            }
+            layout();
+            repaint();
+            return;
+        }
+
         if (index >= 14 && index < 19) {
             settingsOpen = false;
             rack = 5;
@@ -1212,7 +1319,7 @@ class LogisthEditor::Console : public Component,
         for (int part = 0; part < 2; ++part)
             for (int mode = 0; mode < 4; ++mode)
                 for (int model = 0; model < 2; ++model)
-                    for (int view = 1; view <= 6; ++view) {
+                    for (int view = 1; view <= 8; ++view) {
                         selectedPart = part;
                         previewSource = mode;
                         previewGran = model;
@@ -1223,6 +1330,21 @@ class LogisthEditor::Console : public Component,
                                 v.setSelectedId(view, dontSendNotification);
                         inspect();
                     }
+        previewSource = 0;
+        previewWave = 2;
+        for (auto &view : sourceViews)
+            view.setSelectedId(7, dontSendNotification);
+        for (int part = 0; part < 2; ++part) {
+            selectedPart = part;
+            inspect();
+        }
+        previewWave = -1;
+        rack = 4;
+        for (int mode = 0; mode < 2; ++mode) {
+            previewEq = mode;
+            inspect();
+        }
+        previewEq = -1;
         for (size_t i = 0; i < controls.size(); ++i)
             if (!visited.count(i))
                 error = "Unreachable: " + String(parameterSpecs[i].id);
@@ -1239,8 +1361,8 @@ class LogisthEditor::Console : public Component,
 
   private:
     void initialiseSettings() {
-        const StringArray tabs{"APPEARANCE", "THEME EDITOR", "ABOUT"};
-        for (int i = 0; i < 3; ++i) {
+        const StringArray tabs{"APPEARANCE", "THEME EDITOR", "STYLE", "ABOUT"};
+        for (int i = 0; i < 4; ++i) {
             auto &b = settingsTabs[size_t(i)];
             b.setButtonText(tabs[i]);
             b.setComponentID("settings.tab." + String(i));
@@ -1297,7 +1419,59 @@ class LogisthEditor::Console : public Component,
         button(themeEdit, "settings.theme.edit", "EDIT / NEW");
         button(themeScan, "settings.theme.scan", "RESCAN");
         button(themeFolder, "settings.theme.folder", "OPEN FOLDER");
-        button(themeSave, "settings.theme.save", "SAVE AS NEW");
+        button(themeSave, "settings.theme.save", "SAVE NEW");
+        button(themeSaveAs, "settings.theme.saveas", "SAVE AS...");
+        button(themeRename, "settings.theme.rename", "RENAME");
+        button(themeChooseFolder, "settings.theme.choosefolder", "USE FOLDER");
+        themeChooseFolder.onClick = [this] {
+            themeChooser = std::make_unique<FileChooser>("Choose the theme folder",
+                                                         ThemeSettings::folder(), "", true);
+            SafePointer<Console> safe(this);
+            themeChooser->launchAsync(
+                FileBrowserComponent::openMode | FileBrowserComponent::canSelectDirectories,
+                [safe](const FileChooser &c) {
+                    if (!safe || c.getResult() == File{})
+                        return;
+                    auto r = ThemeSettings::setFolder(c.getResult(), safe.getComponent());
+                    if (r.wasOk())
+                        safe->setTheme(ThemeSettings::current(), false);
+                    else
+                        safe->readout = r.getErrorMessage();
+                });
+        };
+        themeSaveAs.onClick = [this] {
+            rememberDraft();
+            auto initial = ThemeSettings::folder().getNonexistentChildFile(
+                "custom-" + File::createLegalFileName(themeName.getText()), ".json", false);
+            themeChooser = std::make_unique<FileChooser>("Save theme as", initial, "*.json", true);
+            SafePointer<Console> safe(this);
+            themeChooser->launchAsync(
+                FileBrowserComponent::saveMode | FileBrowserComponent::canSelectFiles |
+                    FileBrowserComponent::warnAboutOverwriting,
+                [safe, initial](const FileChooser &c) {
+                    if (!safe || c.getResult() == File{})
+                        return;
+                    auto file = c.getResult().withFileExtension("json");
+                    auto draft = safe->draftTheme;
+                    if (file.getFileName() != initial.getFileName())
+                        draft.name = file.getFileNameWithoutExtension();
+                    auto r = ThemeSettings::saveTo(draft, file, safe.getComponent());
+                    if (r.wasOk())
+                        safe->setTheme(ThemeSettings::current(), false);
+                    else
+                        safe->readout = r.getErrorMessage();
+                    safe->repaint();
+                });
+        };
+        themeRename.onClick = [this] {
+            rememberDraft();
+            auto r = ThemeSettings::renameCurrent(themeName.getText(), this, &draftTheme);
+            if (r.wasOk())
+                setTheme(ThemeSettings::current(), false);
+            else
+                readout = r.getErrorMessage();
+            repaint();
+        };
         button(themeReset, "settings.theme.reset", "RESET EDITS");
         themeEdit.onClick = [this] {
             if (draftTheme.factory)
@@ -1326,6 +1500,7 @@ class LogisthEditor::Console : public Component,
         themeName.setComponentID("settings.theme.name");
         themeName.setFont(font(11));
         themeName.setInputRestrictions(64);
+        themeName.onTextChange = [this] { rememberDraft(); };
         settingsPanel.addAndMakeVisible(themeName);
         themeDark.setButtonText("DARK CONTROLS");
         themeDark.setComponentID("settings.theme.dark");
@@ -1346,7 +1521,8 @@ class LogisthEditor::Console : public Component,
         colourHex.onReturnKey = [this] {
             Colour c;
             if (ThemeSettings::colour(colourHex.getText(), c)) {
-                draftTheme.colours[size_t(jlimit(0, 9, colourRole.getSelectedId() - 1))] = c;
+                draftTheme.colours[size_t(jlimit(0, ThemeSettings::colourNames.size() - 1,
+                                                 colourRole.getSelectedId() - 1))] = c;
                 colourPicker.setCurrentColour(c, dontSendNotification);
                 applyThemePalette(draftTheme);
             } else {
@@ -1360,6 +1536,40 @@ class LogisthEditor::Console : public Component,
         colourPicker.setComponentID("settings.theme.picker");
         colourPicker.addChangeListener(this);
         settingsPanel.addAndMakeVisible(colourPicker);
+        for (ComboBox *c : {&themeFont, &themeBackground, &themeKnobs}) {
+            c->getProperties().set("dark", true);
+            settingsPanel.addAndMakeVisible(*c);
+        }
+        themeFont.setComponentID("settings.theme.font");
+        auto families = Font::findAllTypefaceNames();
+        families.removeString("Open Sans");
+        families.insert(0, "Open Sans");
+        themeFont.addItemList(families, 1);
+        themeBackground.setComponentID("settings.theme.background");
+        themeBackground.addItemList({"Flat", "Gradient", "Grid"}, 1);
+        themeKnobs.setComponentID("settings.theme.knobs");
+        themeKnobs.addItemList({"Arc", "Solid", "Minimal"}, 1);
+        themeFont.onChange = [this] {
+            if (themeFont.getSelectedId() > 0) {
+                draftTheme.fontFamily = themeFont.getText();
+                applyThemePalette(draftTheme);
+            }
+        };
+        themeBackground.onChange = [this] {
+            draftTheme.backgroundStyle = themeBackground.getSelectedId() - 1;
+            applyThemePalette(draftTheme);
+        };
+        themeKnobs.onChange = [this] {
+            draftTheme.knobStyle = themeKnobs.getSelectedId() - 1;
+            applyThemePalette(draftTheme);
+        };
+        for (auto pair : {std::pair<Label *, const char *>{&fontLabel, "FONT FAMILY"},
+                          {&backgroundLabel, "BACKGROUND"},
+                          {&knobLabel, "KNOB STYLE"}}) {
+            pair.first->setText(pair.second, dontSendNotification);
+            pair.first->setFont(font(10));
+            settingsPanel.addAndMakeVisible(*pair.first);
+        }
         aboutLabel.setFont(font(11, true));
         aboutLabel.setText("WAVELOGIK / LOGISTH", dontSendNotification);
         aboutInfo.setFont(font(11));
@@ -1381,19 +1591,26 @@ class LogisthEditor::Console : public Component,
             themeChoice.addItemList(names, 1);
         }
         themeChoice.setSelectedId(themeId + 1, dontSendNotification);
-        themeHelp.setText(String(names.size()) + " themes / scanned every 2 seconds\n" +
+        themeHelp.setText(String(names.size()) + " themes / scanned every 2 minutes\n" +
                               ThemeSettings::folder().getFullPathName(),
                           dontSendNotification);
         themeHelp.setTooltip(ThemeSettings::folder().getFullPathName());
     }
+    void refreshStyleFields() {
+        themeFont.setText(draftTheme.fontFamily, dontSendNotification);
+        themeBackground.setSelectedId(draftTheme.backgroundStyle + 1, dontSendNotification);
+        themeKnobs.setSelectedId(draftTheme.knobStyle + 1, dontSendNotification);
+    }
     void updateColourEditor() {
-        auto c = draftTheme.colours[size_t(jlimit(0, 9, colourRole.getSelectedId() - 1))];
+        auto c = draftTheme.colours[size_t(
+            jlimit(0, ThemeSettings::colourNames.size() - 1, colourRole.getSelectedId() - 1))];
         colourHex.setText("#" + c.toDisplayString(false), false);
         colourPicker.setCurrentColour(c, dontSendNotification);
     }
     void changeListenerCallback(ChangeBroadcaster *source) override {
         if (source == &colourPicker) {
-            draftTheme.colours[size_t(jlimit(0, 9, colourRole.getSelectedId() - 1))] =
+            draftTheme.colours[size_t(
+                jlimit(0, ThemeSettings::colourNames.size() - 1, colourRole.getSelectedId() - 1))] =
                 colourPicker.getCurrentColour().withAlpha(1.f);
             updateColourEditor();
             applyThemePalette(draftTheme);
@@ -1406,9 +1623,9 @@ class LogisthEditor::Console : public Component,
             c.setBounds(b);
             c.setVisible(true);
         };
-        for (int i = 0; i < 3; ++i) {
+        for (int i = 0; i < 4; ++i) {
             auto &b = settingsTabs[size_t(i)];
-            show(b, {i * 174, 0, 164, 24});
+            show(b, {i * 130, 0, 124, 24});
             b.setToggleState(settingsTab == i, dontSendNotification);
         }
         if (settingsTab == 0) {
@@ -1416,9 +1633,10 @@ class LogisthEditor::Console : public Component,
             show(themeChoice, {157, 40, 348, 28});
             show(scaleLabel, {0, 82, 145, 25});
             show(scaleChoice, {157, 82, 152, 28});
-            show(themeEdit, {0, 125, 152, 26});
-            show(themeScan, {165, 125, 152, 26});
-            show(themeFolder, {330, 125, 175, 26});
+            show(themeEdit, {0, 125, 120, 26});
+            show(themeScan, {128, 125, 120, 26});
+            show(themeFolder, {256, 125, 120, 26});
+            show(themeChooseFolder, {384, 125, 126, 26});
             show(themeHelp, {0, 165, 510, 60});
         } else if (settingsTab == 1) {
             show(nameLabel, {0, 33, 208, 19});
@@ -1428,9 +1646,18 @@ class LogisthEditor::Console : public Component,
             show(colourRole, {0, 131, 208, 25});
             show(hexLabel, {0, 161, 92, 24});
             show(colourHex, {95, 161, 113, 25});
-            show(themeSave, {0, 199, 108, 27});
-            show(themeReset, {114, 199, 94, 27});
-            show(colourPicker, {224, 33, 290, 194});
+            show(themeSave, {0, 199, 104, 27});
+            show(themeSaveAs, {110, 199, 120, 27});
+            show(themeRename, {236, 199, 104, 27});
+            show(themeReset, {346, 199, 168, 27});
+            show(colourPicker, {224, 33, 290, 158});
+        } else if (settingsTab == 2) {
+            show(fontLabel, {0, 40, 145, 26});
+            show(themeFont, {150, 40, 360, 28});
+            show(backgroundLabel, {0, 87, 145, 26});
+            show(themeBackground, {150, 87, 360, 28});
+            show(knobLabel, {0, 134, 145, 26});
+            show(themeKnobs, {150, 134, 360, 28});
         } else {
             show(aboutLabel, {0, 40, 510, 25});
             show(aboutInfo, {0, 74, 510, 150});
@@ -1444,6 +1671,11 @@ class LogisthEditor::Console : public Component,
                                                   Param::choruson, Param::eqon,   Param::reverbon,
                                                   Param::delayon,  Param::compon, Param::chordon};
     float value(Param p) const {
+        if (previewEq >= 0 && p == Param::eqmode)
+            return float(previewEq);
+        if (previewWave >= 0 && String(parameterSpecs[size_t(p)].id).startsWith("o") &&
+            String(parameterSpecs[size_t(p)].id).endsWith("wave"))
+            return float(previewWave);
         if (previewReverb >= 0 && p == Param::reverbtype)
             return float(previewReverb);
         if (previewGran >= 0 && String(parameterSpecs[size_t(p)].id).endsWith("gmodel"))
@@ -1633,6 +1865,9 @@ class LogisthEditor::Console : public Component,
                     menu.addItem("TIME", 6);
                 }
             }
+            menu.addItem("MOD", 7);
+            if (mode == 2)
+                menu.addItem("PLAYBACK", 8);
             menu.setSelectedId(menu.indexOfItemId(selected) >= 0 ? selected
                                : mode == 0                       ? 1
                                                                  : 2,
@@ -1682,7 +1917,31 @@ class LogisthEditor::Console : public Component,
                 control(id + StringArray{"octave", "tune", "fine"}[i],
                         {b.getX() + 12, b.getY() + 34 + i * 39, 62, 33}, Style::Number,
                         StringArray{"OCTAVE", "NOTE", "FINE"}[i]);
-            if (view == 4) {
+            if (view == 7) {
+                StringArray keys{"amdepth", "amratio"}, names{"AM DEPTH", "AM RATIO"};
+                if (mode <= 1) {
+                    keys = {"fmdepth", "fmratio", "amdepth", "amratio"};
+                    names = {"FM INDEX", "FM RATIO", "AM DEPTH", "AM RATIO"};
+                }
+                int wave = int(value(Param(size_t(Param::o1wave) + slot * 12)));
+                if (mode == 0 && (wave == 2 || wave == 5 || wave == 6)) {
+                    keys.addArray({"pulsewidth", "pwmdepth", "pwmrate"});
+                    names.addArray({"WIDTH", "PWM DEPTH", "PWM RATE"});
+                }
+                int cols = 4;
+                for (int i = 0; i < keys.size(); ++i)
+                    control(
+                        id + keys[i],
+                        {b.getX() + 88 + (i % cols) * 88, b.getY() + 35 + (i / cols) * 69, 80, 66},
+                        Style::Knob, names[i]);
+            } else if (view == 8) {
+                control(id + "stretchmode", {b.getX() + 88, b.getY() + 36, 170, 42}, Style::Menu,
+                        "STRETCH");
+                control(id + "interpolation", {b.getX() + 269, b.getY() + 36, 175, 42}, Style::Menu,
+                        "INTERPOLATION");
+                control(id + "stretch", {b.getX() + 88, b.getY() + 86, 95, 80}, Style::Knob,
+                        "TIME FACTOR");
+            } else if (view == 4) {
                 control(id + "gmodel", {b.getX() + 88, b.getY() + 35, 150, 24}, Style::Menu);
                 for (int i = 0; i < 4; ++i)
                     control(id + (granModel ? StringArray{"gattack", "ghold", "gspace", "gwave"}[i]
@@ -1816,6 +2075,29 @@ class LogisthEditor::Console : public Component,
             settingsPanel.toFront(false);
             return;
         }
+        if (rack == 4) {
+            put(Param::eqmode, {414, 289, 150, 24}, Style::Menu, {}, true);
+            put(Param::eqautogain, {574, 289, 133, 24}, Style::Toggle, "AUTO GAIN", true);
+            put(Param::eqoutput, {803, 289, 131, 24}, Style::Number, "OUT / dB", true);
+            eqView.setBounds(414, 320, 520, 96);
+            eqView.setVisible(true);
+            if (value(Param::eqmode) > 0) {
+                for (int i = 0; i < 10; ++i) {
+                    put(Param(size_t(Param::eqband0) + size_t(i)), {414 + i * 52, 420, 48, 100},
+                        Style::Fader,
+                        Equalizer::frequencies[size_t(i)] >= 1000
+                            ? String(Equalizer::frequencies[size_t(i)] / 1000, 0) + "k"
+                            : String(Equalizer::frequencies[size_t(i)], 0),
+                        true);
+                }
+            } else {
+                for (int i = 0; i < 4; ++i)
+                    put(Param(size_t(Param::eqbass) + size_t(i)), {414 + i * 130, 424, 122, 94},
+                        Style::Knob, StringArray{"BASS", "BASS FREQ", "TREBLE", "TREBLE FREQ"}[i],
+                        true);
+            }
+            return;
+        }
         if (rack == 9) {
             waveSlot.setBounds(414, 289, 110, 23);
             waveSlot.setVisible(true);
@@ -1941,8 +2223,7 @@ class LogisthEditor::Console : public Component,
                 if ((seconds && sync) || (division && !sync))
                     continue;
                 int reverbType = int(value(Param::reverbtype));
-                if ((id == "reverbdecay" && reverbType == 0) ||
-                    ((id == "shimmeramount" || id == "shimmerpitch") && reverbType != 4) ||
+                if (((id == "shimmeramount" || id == "shimmerpitch") && reverbType != 4) ||
                     (id == "springdispersion" && reverbType != 2) ||
                     (id == "vintagemod" && reverbType != 3))
                     continue;
@@ -1992,6 +2273,7 @@ class LogisthEditor::Console : public Component,
         }
         patternCanvas.setVisible(false);
         waveView.setVisible(false);
+        eqView.setVisible(false);
         waveSlot.setVisible(false);
         for (auto &area : sourceWave)
             area.setVisible(false);
@@ -2071,8 +2353,8 @@ class LogisthEditor::Console : public Component,
             b->repaint();
         layoutStamp = currentLayoutState();
     }
-    std::array<int, 14> currentLayoutState() const {
-        std::array<int, 14> state{int(value(Param::sync)), int(value(Param::lfo1free)),
+    std::array<int, 19> currentLayoutState() const {
+        std::array<int, 19> state{int(value(Param::sync)), int(value(Param::lfo1free)),
                                   int(value(Param::lfo2free)), int(value(Param::arpmode) >= 8),
                                   int(value(Param::arppattern))};
         for (int o = 0; o < 4; ++o) {
@@ -2080,12 +2362,14 @@ class LogisthEditor::Console : public Component,
             state[size_t(9 + o)] = int(value(Param(size_t(Param::o1gmodel) + size_t(o) * 15)));
         }
         state[13] = int(value(Param::reverbtype));
+        state[14] = int(value(Param::eqmode));
+        for (int i = 0; i < 4; ++i)
+            state[size_t(15 + i)] = int(value(Param(size_t(Param::o1wave) + size_t(i) * 12)));
         return state;
     }
     void timerCallback() override {
         auto now = Time::getMillisecondCounter();
-        if (now - lastThemeScan >= 2000) {
-            lastThemeScan = now;
+        if (ThemeSettings::scanDue(now, lastThemeScan)) {
             ThemeSettings::scan();
         }
         processor.serviceAssets();
@@ -2125,6 +2409,8 @@ class LogisthEditor::Console : public Component,
                 int(value(Param(size_t(Param::o1engine) + size_t(waveView.selectedSlot()) * 16))));
             waveView.repaint();
         }
+        if (rack == 4)
+            eqView.repaint();
         if (rack == 8)
             refreshChord();
         if (currentLayoutState() != layoutStamp)
@@ -2149,7 +2435,20 @@ class LogisthEditor::Console : public Component,
         repaint(956, 278, 268, 258);
     }
     void paint(Graphics &g) override {
-        g.fillAll(body);
+        if (backgroundStyle == 0)
+            g.fillAll(body);
+        else {
+            g.setGradientFill(
+                ColourGradient(body, 0, 0, panel, float(getWidth()), float(getHeight()), false));
+            g.fillAll();
+            if (backgroundStyle == 2) {
+                g.setColour(line.withAlpha(.3f));
+                for (int x = 0; x < getWidth(); x += 24)
+                    g.drawVerticalLine(x, 0, float(getHeight()));
+                for (int y = 0; y < getHeight(); y += 24)
+                    g.drawHorizontalLine(y, 0, float(getWidth()));
+            }
+        }
         g.setColour(darkTheme ? line : Colour(0xfff6f5ee));
         g.drawHorizontalLine(0, 0, float(canvasWidth));
         g.setColour(green);
@@ -2331,18 +2630,22 @@ class LogisthEditor::Console : public Component,
     std::array<Slider, 8> chordNotes;
     bool updatingChord = false;
     std::unique_ptr<FileChooser> sourceChooser;
-    int previewSource = -1, previewPattern = -1, previewGran = -1, previewReverb = -1;
+    int previewSource = -1, previewPattern = -1, previewGran = -1, previewReverb = -1,
+        previewEq = -1, previewWave = -1;
     ComboBox presets;
     TextButton settings;
     TextEditor presetNotes;
     Component settingsPanel;
     ComboBox themeChoice;
     Label themeLabel, themeHelp, aboutLabel, aboutInfo, scaleLabel, nameLabel, roleLabel, hexLabel;
-    ComboBox scaleChoice, colourRole;
+    ComboBox scaleChoice, colourRole, themeFont, themeBackground, themeKnobs;
+    Label fontLabel, backgroundLabel, knobLabel;
+    std::unique_ptr<FileChooser> themeChooser;
+    TextButton themeSaveAs, themeRename, themeChooseFolder;
     TextEditor themeName, colourHex;
     ToggleButton themeDark;
     TextButton themeEdit, themeScan, themeFolder, themeSave, themeReset;
-    std::array<TextButton, 3> settingsTabs;
+    std::array<TextButton, 4> settingsTabs;
     ColourSelector colourPicker{ColourSelector::showColourspace | ColourSelector::showColourAtTop};
     ThemeDefinition draftTheme, savedTheme;
     int settingsTab = 0;
@@ -2355,6 +2658,7 @@ class LogisthEditor::Console : public Component,
     PatternCanvas patternCanvas;
     logisth_ui::WaveView waveView;
     logisth_ui::ScopeView scopeView;
+    logisth_ui::EqView eqView;
     std::array<logisth_ui::ClickArea, 4> sourceWave;
     std::array<ToggleButton, 3> scopeSources;
     TextButton presetFiles;
@@ -2366,7 +2670,7 @@ class LogisthEditor::Console : public Component,
     TooltipWindow tooltips;
     String readout, lastStatus;
     std::array<uint64_t, 4> displayedRevisions{};
-    std::array<int, 14> layoutStamp{};
+    std::array<int, 19> layoutStamp{};
     int selectedPart = 0, rack = 0, stepPage = 0, previewSync = -1;
 };
 LogisthEditor::LogisthEditor(LogisthProcessor &p) : AudioProcessorEditor(p) {
@@ -2444,6 +2748,7 @@ Image LogisthEditor::snapshotPage(int scenario) {
     return createComponentSnapshot(getLocalBounds());
 }
 Image LogisthEditor::snapshotTheme(int selected) {
+    auto draft = console->currentDraft();
     int oldTheme = console->themeId;
     bool oldSettings = console->showingSettings();
     int oldPage = console->settingsPage();
@@ -2454,6 +2759,7 @@ Image LogisthEditor::snapshotTheme(int selected) {
     console->setTheme(oldTheme, false);
     console->showSettings(oldSettings);
     console->showSettingsPage(oldPage);
+    console->restoreDraft(draft);
     return result;
 }
 String LogisthEditor::validateLayout() {

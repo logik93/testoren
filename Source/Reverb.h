@@ -5,7 +5,7 @@ namespace logisth {
 struct ReverbControls {
     int reverbType = 0; // Hall, Room, Spring, Vintage, Shimmer
     float reverbDecay = 3.5f, shimmerAmount = .45f, shimmerPitch = 12, springDispersion = .6f,
-          vintageMod = .35f;
+          vintageMod = .35f, reverbDiffusion = .8f;
 };
 // Original feedback-delay-network implementations. All storage is allocated in
 // prepare(); resetting a delay only invalidates its written span, never clears a
@@ -43,17 +43,18 @@ class CharacterReverb {
             return y;
         }
     };
-    std::array<Line, 8> lines;
-    std::array<std::array<Line, 4>, 2> diffusion;
+    std::array<Line, 16> lines;
+    std::array<std::array<Line, 8>, 2> diffusion;
     std::array<Line, 2> early, pitch;
-    std::array<float, 8> dampState{}, dcState{}, feedback{}, feedbackTarget{};
-    std::array<std::array<float, 4>, 8> dispersion{};
+    std::array<float, 16> dampState{}, dcState{}, feedback{}, feedbackTarget{};
+    std::array<std::array<float, 4>, 16> dispersion{};
     std::array<float, 2> previousWet{};
-    std::array<double, 8> lengths{};
+    std::array<double, 16> lengths{};
     double sr = 44100, phase = 0, pitchPhase = 0, pitchStep = 0, size = 1, sizeTarget = 1;
     float damping = 1, dcCoefficient = 0, smoothing = 0, shimmer = 0, character = 0, modulation = 0;
     float dampingTarget = 1, shimmerTarget = 0, characterTarget = 0, modulationTarget = 0;
     double pitchStepTarget = 0;
+    float diffusionAmount = .8f, diffusionTarget = .8f;
     int type = 1;
     bool configured = false;
 
@@ -62,16 +63,16 @@ class CharacterReverb {
         sr = std::max(8000., sampleRate);
         type = algorithm;
         for (auto &l : lines)
-            l.prepare(size_t(sr * .25) + 4);
+            l.prepare(size_t(sr * .36) + 4);
         for (auto &channel : diffusion)
             for (auto &l : channel)
-                l.prepare(size_t(sr * .012) + 4);
+                l.prepare(size_t(sr * .022) + 4);
         for (auto &l : early)
             l.prepare(size_t(sr * .12) + 4);
         for (auto &l : pitch)
-            l.prepare(size_t(sr * .08) + 4);
+            l.prepare(size_t(sr * .11) + 4);
         smoothing = float(1 - std::exp(-1 / (.02 * sr)));
-        dcCoefficient = float(1 - std::exp(-2 * pi * 25 / sr));
+        dcCoefficient = float(1 - std::exp(-2 * pi * 5 / sr));
         reset();
     }
     void reset() {
@@ -92,13 +93,19 @@ class CharacterReverb {
         configured = false;
     }
     void configure(const ReverbControls &p, float roomSize, float damp) {
-        static constexpr double times[4][8] = {
-            {.0149, .0211, .0269, .0337, .0413, .0479, .0533, .0617},
-            {.0251, .0329, .0413, .0479, .0577, .0637, .0719, .0797},
-            {.0297, .0371, .0411, .0437, .0531, .0619, .0713, .0799},
-            {.0371, .0433, .0559, .0613, .0719, .0833, .0971, .1099}};
-        for (int i = 0; i < 8; ++i)
-            lengths[size_t(i)] = times[type - 1][i] * sr;
+        static constexpr double times[5][16] = {
+            {.0211, .0277, .0331, .0391, .0437, .0517, .0599, .0673, .0739, .0839, .0971, .1097,
+             .1279, .1451, .1637, .1879},
+            {.0113, .0149, .0181, .0211, .0269, .0301, .0337, .0371, .0413, .0479, .0533, .0617,
+             .0679, .0733, .0797, .0899},
+            {.0251, .0293, .0329, .0371, .0413, .0479, .0521, .0577, .0637, .0719, .0797, .0839,
+             .0919, .1013, .1139, .1277},
+            {.0197, .0297, .0331, .0371, .0411, .0437, .0479, .0531, .0619, .0713, .0799, .0877,
+             .0971, .1097, .1213, .1373},
+            {.0271, .0371, .0433, .0499, .0559, .0613, .0671, .0719, .0833, .0971, .1099, .1193,
+             .1319, .1451, .1613, .1793}};
+        for (int i = 0; i < 16; ++i)
+            lengths[size_t(i)] = times[type][i] * sr;
         sizeTarget = .5 + 1.3 * clamp(roomSize, 0, 1);
         const bool initialise = !configured;
         if (initialise)
@@ -107,15 +114,17 @@ class CharacterReverb {
         if (type == 3)
             cutoff = std::min(cutoff, 7000.f);
         dampingTarget = float(1 - std::exp(-2 * pi * std::min(double(cutoff), sr * .43) / sr));
-        for (int i = 0; i < 8; ++i)
+        for (int i = 0; i < 16; ++i)
             feedbackTarget[size_t(i)] =
                 float(std::exp(-6.907755278982137 * lengths[size_t(i)] / sr * sizeTarget /
                                clamp(p.reverbDecay, .2f, 20)));
         shimmerTarget = clamp(p.shimmerAmount, 0, 1);
         characterTarget = clamp(p.springDispersion, 0, 1);
         modulationTarget = clamp(p.vintageMod, 0, 1);
-        pitchStepTarget = (std::exp2(double(clamp(p.shimmerPitch, -12, 24)) / 12) - 1) / (.06 * sr);
+        diffusionTarget = clamp(p.reverbDiffusion, 0, 1);
+        pitchStepTarget = (std::exp2(double(clamp(p.shimmerPitch, -12, 24)) / 12) - 1) / (.08 * sr);
         if (initialise) {
+            diffusionAmount = diffusionTarget;
             damping = dampingTarget;
             shimmer = shimmerTarget;
             character = characterTarget;
@@ -126,44 +135,45 @@ class CharacterReverb {
         }
     }
     std::array<float, 2> tick(float l, float r) {
+        diffusionAmount += smoothing * (diffusionTarget - diffusionAmount);
         damping += smoothing * (dampingTarget - damping);
         shimmer += smoothing * (shimmerTarget - shimmer);
         character += smoothing * (characterTarget - character);
         modulation += smoothing * (modulationTarget - modulation);
         pitchStep += smoothing * (pitchStepTarget - pitchStep);
-        for (int i = 0; i < 8; ++i)
+        for (int i = 0; i < 16; ++i)
             feedback[size_t(i)] += smoothing * (feedbackTarget[size_t(i)] - feedback[size_t(i)]);
         size += smoothing * (sizeTarget - size);
         float input[2]{l, r};
         for (int ch = 0; ch < 2; ++ch) {
             early[size_t(ch)].push(input[ch]);
-            for (int stage = 0; stage < (type == 2 ? 2 : 4); ++stage) {
+            for (int stage = 0; stage < (type == 2 ? 4 : 8); ++stage) {
                 const double seconds = .0013 + stage * .0017 + ch * .00023;
-                input[ch] = diffusion[size_t(ch)][size_t(stage)].allpass(input[ch], seconds * sr,
-                                                                         type == 2 ? .45f : .6f);
+                input[ch] = diffusion[size_t(ch)][size_t(stage)].allpass(
+                    input[ch], seconds * sr, .35f + diffusionAmount * .35f);
             }
         }
         float shifted[2]{};
         if (type == 4 && shimmer > 0) {
             for (int ch = 0; ch < 2; ++ch) {
                 pitch[size_t(ch)].push(std::tanh(previousWet[size_t(ch)] + input[ch] * .5f));
-                for (int grain = 0; grain < 2; ++grain) {
-                    double at = pitchPhase + grain * .5;
+                for (int grain = 0; grain < 4; ++grain) {
+                    double at = pitchPhase + grain * .25;
                     at -= std::floor(at);
                     double window = .5 - .5 * std::cos(2 * pi * at);
                     shifted[ch] +=
-                        float(window) * pitch[size_t(ch)].read(sr * (.005 + .06 * (1 - at)));
+                        float(window * .5) * pitch[size_t(ch)].read(sr * (.005 + .08 * (1 - at)));
                 }
             }
             pitchPhase += pitchStep;
             pitchPhase -= std::floor(pitchPhase);
         }
-        float taps[8]{}, sum = 0;
-        for (int i = 0; i < 8; ++i) {
+        float taps[16]{}, sum = 0;
+        for (int i = 0; i < 16; ++i) {
             double movement = type == 3
                                   ? std::sin(phase * (1 + i * .071) + i) * modulation * sr * .00025
-                              : type == 4 ? std::sin(phase + i) * sr * .000025
-                                          : 0;
+                              : type == 4 || type == 0 ? std::sin(phase + i) * sr * .000025
+                                                       : 0;
             float sample = lines[size_t(i)].read(lengths[size_t(i)] * size + movement);
             if (type == 2)
                 for (int stage = 0; stage < 4; ++stage) {
@@ -177,24 +187,24 @@ class CharacterReverb {
             taps[i] = dampState[size_t(i)] - dcState[size_t(i)];
             sum += taps[i];
         }
-        static constexpr float left[8]{1, 1, 1, 1, -1, -1, -1, -1},
-            right[8]{1, 1, -1, -1, 1, 1, -1, -1};
-        static constexpr float outL[8]{1, -1, 1, -1, 1, -1, 1, -1},
-            outR[8]{1, 1, -1, -1, -1, -1, 1, 1};
+        static constexpr float left[16]{1, 1, 1, 1, -1, -1, -1, -1, 1, 1, 1, 1, -1, -1, -1, -1},
+            right[16]{1, 1, -1, -1, 1, 1, -1, -1, -1, -1, 1, 1, -1, -1, 1, 1};
+        static constexpr float outL[16]{1, -1, 1, -1, 1, -1, 1, -1, -1, 1, -1, 1, -1, 1, -1, 1},
+            outR[16]{1, 1, -1, -1, -1, -1, 1, 1, 1, 1, -1, -1, -1, -1, 1, 1};
         std::array<float, 2> wet{};
-        for (int i = 0; i < 8; ++i) {
-            float reflected = sum * .25f - taps[i]; // Orthogonal Householder feedback.
+        for (int i = 0; i < 16; ++i) {
+            float reflected = sum * .125f - taps[i]; // Orthogonal Householder feedback.
             if (type == 3)
                 reflected = std::tanh(reflected * 1.4f) / 1.4f;
-            float injection = (input[0] * left[i] + input[1] * right[i]) * .18f;
+            float injection = (input[0] * left[i] + input[1] * right[i]) * .13f;
             float gain = feedback[size_t(i)];
             if (type == 4) {
                 gain *= 1 - shimmer * .35f;
                 injection += (shifted[0] * left[i] + shifted[1] * right[i]) * shimmer * .12f;
             }
             lines[size_t(i)].push(injection + reflected * gain);
-            wet[0] += taps[i] * outL[i] * .32f;
-            wet[1] += taps[i] * outR[i] * .32f;
+            wet[0] += taps[i] * outL[i] * .25f;
+            wet[1] += taps[i] * outR[i] * .25f;
         }
         if (type == 1) {
             for (int tap = 0; tap < 5; ++tap) {

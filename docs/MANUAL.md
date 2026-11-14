@@ -1,4 +1,4 @@
-# logisth 0.9.1 — User Manual
+# logisth 0.9.2 — User Manual
 
 wavelogik logisth is a two-part polyphonic subtractive synthesizer for VST3, CLAP and standalone use.
 This manual describes logisth's own controls and behaviour. logisth is an independent
@@ -74,29 +74,34 @@ entered percentage are saved and restored when the editor or a new instance
 opens. A fresh installation adapts the initial size to its display. Each open
 window keeps its own size; changing one sets the default for subsequent windows.
 
-SETTINGS has APPEARANCE, THEME EDITOR and ABOUT tabs inside the central rack.
-The five standard themes are Light, Midnight Blue, Cobalt, Graphite and Forest.
-Midnight Blue is the default. Theme selection is shared by open instances and
-recalled by new ones; loading audio presets/projects preserves theme and scale.
-User preferences live in `logisth/appearance.json` under the system user
-application-data directory, independently of the audio patch.
+SETTINGS has APPEARANCE, THEME EDITOR, STYLE and ABOUT tabs inside the central
+rack. The standard themes are Light, Midnight Blue (default), Cobalt, Graphite
+and Forest. Theme selection is shared by open instances and recalled by new
+ones; audio presets/projects preserve theme and scale. Preferences live in
+`logisth/appearance.json` under the system user application-data directory.
 
-OPEN FOLDER reveals the adjacent `themes` folder. All five standard themes are
-written there as JSON files on first use. To create a variation, choose a theme,
-click EDIT / NEW, give it a name, and select one of ten colour roles. Use the
-colour picker or enter a six-digit RGB hex colour (for example #62ACFF), then
-press Enter. DARK CONTROLS chooses light/dark control styling. Edits preview in
-the instrument; SAVE AS NEW writes and selects a custom copy. RESET EDITS recalls
-the selected saved file. Standard files are retained when custom copies are saved.
+APPEARANCE / OPEN FOLDER reveals the current theme directory. USE FOLDER selects
+another directory; missing standard themes are created there. EDIT / NEW opens
+THEME EDITOR. Enter a name and select one of twelve colour roles, then use the
+colour picker or a six-digit RGB hex colour such as #62ACFF and press Enter.
+DARK CONTROLS selects light/dark control styling. SAVE NEW writes a custom copy
+in the current folder. SAVE AS... lets you choose a folder and exact JSON file
+name. RENAME renames the selected custom theme, including its file; standard
+files remain protected. RESET restores the selected saved theme.
 
-To install a shared theme, copy its .json file into the folder. The folder is
-scanned every two seconds; RESCAN refreshes it immediately. Existing selections
-use stable file identities, so adding files does not select a different theme.
-Invalid files are ignored. If the selected file is removed, selection falls back
-to Midnight Blue. Missing standard files are recreated. Theme files use format
-`logisth-theme`, version 1, a name, a boolean dark flag and ten RGB colour entries;
-copy a standard file in assets/themes as a template. See docs/THEMES.md for a
-complete example and the colour roles.
+STYLE selects a font family installed on this computer (Open Sans is embedded),
+Flat/Gradient/Grid background and Arc/Solid/Minimal knobs. Knob and Knob Track
+colours are separate from the accent. These choices preview immediately and are
+saved with the theme. Unsaved edits stay with this instrument instance when its
+editor closes/reopens or is minimized; save a theme to retain it across sessions.
+Choosing another saved theme or RESET discards the temporary draft.
+
+Copy shared .json files into the selected folder to install them. The folder is
+polled every two minutes; RESCAN refreshes it immediately. New files do not
+change the current selection. Invalid files are ignored; removing the selected
+file falls back to Midnight Blue. Version-2 themes contain the name, dark flag,
+twelve RGB colours, font and background/knob styles. Version-1 themes remain
+readable. Use assets/themes as templates; docs/THEMES.md documents the format.
 
 The editable comment box below SOUND LIBRARY belongs to the sound. Type a note
 there, then save the user preset or DAW project. Comments support Unicode and up
@@ -160,13 +165,26 @@ There is no artificial minimum width added to these segments.
 Every oscillator slot A1/A2/B1/B2 has its own engine menu: Classic, Wavetable,
 Sampler or Granular. All four may use different engines and different audio files.
 The adjacent view menu shows only pages used by the selected engine. Classic
-has VOICE and ENV; Wavetable adds WAVETABLE, and Sampler adds SOURCE. Granular
+has VOICE, ENV and MOD; Wavetable adds WAVETABLE, and Sampler adds SOURCE and
+PLAYBACK. All engines have MOD, with only the applicable controls. Granular
 also has GRAINS; only the Granulizer model exposes MOTION and TIME.
 VOICE holds the shared tuning, level, unison, stereo and pan controls. SOURCE
 holds the engine-specific controls; ENV holds that oscillator's optional ADSR.
 The central Amp Env A/B remains the final envelope for its part.
 
-Classic retains the original oscillator waveforms and retrigger behaviour.
+Classic offers Sine, Saw, Pulse, Triangle, White noise, Half pulse, Quarter pulse,
+Tri-saw, Pink noise, Brown noise, Organ and Folded sine. Pink and Brown have
+progressively stronger low-frequency spectra. Organ adds octave harmonics;
+Folded sine applies sinusoidal waveshaping. Noise has no fixed periodic phase.
+
+MOD exposes FM INDEX (0–8 radians) and FM RATIO (0.25–16) for Classic/Wavetable.
+This is sinusoidal phase modulation, producing FM sidebands; ratio is relative
+to the carrier pitch. AM DEPTH (0–100%) and AM RATIO (0.125–16) work in all four
+engines using a unipolar sinusoidal amplitude modulator. Pulse, Half pulse and
+Quarter pulse also expose WIDTH, PWM DEPTH and PWM RATE (0.01–20 Hz). WIDTH
+sets the base duty cycle, PWM adds a sinusoidal width sweep. Half/Quarter pulse
+retain their narrower base widths. Other waves hide these pulse controls.
+Manual modulation controls use a short smoothing ramp; ratios are per player.
 Wavetable treats the file as a bank of consecutive, single-cycle waves. **WT POS**
 selects one frame; the selected cycle repeats at the played note's pitch. It does
 not play the entire file in sequence, and adjacent frames are not blended.
@@ -198,6 +216,19 @@ START and END choose a region; LOOP repeats it with a short crossfade; REVERSE
 reverses playback. Without LOOP, playback ends at the selected boundary. Root
 sets the reference pitch, not automatic pitch detection. Stereo files retain
 both channels; mono files feed both channels. Unison and pitch bend still apply.
+
+Sampler / PLAYBACK selects STRETCH and INTERPOLATION. Off is conventional pitched
+playback. Tape links speed and pitch: a 2× TIME FACTOR doubles duration and
+halves pitch. Granular and WSOLA separate sample traversal from note pitch,
+using overlapping 40 ms windows. WSOLA aligns windows by waveform correlation
+for smoother periodic material; Granular keeps a more textured overlap. TIME
+FACTOR ranges from 0.125× to 8× (2× means twice as long). These are time-domain
+algorithms: extreme factors and transients can have audible window artefacts.
+
+Interpolation choices are Linear, Cubic, Sinc 16 and Sinc 32. Sinc modes use a
+windowed band-limited resampler with anti-alias filtering when reading faster
+than source rate; Sinc 32 uses more CPU. Stretch/quality switches crossfade over
+20 ms. Stretch is independent per sampler and does not expose Granulizer controls.
 
 Granular offers two models. **Granulizer** is the default for new patches;
 **Cloud** retains the eight Hann-windowed grains, size, density, scan and spray
@@ -321,6 +352,12 @@ its base position. With Sampler or Granular this same destination modulates the
 sample start/scanner position. Use a bank with multiple distinct frames to hear
 wavetable scanning; a single-cycle, one-frame file has no other frame to select.
 
+FM Index, AM Depth and Pulse Width targets each offer A1, A2, B1, B2, A, B and
+A+B. Individual and grouped routes add. At amount +10 and source +1 the offsets
+are +8 FM index, +1 AM depth and +1 pulse width, limited to valid ranges.
+Both MOD ENV blocks start with A/D/S/R and both route amounts/destinations at
+zero on a fresh instance. Set sustain or envelope times and a route to use them.
+
 Modulation depth is specific to logisth. At amount +10 and source value +1,
 pitch adds 48 semitones, cutoff adds 120 semitones, phase adds one cycle, and
 pan adds one full side. Volume, Mix, Resonance, Gain and Distortion add one
@@ -394,22 +431,38 @@ or enable it. All seven effects are global after the A/B mix.
 | Distortion | Overdrive, Foldback, Clip, Decimate and Bitcrush; Amount and Dry/Wet set character and blend. |
 | Phaser | Six-stage stereo phasing with centre frequency, spread, L/R offset, width, LFO, feedback and Dry/Wet. Its frequency is a modulation destination. |
 | Chorus | Delay, depth, rate, feedback, dual mode, width and Dry/Wet thicken a sound. |
-| Equalizer | Bass and treble shelves with frequency controls and optional positive-gain compensation. |
+| Equalizer | Legacy two-shelf or 10-band Graphic; response curve, Auto Gain and output trim. |
 | Reverb | Hall, Room, Spring, Vintage and Shimmer, with shared size/damping/predelay/width/mix and mode-specific controls. |
 | Delay | Independent left/right times or divisions, feedback, ping-pong, spread, width, low/high cut, smear and Dry/Wet. |
 | Compressor | Stereo-linked threshold, ratio, attack and release control dynamics. |
 
+### Equalizer
+
+MODE selects Legacy or Graphic. Legacy uses corrected bass/treble shelves with
+separate corner frequencies; a bass boost no longer applies an unrelated global
+attenuation. Graphic provides ten ISO bands at 31.5, 63, 125, 250, 500 Hz, 1, 2,
+4, 8 and 16 kHz. Each band has ±18 dB gain. Move its fader or drag its point
+vertically in the response display; double-click resets that band to zero.
+The display shows the combined response including output gain/compensation.
+
+OUT adds ±18 dB after either EQ. AUTO GAIN is off by default: enabling it reduces
+gain by the maximum positive response estimated across the audible spectrum.
+It is peak-response compensation, not a loudness meter or limiter; boosts,
+multiple voices and the following effects can still overload the output.
+Band/frequency changes and Legacy/Graphic transitions are smoothed over about
+15 ms. Both modes keep their separate settings in presets and host state.
+
 ### Reverb types
 
-TYPE selects five algorithms. Hall retains the original JUCE Reverb character;
-Size sets its decay/space. Room combines early reflections with a feedback delay
-network. Spring uses frequency-dependent all-pass dispersion for a resonant,
-spring-like tail. Vintage adds dark filtering, saturated feedback and modulated
-delay lengths. Shimmer combines a diffuse space with dual-window granular pitch
-shifting in its excitation and feedback, producing rising or falling harmonics.
+TYPE selects five algorithms. All now use denser 16-line feedback delay networks
+with stereo input diffusion (eight stages per channel, four for Spring). Hall
+is rebuilt for a spacious diffuse tail. Room adds early reflections; Spring uses
+frequency-dependent all-pass dispersion. Vintage adds dark filtering, saturated
+feedback and modulated delay lengths. Shimmer uses four overlapping pitch-shift
+windows in its excitation and feedback for rising/falling harmonics.
 
-Size, Damp, Predelay (0–200 ms), Width and Dry/Wet are shared. Room, Spring,
-Vintage and Shimmer also expose Decay (0.2–20 seconds, nominal; damping changes
+Size, Damp, Predelay (0–200 ms), Width, Dry/Wet and Diffusion are shared.
+Diffusion controls the input all-pass scattering. All five modes expose Decay (0.2–20 seconds, nominal; damping changes
 frequency-dependent decay). Spring adds Dispersion. Vintage adds Wow / Flutter.
 Shimmer adds Shimmer amount and Pitch (-12 to +24 semitones); +12 shifts up an
 octave, +7 adds a fifth and -12 shifts down an octave. Pitch-shifted tails are
@@ -455,8 +508,11 @@ for louder layered edits.
 
 The test reference for factory presets is a six-second C3/G3/C4/E4 chord (MIDI
 48/55/60/64), velocity 102, including the attack. At 48 kHz most factory presets
-peak near -6 dBFS; Grain cloud and Chord pulse remain a little quieter. All ten
-are tested at 44.1, 48 and 96 kHz with at least 3 dB of headroom for that chord.
+have individual reference levels; the rebuilt Hall and corrected EQ change
+some wet-preset peaks. Grain cloud and Chord pulse remain quieter. All ten
+are tested at 44.1, 48 and 96 kHz. The nine authored sounds keep at least 3 dB
+of reference-chord headroom; Init / saw at the requested Main 65% stays below
+full scale but has less than 3 dB of headroom.
 This reference does not guarantee headroom for every possible note or edit.
 
 The mixer prints the peak of the latest processed block in dBFS. Values above
@@ -504,7 +560,7 @@ library; it does not relocate files. Load file can open a preset from elsewhere.
 Save/load run on a worker, with completion/errors in the footer. Wait for the
 completion message before closing the instance or moving a newly saved file.
 
-Presets contain all 581 audio parameters, routing, compressed audio for all four
+Presets contain all 635 audio parameters, routing, compressed audio for all four
 slots, WAV regions, chord mappings, twelve named patterns, the preset comment and
 scope selection. Theme and editor size are separate user preferences and are
 retained when sounds change. The original sample files are unnecessary on recall. Saving uses a
@@ -512,14 +568,14 @@ temporary file and atomic replacement. Invalid files leave the current patch
 intact. State/preset files are limited to 1 GiB. These are logisth's own files;
 renaming another format to .logisth does not convert it.
 
-All 581 parameters are available for host automation. The first 514 parameter
+All 635 parameters are available for host automation. The first 514 parameter
 IDs and order from 0.4 are retained. Granulizer and global MIDI-only controls
 follow them; the former Graphs parameter block is removed. A/B views, rack pages,
 theme and scope source do not change the patch's audio settings. DAW state
 contains the same embedded material and pattern data as a user preset. Restoring
 older states automatically selects the corresponding earlier granular/arp engines.
-Destination menus now have four additional individual-player targets appended
-after the existing entries. Numeric destination IDs are retained, but normalized
+Destination menus now contain 59 entries, including individual and grouped
+WT position, FM index, AM depth and pulse-width targets. Numeric destination IDs are retained, but normalized
 host automation may need review after a destination-list expansion.
 
 There is no Sylenth1 bank import or MIDI Learn menu. Legacy prototype states

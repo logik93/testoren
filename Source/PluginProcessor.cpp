@@ -72,6 +72,17 @@ Params LogisthProcessor::snapshot() const {
         o.warp = sourceNext();
         o.envelopeEnabled = sourceNext() > 0;
         o.envelope = {sourceNext(), sourceNext(), sourceNext(), sourceNext()};
+        size_t modulation = size_t(Param::o1fmdepth) + size_t(i) * 10;
+        o.fmDepth = raw[modulation]->load();
+        o.fmRatio = raw[modulation + 1]->load();
+        o.amDepth = raw[modulation + 2]->load();
+        o.amRatio = raw[modulation + 3]->load();
+        o.pulseWidth = raw[modulation + 4]->load();
+        o.pwmDepth = raw[modulation + 5]->load();
+        o.pwmRate = raw[modulation + 6]->load();
+        o.stretchMode = int(raw[modulation + 7]->load());
+        o.stretch = raw[modulation + 8]->load();
+        o.interpolation = int(raw[modulation + 9]->load());
         o.data = sourcePointers[size_t(i)].load();
         size_t g = size_t(Param::o1gmodel) + size_t(i) * 15;
         auto granNext = [&] { return raw[g++]->load(); };
@@ -179,6 +190,11 @@ EffectsParams LogisthProcessor::effectsSnapshot() const {
     p.chorusFeedback = get(Param::chorusfeedback);
     p.chorusWidth = get(Param::choruswidth);
     p.chorusMix = get(Param::chorus);
+    p.eqMode = int(get(Param::eqmode));
+    p.eqAutoGain = get(Param::eqautogain) > 0;
+    p.eqOutput = get(Param::eqoutput);
+    for (int i = 0; i < 10; ++i)
+        p.eqBands[size_t(i)] = get(Param(size_t(Param::eqband0) + size_t(i)));
     p.bass = get(Param::eqbass);
     p.bassFreq = get(Param::eqbassfreq);
     p.treble = get(Param::eqtreble);
@@ -189,6 +205,7 @@ EffectsParams LogisthProcessor::effectsSnapshot() const {
     p.shimmerPitch = get(Param::shimmerpitch);
     p.springDispersion = get(Param::springdispersion);
     p.vintageMod = get(Param::vintagemod);
+    p.reverbDiffusion = get(Param::reverbdiffusion);
     p.reverbSize = get(Param::reverbsize);
     p.reverbDamp = get(Param::reverbdamp);
     p.reverbPredelay = get(Param::reverbpredelay);

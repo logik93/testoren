@@ -1,6 +1,6 @@
 {
   "format": "logisth-theme",
-  "version": 1,
+  "version": 2,
   "name": "Midnight Blue",
   "dark": true,
   "colours": {
@@ -13,6 +13,11 @@
     "highlight": "#91C8FF",
     "screen": "#080D15",
     "screenBorder": "#243952",
-    "screenText": "#E0EDFF"
-  }
+    "screenText": "#E0EDFF",
+    "knob": "#62ACFF",
+    "knobTrack": "#283A50"
+  },
+  "font": "Open Sans",
+  "backgroundStyle": 0,
+  "knobStyle": 0
 }

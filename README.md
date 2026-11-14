@@ -1,10 +1,37 @@
-# logisth 0.9.1
+# logisth 0.9.2
 
 **wavelogik logisth — a two-part polyphonic subtractive synthesizer with a compact single-window console.**
 VST3, CLAP and Standalone for Windows, macOS and Linux. Built with JUCE and an
 independent synthesis engine; not affiliated with LennarDigital.
 
 ![logisth dark interface](docs/images/logisth-dark.png)
+
+## New in 0.9.2
+
+- **Equalizer:** corrected Legacy bass/treble shelves, plus a 10-band Graphic EQ
+  with draggable response points, faders, double-click reset, output trim and
+  explicit Auto Gain. Boosting a Legacy shelf no longer silently attenuates
+  every frequency. Smooth parameter changes and mode transitions.
+- **Source modulation:** independent FM index/ratio, AM depth/ratio and pulse
+  width/PWM for each player. The routing matrix adds individual A1/A2/B1/B2,
+  part A/B and A+B targets for FM, AM and pulse width. MOD ENV 1/2 start at zero.
+- **Classic waves:** White noise, Pink noise, Brown noise, Organ and Folded sine
+  alongside the periodic waveforms already available.
+- **Sampler PLAYBACK:** Off, Tape, Granular and WSOLA stretching, 0.125–8× time
+  factors, plus Linear, Cubic, Sinc 16 and Sinc 32 resampling. Tape links time and
+  pitch; Granular/WSOLA separate traversal speed from played-note pitch.
+- **Themes:** choose the save file/folder, rename a custom theme, select a font,
+  background and knob style, and edit 12 palette colours. The STYLE tab keeps
+  these controls inside the rack. Temporary edits survive editor recreation;
+  theme folders are polled every **two minutes**, with immediate manual Rescan.
+- **Reverb:** rebuilt Hall and denser 16-line delay networks, eight input
+  diffusers per channel, adjustable Diffusion and four-window Shimmer shifting.
+- 635 automatable audio parameters and 59 modulation destination entries.
+
+[Graphic EQ](docs/images/logisth-eq-graphic.png) ·
+[Sampler playback](docs/images/logisth-sampler-playback.png) ·
+[Oscillator modulation](docs/images/logisth-source-mod.png) ·
+[Theme styles](docs/images/logisth-theme-style.png)
 
 ## Fixed in 0.9.1
 
@@ -26,7 +53,7 @@ independent synthesis engine; not affiliated with LennarDigital.
 - Five standard themes are written as editable JSON files in the user's
   `logisth/themes` folder. Theme Editor previews all ten palette roles, accepts
   RGB hex colours, and saves custom copies. Open Folder and Rescan are available;
-  automatic scans discover installed/edited files every two seconds.
+  automatic scans now discover installed/edited files every two minutes (0.9.2).
 - REVERB adds **Room, Spring, Vintage and Shimmer** alongside Hall. Room has
   early reflections, Spring uses dispersive all-passes, Vintage has filtered,
   saturated feedback and wow/flutter, and Shimmer uses granular pitch-shifted
@@ -124,12 +151,12 @@ sounds. Parameter IDs remain stable; preserving old sound is not the objective.
 - Earlier releases included an experimental Graphs arp, removed in 0.7.0.
   Twelve A–L pattern memories remain available for Legacy and Pattern.
 - User preset library: save/load/delete .logisth files with embedded audio,
-  chords, all patterns and UI preferences. 581 current automatable audio parameters.
+  chords, all patterns and UI preferences. 635 current automatable audio parameters.
 - Compact single-window interface with light/dark themes.
 
 [English manual](docs/MANUAL.md) · [PDF manual](docs/logisth-Manual-English.pdf) ·
 [Implementation references](docs/STUDIO-0.5.md) ·
-[Download 0.9.1](https://github.com/logik93/logisth/releases/tag/v0.9.1)
+[Download 0.9.2](https://github.com/logik93/logisth/releases/tag/v0.9.2)
 
 Native archives are built and tested on Windows, macOS and Linux. Each package
 contains the English manual and build metadata. Publication requires all platform

@@ -92,7 +92,7 @@ inline void run() {
     auto *console = ui->getChildComponent(0);
     for (int type = 0; type < 5; ++type) {
         check(editor->snapshotPage(14 + type).isValid(), "all reverb pages render");
-        for (auto item : {std::pair<const char *, bool>{"reverbdecay", type != 0},
+        for (auto item : {std::pair<const char *, bool>{"reverbdecay", true},
                           {"shimmeramount", type == 4},
                           {"shimmerpitch", type == 4},
                           {"springdispersion", type == 2},

@@ -1,6 +1,6 @@
 {
   "format": "logisth-theme",
-  "version": 1,
+  "version": 2,
   "name": "Light",
   "dark": false,
   "colours": {
@@ -13,6 +13,11 @@
     "highlight": "#BDD8BB",
     "screen": "#243430",
     "screenBorder": "#41514B",
-    "screenText": "#E6ECE1"
-  }
+    "screenText": "#E6ECE1",
+    "knob": "#406F5D",
+    "knobTrack": "#CED2C9"
+  },
+  "font": "Open Sans",
+  "backgroundStyle": 0,
+  "knobStyle": 0
 }

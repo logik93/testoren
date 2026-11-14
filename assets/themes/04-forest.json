@@ -1,6 +1,6 @@
 {
   "format": "logisth-theme",
-  "version": 1,
+  "version": 2,
   "name": "Forest",
   "dark": true,
   "colours": {
@@ -13,6 +13,11 @@
     "highlight": "#BFD6B3",
     "screen": "#101A15",
     "screenBorder": "#35483B",
-    "screenText": "#E3EADC"
-  }
+    "screenText": "#E3EADC",
+    "knob": "#B0C9A5",
+    "knobTrack": "#354238"
+  },
+  "font": "Open Sans",
+  "backgroundStyle": 0,
+  "knobStyle": 0
 }

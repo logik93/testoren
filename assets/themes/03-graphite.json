@@ -1,6 +1,6 @@
 {
   "format": "logisth-theme",
-  "version": 1,
+  "version": 2,
   "name": "Graphite",
   "dark": true,
   "colours": {
@@ -13,6 +13,11 @@
     "highlight": "#BBCAFF",
     "screen": "#0B0C10",
     "screenBorder": "#343A49",
-    "screenText": "#E5E9F2"
-  }
+    "screenText": "#E5E9F2",
+    "knob": "#8AAAFF",
+    "knobTrack": "#373C4B"
+  },
+  "font": "Open Sans",
+  "backgroundStyle": 0,
+  "knobStyle": 0
 }

@@ -9,13 +9,30 @@ namespace logisth {
 struct ThemeDefinition {
     juce::String key, name;
     bool dark = true, factory = false;
-    std::array<juce::Colour, 10> colours{};
+    std::array<juce::Colour, 12> colours{};
+    juce::String fontFamily = "Open Sans";
+    int backgroundStyle = 0, knobStyle = 0;
+    bool same(const ThemeDefinition &t) const {
+        return key == t.key && name == t.name && dark == t.dark && colours == t.colours &&
+               fontFamily == t.fontFamily && backgroundStyle == t.backgroundStyle &&
+               knobStyle == t.knobStyle;
+    }
+};
+struct ThemeDraft {
+    ThemeDefinition edited, baseline;
 };
 class ThemeSettings {
   public:
+    static constexpr uint32_t scanIntervalMs = 120000;
+    static bool scanDue(uint32_t now, uint32_t &last) {
+        if (now - last < scanIntervalMs)
+            return false;
+        last = now;
+        return true;
+    }
     inline static const juce::StringArray colourNames{
-        "body",   "panel",     "border", "text",         "muted",
-        "accent", "highlight", "screen", "screenBorder", "screenText"};
+        "body",      "panel",  "border",       "text",       "muted", "accent",
+        "highlight", "screen", "screenBorder", "screenText", "knob",  "knobTrack"};
     struct Window {
         int width = 0, height = 0;
         double scale = 100;
@@ -45,8 +62,10 @@ class ThemeSettings {
             t.name = names[i];
             t.dark = i != 0;
             t.factory = true;
-            for (size_t c = 0; c < t.colours.size(); ++c)
+            for (size_t c = 0; c < 10; ++c)
                 t.colours[c] = juce::Colour(values[i][c]);
+            t.colours[10] = t.colours[5];
+            t.colours[11] = t.colours[2];
             result.push_back(t);
         }
         return result;
@@ -55,10 +74,13 @@ class ThemeSettings {
         auto *o = new juce::DynamicObject;
         auto *colours = new juce::DynamicObject;
         o->setProperty("format", "logisth-theme");
-        o->setProperty("version", 1);
+        o->setProperty("version", 2);
+        o->setProperty("font", theme.fontFamily);
+        o->setProperty("backgroundStyle", theme.backgroundStyle);
+        o->setProperty("knobStyle", theme.knobStyle);
         o->setProperty("name", theme.name);
         o->setProperty("dark", theme.dark);
-        for (int i = 0; i < 10; ++i)
+        for (int i = 0; i < colourNames.size(); ++i)
             colours->setProperty(colourNames[i],
                                  "#" + theme.colours[size_t(i)].toDisplayString(false));
         o->setProperty("colours", juce::var(colours));
@@ -76,7 +98,8 @@ class ThemeSettings {
         if (!o)
             return false;
         if (o->getProperty("format").toString() != "logisth-theme" ||
-            !o->getProperty("version").isInt() || int(o->getProperty("version")) != 1)
+            !o->getProperty("version").isInt() ||
+            (int(o->getProperty("version")) != 1 && int(o->getProperty("version")) != 2))
             return false;
         auto name = o->getProperty("name");
         auto dark = o->getProperty("dark");
@@ -89,6 +112,25 @@ class ThemeSettings {
         for (int i = 0; i < 10; ++i)
             if (!colour(colours->getProperty(colourNames[i]).toString(), theme.colours[size_t(i)]))
                 return false;
+        theme.colours[10] = theme.colours[5];
+        theme.colours[11] = theme.colours[2];
+        for (int i = 10; i < colourNames.size(); ++i)
+            if (colours->hasProperty(colourNames[i]) &&
+                !colour(colours->getProperty(colourNames[i]).toString(), theme.colours[size_t(i)]))
+                return false;
+        if (o->hasProperty("font")) {
+            auto f = o->getProperty("font");
+            if (!f.isString() || f.toString().trim().isEmpty() || f.toString().length() > 128)
+                return false;
+            theme.fontFamily = f.toString().trim();
+        }
+        for (auto property : {"backgroundStyle", "knobStyle"})
+            if (o->hasProperty(property) &&
+                (!o->getProperty(property).isInt() || int(o->getProperty(property)) < 0 ||
+                 int(o->getProperty(property)) > 2))
+                return false;
+        theme.backgroundStyle = int(o->getProperty("backgroundStyle"));
+        theme.knobStyle = int(o->getProperty("knobStyle"));
         theme.name = name.toString().trim();
         theme.dark = bool(dark);
         return true;
@@ -105,7 +147,7 @@ class ThemeSettings {
     struct Store {
         juce::CriticalSection lock;
         juce::ListenerList<Listener> listeners;
-        juce::File overrideFile;
+        juce::File overrideFile, customFolder;
         std::vector<ThemeDefinition> themes = defaults();
         juce::String selectedKey = "01-midnight-blue", fileStamp, contentStamp;
         Window window;
@@ -119,6 +161,8 @@ class ThemeSettings {
                        : overrideFile;
         }
         juce::File folder() const {
+            if (customFolder != juce::File{})
+                return customFolder;
             return overrideFile == juce::File{}
                        ? file().getSiblingFile("themes")
                        : file().getSiblingFile(file().getFileNameWithoutExtension() + "-themes");
@@ -180,6 +224,9 @@ class ThemeSettings {
             if (path.existsAsFile() && path.getSize() <= 8192) {
                 auto value = juce::JSON::parse(path.loadFileAsString());
                 if (auto *o = value.getDynamicObject()) {
+                    auto path = o->getProperty("themeFolder").toString();
+                    if (path.isNotEmpty() && juce::File::isAbsolutePath(path))
+                        customFolder = juce::File(path);
                     auto old = o->getProperty("theme");
                     if (old.isInt() && int(old) >= 0 && int(old) < 5)
                         selectedKey = defaults()[size_t(int(old))].key;
@@ -205,6 +252,9 @@ class ThemeSettings {
         }
         bool write() const {
             auto *o = new juce::DynamicObject;
+            o->setProperty("themeFolder", customFolder == juce::File{}
+                                              ? juce::String{}
+                                              : customFolder.getFullPathName());
             o->setProperty("theme", selected);
             o->setProperty("themeKey", selectedKey);
             o->setProperty("width", window.width);
@@ -305,6 +355,83 @@ class ThemeSettings {
         notify(origin);
         return saved;
     }
+    static juce::Result setFolder(const juce::File &folder, Listener *origin = nullptr) {
+        if (folder.createDirectory().failed())
+            return juce::Result::fail("The theme folder could not be created.");
+        auto &s = store();
+        {
+            const juce::ScopedLock lock(s.lock);
+            s.read();
+            s.customFolder = folder;
+            s.fileStamp = {};
+            s.scan(true);
+            if (!s.write())
+                return juce::Result::fail("The theme folder preference could not be saved.");
+        }
+        notify(origin);
+        return juce::Result::ok();
+    }
+    static juce::Result renameCurrent(const juce::String &name, Listener *origin = nullptr,
+                                      const ThemeDefinition *replacement = nullptr) {
+        auto &s = store();
+        {
+            const juce::ScopedLock lock(s.lock);
+            s.read();
+            auto t = s.themes[size_t(s.selected)];
+            if (t.factory)
+                return juce::Result::fail("Use Save As for a standard theme.");
+            if (replacement) {
+                auto key = t.key;
+                t = *replacement;
+                t.key = key;
+            }
+            t.name = name.trim();
+            ThemeDefinition checked;
+            if (!decode(encode(t), checked))
+                return juce::Result::fail("Use a theme name of 1-64 characters.");
+            auto old = s.folder().getChildFile(t.key + ".json");
+            auto next = s.folder().getNonexistentChildFile(
+                "custom-" + juce::File::createLegalFileName(t.name), ".json", false);
+            if (!writeJson(next, encode(t)))
+                return juce::Result::fail("The renamed theme could not be saved.");
+            if (!old.deleteFile()) {
+                next.deleteFile();
+                return juce::Result::fail("The previous theme file could not be renamed.");
+            }
+            s.selectedKey = next.getFileNameWithoutExtension();
+            s.scan(true);
+            s.write();
+        }
+        notify(origin);
+        return juce::Result::ok();
+    }
+    static juce::Result saveTo(ThemeDefinition theme, const juce::File &file,
+                               Listener *origin = nullptr) {
+        ThemeDefinition checked;
+        if (!file.hasFileExtension("json") || !decode(encode(theme), checked))
+            return juce::Result::fail("Use a valid theme name and a .json file.");
+        auto key = file.getFileNameWithoutExtension();
+        for (auto &t : defaults())
+            if (t.key.equalsIgnoreCase(key))
+                return juce::Result::fail(
+                    "Choose a custom file name to retain the standard theme.");
+        auto directory = setFolder(file.getParentDirectory(), origin);
+        if (directory.failed())
+            return directory;
+        auto &s = store();
+        {
+            const juce::ScopedLock lock(s.lock);
+            s.read();
+            if (!writeJson(file, encode(theme)))
+                return juce::Result::fail("The theme file could not be saved.");
+            s.selectedKey = key;
+            s.scan(true);
+            if (!s.write())
+                return juce::Result::fail("Theme saved, but preferences could not be saved.");
+        }
+        notify(origin);
+        return juce::Result::ok();
+    }
     static juce::Result saveAs(ThemeDefinition theme, Listener *origin = nullptr) {
         theme.name = theme.name.trim();
         ThemeDefinition validated;
@@ -366,6 +493,7 @@ class ThemeSettings {
         auto &s = store();
         const juce::ScopedLock lock(s.lock);
         s.overrideFile = file;
+        s.customFolder = juce::File{};
         s.loaded = false;
         s.themes = defaults();
         s.selected = 1;

@@ -1,25 +1,28 @@
 # logisth themes and window preferences
 
-In SETTINGS / APPEARANCE, OPEN FOLDER reveals the user's `logisth/themes`
-directory. The five standard palettes are written there on first use and can be
-used as templates. The source and native packages also include them in
-`assets/themes`. Missing standard files are recreated; existing files are not
-silently overwritten.
+SETTINGS / APPEARANCE / OPEN FOLDER reveals the current theme directory (initially
+`logisth/themes` under your system user application-data directory). USE FOLDER
+selects another directory and remembers it. Five standard palettes are written
+there on first use; source/native packages include them in `assets/themes`.
+Missing standard files are recreated; existing files are retained.
 
-The plug-in scans .json files every two seconds. RESCAN reads them immediately.
+The plug-in polls .json files every **two minutes**. RESCAN reads them immediately.
 Files larger than 64 KiB, malformed JSON, unsupported formats/versions and invalid
-colour definitions are ignored. Subfolders are not scanned. File names identify
-selections, so installing a new file does not change the current selection.
-Removing the selected file falls back to Midnight Blue.
+colours are ignored. Subfolders are not scanned. File names identify selections;
+adding a theme does not switch the current selection. Removing the selected file
+falls back to Midnight Blue.
 
-A complete theme uses this format:
+Version 2 adds font, background, knob styles and two dedicated knob colours:
 
 ```json
 {
   "format": "logisth-theme",
-  "version": 1,
+  "version": 2,
   "name": "Ocean",
   "dark": true,
+  "font": "Open Sans",
+  "backgroundStyle": 1,
+  "knobStyle": 0,
   "colours": {
     "body": "#0D1118",
     "panel": "#151D29",
@@ -30,31 +33,42 @@ A complete theme uses this format:
     "highlight": "#91C8FF",
     "screen": "#080D15",
     "screenBorder": "#243952",
-    "screenText": "#E0EDFF"
+    "screenText": "#E0EDFF",
+    "knob": "#18C4D2",
+    "knobTrack": "#283A50"
   }
 }
 ```
 
-All ten roles are required. RGB values are six hexadecimal digits, optionally
-prefixed by #. Name is 1–64 characters; dark is a JSON boolean controlling the
-style of knobs, keys and buttons. Choose text/background colours with enough
-contrast for your own display.
+RGB values are six hexadecimal digits, optionally prefixed by #. Name is 1–64
+characters; dark is a boolean controlling light/dark controls. Background styles
+are 0 Flat, 1 Gradient, 2 Grid; knob styles are 0 Arc, 1 Solid, 2 Minimal. The
+font is an installed family name (up to 128 characters). Open Sans is embedded;
+other fonts must be installed on the destination machine and use system fallback
+if unavailable. Font files are not embedded into a theme.
 
-THEME EDITOR edits the selected palette as a draft. Choose a role, use the
-colour picker, or type a hex value and press Enter. Changes preview immediately.
-SAVE AS NEW writes a unique custom file and selects it; it does not overwrite a
-standard or previously saved theme. Duplicate names receive a suffix such as (2).
-Folder rescans retain unsaved draft colours when the selected saved file is unchanged. RESET EDITS restores the saved selection.
-To revise an existing file in place, edit its JSON and use RESCAN (or wait for
-the automatic scan). Theme changes propagate between open instances in the same
-host process. Themes do not change synthesizer parameters or preset audio.
+Version-1 files remain readable; missing extra knob colours default to accent
+and border, font to Open Sans, and styles to Flat/Arc. All twelve palette roles
+are emitted when saving version 2. Choose enough text/background contrast for
+your display.
 
-APPEARANCE also accepts 80–200% UI scaling, including two decimal places. The
-percentage shown is the last accepted value. Preset percentage entries are
-shortcuts; manual text accepts a decimal dot or comma. Invalid/out-of-range input
-restores the last accepted value. Window resizing preserves the aspect ratio.
-Actual pixel dimensions and scale are saved in the adjacent `appearance.json`.
-A new/reopened editor restores the last size. Existing windows retain their own
-sizes; closing an unchanged window does not overwrite a more recent resize in
-another instance. Theme changes retain size, and audio presets retain both
-appearance preferences. User preferences are separate from .logisth sound files.
+THEME EDITOR previews a draft: choose a role, use the colour picker or type a
+hex value and press Enter. STYLE chooses font, background and knob drawing.
+SAVE NEW writes a unique custom file in the current directory; duplicate names
+receive a suffix. SAVE AS... chooses an exact folder/file name, and makes that
+folder active. RENAME changes the selected custom theme's name/file and saves
+the draft; standard files are protected. RESET restores the saved selection.
+
+Unsaved colours and styles stay with the instrument instance when its editor
+is destroyed/recreated or minimized. They are excluded from audio presets and
+are not retained after destroying the instrument/closing the host: save a theme
+for that. Folder rescans preserve a draft if its saved baseline is unchanged.
+Selecting another saved theme replaces the draft. Saved selection changes
+propagate between open instances in the same host process. Audio presets do not
+change theme, scale or editor size.
+
+APPEARANCE accepts 80–200% UI scaling, including decimals. The displayed value is
+the last accepted percentage; manual input accepts a decimal dot or comma.
+Invalid input restores the last accepted value. Resizing preserves the aspect
+ratio. Actual pixel dimensions and scale are stored in `appearance.json` and
+restored in new/reopened editors. Existing windows retain their own size.
