@@ -1,10 +1,18 @@
-# logisth 0.9.0
+# logisth 0.9.1
 
 **wavelogik logisth — a two-part polyphonic subtractive synthesizer with a compact single-window console.**
 VST3, CLAP and Standalone for Windows, macOS and Linux. Built with JUCE and an
 independent synthesis engine; not affiliated with LennarDigital.
 
 ![logisth dark interface](docs/images/logisth-dark.png)
+
+## Fixed in 0.9.1
+
+- PHASE is available in A1/A2/B1/B2 Classic and Wavetable with RETRIG off or on.
+- The knob applies a live phase offset, including held notes and host automation.
+  RETRIG controls whether new notes start at a fixed or random phase.
+- Knob changes use a short cyclic smoothing ramp; 0/360 degrees are equivalent,
+  and crossing the boundary takes the short path. Phase modulation remains additive.
 
 ## New in 0.9.0
 
@@ -121,7 +129,7 @@ sounds. Parameter IDs remain stable; preserving old sound is not the objective.
 
 [English manual](docs/MANUAL.md) · [PDF manual](docs/logisth-Manual-English.pdf) ·
 [Implementation references](docs/STUDIO-0.5.md) ·
-[Download 0.9.0](https://github.com/logik93/logisth/releases/tag/v0.9.0)
+[Download 0.9.1](https://github.com/logik93/logisth/releases/tag/v0.9.1)
 
 Native archives are built and tested on Windows, macOS and Linux. Each package
 contains the English manual and build metadata. Publication requires all platform

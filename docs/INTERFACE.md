@@ -67,3 +67,7 @@ the last editor dimensions. Appearance, Theme Editor and About use tabs in the
 central rack. Themes are editable JSON files, including the five factory themes;
 the folder is scanned automatically. Reverb shows only the controls for its
 selected Hall/Room/Spring/Vintage/Shimmer algorithm. Manufacturer: wavelogik.
+
+0.9.1: PHASE is enabled in Classic/Wavetable regardless of RETRIG. Its live cyclic
+offset reaches held notes and automation; RETRIG selects fixed/random new-note
+starts. The GUI refresh timer preserves this availability.

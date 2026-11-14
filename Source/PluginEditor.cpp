@@ -1676,7 +1676,6 @@ class LogisthEditor::Console : public Component,
             controls[size_t(Param(size_t(Param::o1retrig) + size_t(number - 1) * 12))]->enable(
                 value(Param(size_t(Param::o1engine) + slot * 16)) <= 1);
             controls[size_t(Param(size_t(Param::o1phase) + size_t(number - 1) * 12))]->enable(
-                value(Param(size_t(Param::o1retrig) + size_t(number - 1) * 12)) > 0 &&
                 value(Param(size_t(Param::o1engine) + slot * 16)) <= 1);
         } else {
             for (int i = 0; i < 3; ++i)
@@ -2132,7 +2131,6 @@ class LogisthEditor::Console : public Component,
             layout();
         for (int i = 0; i < 4; ++i)
             controls[size_t(Param(size_t(Param::o1phase) + size_t(i) * 12))]->enable(
-                value(Param(size_t(Param::o1retrig) + size_t(i) * 12)) > 0 &&
                 value(Param(size_t(Param::o1engine) + size_t(i) * 16)) <= 1);
         controls[size_t(Param::polyphony)]->enable(value(Param::monolegato) == 0);
         if (!pitch.isMouseButtonDown())

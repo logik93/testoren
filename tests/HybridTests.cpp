@@ -1,5 +1,6 @@
 #include "Chords.h"
 #include "Engine.h"
+#include "PhaseTests.h"
 #include <iostream>
 #include <limits>
 #include <stdexcept>
@@ -150,6 +151,7 @@ void checkIndividualWavetableRouting() {
 }
 int main() {
     try {
+        phase_test::run();
         checkLfoWavetable();
         checkIndividualWavetableRouting();
         auto data = SourceData::factory();

@@ -1,4 +1,4 @@
-# logisth 0.9.0 — User Manual
+# logisth 0.9.1 — User Manual
 
 wavelogik logisth is a two-part polyphonic subtractive synthesizer for VST3, CLAP and standalone use.
 This manual describes logisth's own controls and behaviour. logisth is an independent
@@ -107,7 +107,7 @@ Drag knobs and faders to adjust values. Numeric fields can be dragged or edited.
 Examples of accepted values include 2.5k for 2500 Hz, 350ms and 65%.
 Double-click a control to restore its default; modulation amount controls return
 to zero. Hover for a tooltip and the parameter/value readout at the bottom.
-Disabled phase knobs become available when their oscillator's RETRIG is enabled.
+PHASE remains editable in Classic and Wavetable with RETRIG either off or on.
 
 ## 3. Oscillators and amplitude envelopes
 
@@ -121,11 +121,23 @@ fine tuning, phase, detune, stereo width, pan, retrigger and invert.
 | Voices | Sets the unison voice count. Zero silences this oscillator. |
 | Volume | Sets its level before filtering and the part envelope. |
 | Octave / Note / Fine | Coarse octave, semitone and cent tuning. |
-| Phase / Retrig | Retrig starts notes at the selected phase; otherwise phase runs without this reset. |
+| Phase / Retrig | Phase is a live 0–360-degree offset. Retrig gives fixed note starts; off keeps random starts while the Phase offset remains active. |
 | Detune | 0–100 cents of unison spread. At 100 ct the outer voices are one semitone below/above the note. With one voice, detune has no effect. |
 | Stereo | Spreads unison voices across the stereo field. |
 | Pan | Positions the oscillator output left or right. |
 | Invert | Inverts oscillator polarity; it can affect cancellation when sources mix. |
+
+PHASE applies to all unison voices in the selected oscillator and can be changed
+while notes are held or automated by the host. The offset is independent of
+RETRIG: with RETRIG on, each new note starts at the chosen phase; with it off,
+new notes keep randomized base phases and the knob offsets those phases. Toggling
+RETRIG does not restart a held oscillator. Phase is relative timing, so its audible
+effect is clearest when mixing periodic oscillators or moving it during a note.
+Noise is nonperiodic, and Sampler/Granular use sample-position controls instead.
+
+Live knob changes use approximately 5 ms of cyclic smoothing. Zero and 360 degrees
+are equivalent; 359 to 1 degrees crosses the boundary by two degrees. Existing
+phase modulation is added to the knob offset and retains its own modulation rate.
 
 The amplitude envelope for each part has attack, decay, sustain and release.
 Attack rises from silence, decay approaches sustain, and release fades after
@@ -559,7 +571,7 @@ is nonzero. The mod wheel needs an assigned route. A source can be zero during
 part of a note; Step Velocity needs an active arp gate.
 
 Missing control: A/B selects the part, a rack name selects effect controls, and
-SYNC/FREE selects time versus rhythmic controls. RETRIG enables phase editing.
+SYNC/FREE selects time versus rhythmic controls. PHASE works independently of RETRIG in Classic and Wavetable.
 The second group of arp steps is under 09–16.
 
 High CPU: reduce unison voices, polyphony or active effects. Some abrupt changes

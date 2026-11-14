@@ -74,6 +74,7 @@ class Engine {
         uint64_t age = 0;
         float velocity = 0, pressure = -1, random = 0, pitch = 60, glideStep = 0;
         std::array<std::array<double, 8>, 4> phases{};
+        std::array<double, 4> phaseOffset{};
         std::array<AudioEnvelope, 2> amp;
         std::array<Envelope, 2> env;
         std::array<AudioEnvelope, 4> sourceEnv;
@@ -304,8 +305,10 @@ class Engine {
         for (size_t o = 0; o < 4; ++o) {
             v.sourceEnv[o].on();
             v.sourcePosition[o] = p.osc[o].position;
+            v.phaseOffset[o] = double(p.osc[o].phase) / 360.;
+            v.phaseOffset[o] -= std::floor(v.phaseOffset[o]);
             for (auto &phase : v.phases[o])
-                phase = p.osc[o].retrigger ? p.osc[o].phase / 360.f : (noise() + 1) * .5;
+                phase = p.osc[o].retrigger ? 0 : (noise() + 1) * .5;
         }
     }
     void noteOff(int note, int channel, const Params &p) {
@@ -396,6 +399,7 @@ class Engine {
         pictures = {};
         std::array<uint64_t, 4> pictureAges{};
         const float smoothing = float(1 - std::exp(-1 / (.01 * sr)));
+        const double phaseSmoothing = 1 - std::exp(-1 / (.005 * sr));
         const int limit = p.monoLegato ? 1 : std::clamp(p.polyphony, 1, 16);
         for (size_t i = size_t(limit); i < voices.size(); ++i)
             voices[i] = Voice{};
@@ -446,6 +450,18 @@ class Engine {
                 for (int osc = 0; osc < 4; ++osc) {
                     const int part = osc / 2;
                     const auto &op = p.osc[size_t(osc)];
+                    // PHASE is a live cyclic offset, independent of the note-start
+                    // reset policy. Update once per oscillator, including while muted.
+                    auto &offset = v.phaseOffset[size_t(osc)];
+                    double phaseDelta = double(op.phase) / 360. - offset;
+                    if (phaseDelta > .5)
+                        phaseDelta -= 1;
+                    if (phaseDelta < -.5)
+                        phaseDelta += 1;
+                    if (phaseDelta != 0) {
+                        offset += phaseSmoothing * phaseDelta;
+                        offset -= std::floor(offset);
+                    }
                     int mode = op.engine == 3 && op.gran.enabled ? 4 : op.engine;
                     if (v.sourceModes[size_t(osc)] != mode) {
                         v.sourceModes[size_t(osc)] = mode;
@@ -476,7 +492,7 @@ class Engine {
                                                           12.);
                         const double dt = std::min(.45, hz / sr);
                         auto &phase = v.phases[size_t(osc)][size_t(u)];
-                        double t = phase + mods.pair(Destination::PhaseA, part);
+                        double t = phase + offset + mods.pair(Destination::PhaseA, part);
                         t -= std::floor(t);
                         std::array<float, 2> signal{};
                         if (op.engine == 0)

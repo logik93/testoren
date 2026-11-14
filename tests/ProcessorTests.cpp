@@ -3,6 +3,7 @@
 #include "GainCalibration.h"
 #include "PluginEditor.h"
 #include "PluginProcessor.h"
+#include "ProcessorPhaseTests.h"
 #include "ThemeSettings.h"
 #include <iostream>
 #include <stdexcept>
@@ -928,6 +929,10 @@ int main(int argc, char **argv) {
         juce::ScopedJuceInitialiser_GUI gui;
         juce::TemporaryFile themePreferences(".json");
         logisth::ThemeSettings::useStorageFileForTests(themePreferences.getFile());
+        if (argc > 1 && juce::String(argv[1]) == "--phase-check") {
+            processor_phase_test::run();
+            return 0;
+        }
         if (argc > 2 && juce::String(argv[1]) == "--feature-preview") {
             appearance_test::preview(juce::File(juce::String::fromUTF8(argv[2])));
             return 0;
@@ -951,6 +956,7 @@ int main(int argc, char **argv) {
             return 0;
         }
         appearance_test::run();
+        processor_phase_test::run();
         checkEnvelopeMidiEdges();
         gain_test::run(true);
         checkEffects();
