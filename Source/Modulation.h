@@ -42,6 +42,10 @@ enum class Destination {
     GrainSizeA,
     GrainSizeB,
     GrainSizeAB,
+    PositionA1,
+    PositionA2,
+    PositionB1,
+    PositionB2,
     Count
 };
 enum class Source {

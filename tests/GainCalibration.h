@@ -250,8 +250,11 @@ inline void run(bool verify, const juce::File &folder = {}) {
             auto result = measure(p, rate, {48, 55, 60, 64}, .8f, 6, nullptr, false);
             row(names[i], rate, result);
             if (verify)
-                require(result.dbPeak() < -3,
-                        "factory reference chord keeps at least 3 dB of output headroom");
+                require(result.dbPeak() < (i == 0 ? 0 : -3),
+                        i == 0 ? "raw Init saw at Main 65 percent stays below full scale for the "
+                                 "reference chord"
+                               : "authored factory reference chords keep at least 3 dB of output "
+                                 "headroom");
         }
     if (folder != juce::File{}) {
         folder.createDirectory();

@@ -671,7 +671,7 @@ inline const std::array<ParameterSpec, parameterCount> parameterSpecs{{
     {"warmdrive", "Warm drive", 0, "FILTER CONTROL", 0, 1, 0, 1, "Off|On", false},
     {"mixA", "Mix A", 0, "MIXER", 0, 1, 0.7f, 1, "", false},
     {"mixB", "Mix B", 0, "MIXER", 0, 1, 0.7f, 1, "", false},
-    {"master", "Main volume", 0, "MIXER", 0, 1, 0.38f, 1, "", false},
+    {"master", "Main volume", 0, "MIXER", 0, 1, 0.65f, 1, "", false},
     {"polyphony", "Polyphony", 0, "PERFORMANCE", 1, 16, 16, 1, "", true},
     {"monolegato", "Mono legato", 0, "PERFORMANCE", 0, 1, 0, 1, "Off|On", false},
     {"portamento", "Portamento / s", 0, "PERFORMANCE", 0, 4, 0, 0.4f, "", false},
@@ -683,44 +683,48 @@ inline const std::array<ParameterSpec, parameterCount> parameterSpecs{{
     {"env1d", "Decay / s", 1, "MOD ENV 1", 0, 8, 0.25f, 0.3f, "", false},
     {"env1s", "Sustain", 1, "MOD ENV 1", 0, 1, 0, 1, "", false},
     {"env1r", "Release / s", 1, "MOD ENV 1", 0, 12, 0.35f, 0.3f, "", false},
-    {"env1dest1", "Destination 1", 1, "MOD ENV 1", 0, 33, 13, 1,
+    {"env1dest1", "Destination 1", 1, "MOD ENV 1", 0, 37, 13, 1,
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
      "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
      "B|Grain size A|Grain "
-     "size B|Grain size A and B",
+     "size B|Grain size A and B|WT Pos / Start A1|WT Pos / Start A2|WT Pos / Start B1|WT Pos / "
+     "Start B2",
      false},
     {"env1amt1", "Amount 1", 1, "MOD ENV 1", -10, 10, 2, 1, "", false},
-    {"env1dest2", "Destination 2", 1, "MOD ENV 1", 0, 33, 0, 1,
+    {"env1dest2", "Destination 2", 1, "MOD ENV 1", 0, 37, 0, 1,
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
      "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
      "B|Grain size A|Grain "
-     "size B|Grain size A and B",
+     "size B|Grain size A and B|WT Pos / Start A1|WT Pos / Start A2|WT Pos / Start B1|WT Pos / "
+     "Start B2",
      false},
     {"env1amt2", "Amount 2", 1, "MOD ENV 1", -10, 10, 0, 1, "", false},
     {"env2a", "Attack / s", 1, "MOD ENV 2", 0, 8, 0.008f, 0.3f, "", false},
     {"env2d", "Decay / s", 1, "MOD ENV 2", 0, 8, 0.25f, 0.3f, "", false},
     {"env2s", "Sustain", 1, "MOD ENV 2", 0, 1, 0, 1, "", false},
     {"env2r", "Release / s", 1, "MOD ENV 2", 0, 12, 0.35f, 0.3f, "", false},
-    {"env2dest1", "Destination 1", 1, "MOD ENV 2", 0, 33, 14, 1,
+    {"env2dest1", "Destination 1", 1, "MOD ENV 2", 0, 37, 14, 1,
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
      "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
      "B|Grain size A|Grain "
-     "size B|Grain size A and B",
+     "size B|Grain size A and B|WT Pos / Start A1|WT Pos / Start A2|WT Pos / Start B1|WT Pos / "
+     "Start B2",
      false},
     {"env2amt1", "Amount 1", 1, "MOD ENV 2", -10, 10, 2, 1, "", false},
-    {"env2dest2", "Destination 2", 1, "MOD ENV 2", 0, 33, 0, 1,
+    {"env2dest2", "Destination 2", 1, "MOD ENV 2", 0, 37, 0, 1,
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
      "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
      "B|Grain size A|Grain "
-     "size B|Grain size A and B",
+     "size B|Grain size A and B|WT Pos / Start A1|WT Pos / Start A2|WT Pos / Start B1|WT Pos / "
+     "Start B2",
      false},
     {"env2amt2", "Amount 2", 1, "MOD ENV 2", -10, 10, 0, 1, "", false},
     {"lfo1wave", "Wave", 1, "LFO 1", 0, 9, 0, 1,
@@ -731,22 +735,24 @@ inline const std::array<ParameterSpec, parameterCount> parameterSpecs{{
     {"lfo1gain", "Gain", 1, "LFO 1", 0, 1, 1, 1, "", false},
     {"lfo1offset", "Offset", 1, "LFO 1", -1, 1, 0, 1, "", false},
     {"lfo1free", "Free", 1, "LFO 1", 0, 1, 0, 1, "Off|On", false},
-    {"lfo1dest1", "Destination 1", 1, "LFO 1", 0, 33, 0, 1,
+    {"lfo1dest1", "Destination 1", 1, "LFO 1", 0, 37, 0, 1,
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
      "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
      "B|Grain size A|Grain "
-     "size B|Grain size A and B",
+     "size B|Grain size A and B|WT Pos / Start A1|WT Pos / Start A2|WT Pos / Start B1|WT Pos / "
+     "Start B2",
      false},
     {"lfo1amt1", "Amount 1", 1, "LFO 1", -10, 10, 0, 1, "", false},
-    {"lfo1dest2", "Destination 2", 1, "LFO 1", 0, 33, 0, 1,
+    {"lfo1dest2", "Destination 2", 1, "LFO 1", 0, 37, 0, 1,
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
      "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
      "B|Grain size A|Grain "
-     "size B|Grain size A and B",
+     "size B|Grain size A and B|WT Pos / Start A1|WT Pos / Start A2|WT Pos / Start B1|WT Pos / "
+     "Start B2",
      false},
     {"lfo1amt2", "Amount 2", 1, "LFO 1", -10, 10, 0, 1, "", false},
     {"lfo2wave", "Wave", 1, "LFO 2", 0, 9, 0, 1,
@@ -757,110 +763,120 @@ inline const std::array<ParameterSpec, parameterCount> parameterSpecs{{
     {"lfo2gain", "Gain", 1, "LFO 2", 0, 1, 1, 1, "", false},
     {"lfo2offset", "Offset", 1, "LFO 2", -1, 1, 0, 1, "", false},
     {"lfo2free", "Free", 1, "LFO 2", 0, 1, 0, 1, "Off|On", false},
-    {"lfo2dest1", "Destination 1", 1, "LFO 2", 0, 33, 0, 1,
+    {"lfo2dest1", "Destination 1", 1, "LFO 2", 0, 37, 0, 1,
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
      "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
      "B|Grain size A|Grain "
-     "size B|Grain size A and B",
+     "size B|Grain size A and B|WT Pos / Start A1|WT Pos / Start A2|WT Pos / Start B1|WT Pos / "
+     "Start B2",
      false},
     {"lfo2amt1", "Amount 1", 1, "LFO 2", -10, 10, 0, 1, "", false},
-    {"lfo2dest2", "Destination 2", 1, "LFO 2", 0, 33, 0, 1,
+    {"lfo2dest2", "Destination 2", 1, "LFO 2", 0, 37, 0, 1,
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
      "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
      "B|Grain size A|Grain "
-     "size B|Grain size A and B",
+     "size B|Grain size A and B|WT Pos / Start A1|WT Pos / Start A2|WT Pos / Start B1|WT Pos / "
+     "Start B2",
      false},
     {"lfo2amt2", "Amount 2", 1, "LFO 2", -10, 10, 0, 1, "", false},
     {"misc1source", "Source", 1, "MISC 1 / SOURCE 1", 0, 14, 4, 1,
      "None|Velocity|Keytrack|Aftertouch|Mod Wheel|Pitch Wheel|Amp Env A|Amp Env B|Mod Env 1|Mod "
      "Env 2|LFO 1|LFO 2|Step Velocity|Random|Random bipolar",
      false},
-    {"misc1dest1", "Destination 1", 1, "MISC 1 / SOURCE 1", 0, 33, 6, 1,
+    {"misc1dest1", "Destination 1", 1, "MISC 1 / SOURCE 1", 0, 37, 6, 1,
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
      "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
      "B|Grain size A|Grain "
-     "size B|Grain size A and B",
+     "size B|Grain size A and B|WT Pos / Start A1|WT Pos / Start A2|WT Pos / Start B1|WT Pos / "
+     "Start B2",
      false},
     {"misc1amt1", "Amount 1", 1, "MISC 1 / SOURCE 1", -10, 10, 0.10416667f, 1, "", false},
-    {"misc1dest2", "Destination 2", 1, "MISC 1 / SOURCE 1", 0, 33, 0, 1,
+    {"misc1dest2", "Destination 2", 1, "MISC 1 / SOURCE 1", 0, 37, 0, 1,
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
      "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
      "B|Grain size A|Grain "
-     "size B|Grain size A and B",
+     "size B|Grain size A and B|WT Pos / Start A1|WT Pos / Start A2|WT Pos / Start B1|WT Pos / "
+     "Start B2",
      false},
     {"misc1amt2", "Amount 2", 1, "MISC 1 / SOURCE 1", -10, 10, 0, 1, "", false},
     {"misc2source", "Source", 1, "MISC 1 / SOURCE 2", 0, 14, 0, 1,
      "None|Velocity|Keytrack|Aftertouch|Mod Wheel|Pitch Wheel|Amp Env A|Amp Env B|Mod Env 1|Mod "
      "Env 2|LFO 1|LFO 2|Step Velocity|Random|Random bipolar",
      false},
-    {"misc2dest1", "Destination 1", 1, "MISC 1 / SOURCE 2", 0, 33, 0, 1,
+    {"misc2dest1", "Destination 1", 1, "MISC 1 / SOURCE 2", 0, 37, 0, 1,
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
      "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
      "B|Grain size A|Grain "
-     "size B|Grain size A and B",
+     "size B|Grain size A and B|WT Pos / Start A1|WT Pos / Start A2|WT Pos / Start B1|WT Pos / "
+     "Start B2",
      false},
     {"misc2amt1", "Amount 1", 1, "MISC 1 / SOURCE 2", -10, 10, 0, 1, "", false},
-    {"misc2dest2", "Destination 2", 1, "MISC 1 / SOURCE 2", 0, 33, 0, 1,
+    {"misc2dest2", "Destination 2", 1, "MISC 1 / SOURCE 2", 0, 37, 0, 1,
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
      "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
      "B|Grain size A|Grain "
-     "size B|Grain size A and B",
+     "size B|Grain size A and B|WT Pos / Start A1|WT Pos / Start A2|WT Pos / Start B1|WT Pos / "
+     "Start B2",
      false},
     {"misc2amt2", "Amount 2", 1, "MISC 1 / SOURCE 2", -10, 10, 0, 1, "", false},
     {"misc3source", "Source", 1, "MISC 2 / SOURCE 1", 0, 14, 0, 1,
      "None|Velocity|Keytrack|Aftertouch|Mod Wheel|Pitch Wheel|Amp Env A|Amp Env B|Mod Env 1|Mod "
      "Env 2|LFO 1|LFO 2|Step Velocity|Random|Random bipolar",
      false},
-    {"misc3dest1", "Destination 1", 1, "MISC 2 / SOURCE 1", 0, 33, 0, 1,
+    {"misc3dest1", "Destination 1", 1, "MISC 2 / SOURCE 1", 0, 37, 0, 1,
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
      "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
      "B|Grain size A|Grain "
-     "size B|Grain size A and B",
+     "size B|Grain size A and B|WT Pos / Start A1|WT Pos / Start A2|WT Pos / Start B1|WT Pos / "
+     "Start B2",
      false},
     {"misc3amt1", "Amount 1", 1, "MISC 2 / SOURCE 1", -10, 10, 0, 1, "", false},
-    {"misc3dest2", "Destination 2", 1, "MISC 2 / SOURCE 1", 0, 33, 0, 1,
+    {"misc3dest2", "Destination 2", 1, "MISC 2 / SOURCE 1", 0, 37, 0, 1,
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
      "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
      "B|Grain size A|Grain "
-     "size B|Grain size A and B",
+     "size B|Grain size A and B|WT Pos / Start A1|WT Pos / Start A2|WT Pos / Start B1|WT Pos / "
+     "Start B2",
      false},
     {"misc3amt2", "Amount 2", 1, "MISC 2 / SOURCE 1", -10, 10, 0, 1, "", false},
     {"misc4source", "Source", 1, "MISC 2 / SOURCE 2", 0, 14, 0, 1,
      "None|Velocity|Keytrack|Aftertouch|Mod Wheel|Pitch Wheel|Amp Env A|Amp Env B|Mod Env 1|Mod "
      "Env 2|LFO 1|LFO 2|Step Velocity|Random|Random bipolar",
      false},
-    {"misc4dest1", "Destination 1", 1, "MISC 2 / SOURCE 2", 0, 33, 0, 1,
+    {"misc4dest1", "Destination 1", 1, "MISC 2 / SOURCE 2", 0, 37, 0, 1,
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
      "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
      "B|Grain size A|Grain "
-     "size B|Grain size A and B",
+     "size B|Grain size A and B|WT Pos / Start A1|WT Pos / Start A2|WT Pos / Start B1|WT Pos / "
+     "Start B2",
      false},
     {"misc4amt1", "Amount 1", 1, "MISC 2 / SOURCE 2", -10, 10, 0, 1, "", false},
-    {"misc4dest2", "Destination 2", 1, "MISC 2 / SOURCE 2", 0, 33, 0, 1,
+    {"misc4dest2", "Destination 2", 1, "MISC 2 / SOURCE 2", 0, 37, 0, 1,
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
      "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
      "B|Grain size A|Grain "
-     "size B|Grain size A and B",
+     "size B|Grain size A and B|WT Pos / Start A1|WT Pos / Start A2|WT Pos / Start B1|WT Pos / "
+     "Start B2",
      false},
     {"misc4amt2", "Amount 2", 1, "MISC 2 / SOURCE 2", -10, 10, 0, 1, "", false},
     {"arpon", "Enabled", 2, "ARPEGGIATOR", 0, 1, 0, 1, "Off|On", false},

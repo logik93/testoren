@@ -40,6 +40,9 @@ class LogisthProcessor : public juce::AudioProcessor {
     void savePresetAsync(const juce::File &);
     void loadPresetAsync(const juce::File &);
     juce::String currentPresetName() const;
+    juce::String presetComment() const;
+    void setPresetComment(const juce::String &);
+    std::atomic<int> commentRevision{0};
     juce::File currentPresetFile() const;
     int activePattern() const {
         return currentPattern.load();
@@ -128,7 +131,7 @@ class LogisthProcessor : public juce::AudioProcessor {
     juce::String assetStatus;
     std::array<juce::ValueTree, 12> patterns;
     juce::File userPresetFolder, activePresetFile;
-    juce::String presetName;
+    juce::String presetName, comment;
     std::atomic<int> currentPattern{0};
     juce::ThreadPool importWorkers{1};
     logisth::ChordMapper chordMapper;

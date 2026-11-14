@@ -1,5 +1,7 @@
 #include "PluginEditor.h"
 #include "BinaryData.h"
+#include "EnvelopePlot.h"
+#include "ThemeSettings.h"
 #include <set>
 using namespace juce;
 using namespace logisth;
@@ -52,20 +54,10 @@ void capsule(Graphics &g, Rectangle<float> b, Colour fill, Colour outline) {
 
 #include "StudioViews.h"
 
-void LogisthColours::choosePalette(bool enabled) {
-    darkTheme = enabled;
-    if (enabled) {
-        body = Colour(0xff18201c);
-        panel = Colour(0xff232d27);
-        line = Colour(0xff354238);
-        ink = Colour(0xffe0e7d8);
-        muted = Colour(0xff9aa99a);
-        green = Colour(0xffb0c9a5);
-        mint = Colour(0xffbfd6b3);
-        screen = Colour(0xff101a15);
-        screenLine = Colour(0xff35483b);
-        screenText = Colour(0xffe3eadc);
-    } else {
+void LogisthColours::choosePalette(int selected) {
+    themeId = jlimit(0, 4, selected);
+    darkTheme = themeId != 0;
+    if (!darkTheme) {
         body = Colour(0xffe8e9e2);
         panel = Colour(0xfff4f3ed);
         line = Colour(0xffced2c9);
@@ -76,18 +68,42 @@ void LogisthColours::choosePalette(bool enabled) {
         screen = Colour(0xff243430);
         screenLine = Colour(0xff41514b);
         screenText = Colour(0xffe6ece1);
+        return;
     }
+    static constexpr uint32 palettes[4][10] = {
+        {0xff0d1118, 0xff151d29, 0xff283a50, 0xffe0edff, 0xff9aadc5, 0xff62acff, 0xff91c8ff,
+         0xff080d15, 0xff243952, 0xffe0edff},
+        {0xff0c1725, 0xff11243a, 0xff28486a, 0xffdcf4ff, 0xff94b5cc, 0xff50c7ee, 0xff8de2ff,
+         0xff071423, 0xff264862, 0xffdef6ff},
+        {0xff111216, 0xff1c1e25, 0xff373c4b, 0xffe5e9f2, 0xffa4aab8, 0xff8aaaff, 0xffbbcaff,
+         0xff0b0c10, 0xff343a49, 0xffe5e9f2},
+        {0xff18201c, 0xff232d27, 0xff354238, 0xffe0e7d8, 0xff9aa99a, 0xffb0c9a5, 0xffbfd6b3,
+         0xff101a15, 0xff35483b, 0xffe3eadc}};
+    auto &c = palettes[themeId - 1];
+    body = Colour(c[0]);
+    panel = Colour(c[1]);
+    line = Colour(c[2]);
+    ink = Colour(c[3]);
+    muted = Colour(c[4]);
+    green = Colour(c[5]);
+    mint = Colour(c[6]);
+    screen = Colour(c[7]);
+    screenLine = Colour(c[8]);
+    screenText = Colour(c[9]);
 }
 LogisthLook::LogisthLook() {
     regular = embeddedFace(false);
     semibold = embeddedFace(true);
-    setDarkTheme(false);
+    setTheme(1);
 }
 void LogisthLook::setDarkTheme(bool enabled) {
-    choosePalette(enabled);
+    setTheme(enabled ? 1 : 0);
+}
+void LogisthLook::setTheme(int selected) {
+    choosePalette(selected);
     setColour(TextEditor::highlightedTextColourId, darkTheme ? screen : ink);
     setColour(ComboBox::textColourId, ink);
-    setColour(TextButton::buttonColourId, darkTheme ? Colour(0xff30443b) : Colour(0xffe9ede5));
+    setColour(TextButton::buttonColourId, darkTheme ? screenLine : Colour(0xffe9ede5));
     setColour(TextButton::textColourOffId, ink);
     setColour(TextButton::buttonOnColourId, green);
     setColour(TextButton::textColourOnId, darkTheme ? screen : Colours::white);
@@ -143,9 +159,9 @@ void LogisthLook::drawRotarySlider(Graphics &g, int x, int y, int w, int h, floa
         g.setColour(Colours::black.withAlpha(isDark ? .12f : .06f));
         g.fillEllipse(knob.translated(0, 2));
     }
-    g.setGradientFill(ColourGradient(isDark ? Colour(0xff41534a) : Colours::white, centre.x,
-                                     knob.getY(), isDark ? Colour(0xff2e4038) : Colour(0xffdedfd7),
-                                     centre.x, knob.getBottom(), false));
+    g.setGradientFill(ColourGradient(isDark ? panel.brighter(.15f) : Colours::white, centre.x,
+                                     knob.getY(), isDark ? body : Colour(0xffdedfd7), centre.x,
+                                     knob.getBottom(), false));
     g.fillEllipse(knob);
     g.setColour(isDark ? screenLine : Colour(0xffc4cbbf));
     g.drawEllipse(knob.reduced(.5f), 1);
@@ -183,7 +199,7 @@ void LogisthLook::drawLinearSlider(Graphics &g, int x, int y, int w, int h, floa
     bool isDark = (dark(s) || darkTheme);
     auto b = Rectangle<float>(float(x), float(y), float(w), float(h));
     if (bool(s.getProperties()["number"])) {
-        capsule(g, b, isDark ? Colour(0xff30443b) : Colour(0xffe9ede5), isDark ? screenLine : line);
+        capsule(g, b, isDark ? screenLine : Colour(0xffe9ede5), isDark ? screenLine : line);
         float p = float(s.valueToProportionOfLength(s.getValue()));
         if (bool(s.getProperties()["lane"])) {
             g.setColour((isDark ? mint : green).withAlpha(.24f));
@@ -209,8 +225,8 @@ void LogisthLook::drawLinearSlider(Graphics &g, int x, int y, int w, int h, floa
 }
 void LogisthLook::drawComboBox(Graphics &g, int w, int h, bool, int, int, int, int, ComboBox &c) {
     bool isDark = (dark(c) || darkTheme);
-    capsule(g, Rectangle<float>(0, 0, float(w), float(h)),
-            isDark ? Colour(0xff30443b) : Colour(0xffe9ede5), isDark ? screenLine : line);
+    capsule(g, Rectangle<float>(0, 0, float(w), float(h)), isDark ? screenLine : Colour(0xffe9ede5),
+            isDark ? screenLine : line);
     Path arrow;
     float cx = float(w) - 10, cy = float(h) * .5f;
     arrow.startNewSubPath(cx - 3, cy - 1);
@@ -237,8 +253,7 @@ void LogisthLook::drawToggleButton(Graphics &g, ToggleButton &b, bool hover, boo
         g.fillRoundedRectangle(bounds.reduced(6), 2);
         return;
     }
-    capsule(g, bounds,
-            on ? (isDark ? mint : green) : (isDark ? Colour(0xff30443b) : Colour(0xffe9ede5)),
+    capsule(g, bounds, on ? (isDark ? mint : green) : (isDark ? screenLine : Colour(0xffe9ede5)),
             on ? green : (isDark ? screenLine : line));
     if (hover) {
         g.setColour(Colours::white.withAlpha(.06f));
@@ -257,7 +272,8 @@ void LogisthLook::drawCornerResizer(Graphics &g, int w, int h, bool, bool) {
 class LogisthEditor::Console : public Component,
                                private Timer,
                                public LogisthColours,
-                               public FileDragAndDropTarget {
+                               public FileDragAndDropTarget,
+                               private ThemeSettings::Listener {
     enum class Style { Knob, Trim, Fader, Number, Menu, Toggle };
     class Control : public Component {
       public:
@@ -303,6 +319,8 @@ class LogisthEditor::Console : public Component,
                         if (String(spec.id).contains("dest") &&
                             i == int(logisth::Destination::PositionA))
                             menu.getRootMenu()->addSectionHeader("Source position / grains");
+                        if (String(spec.id).contains("dest") && i == int(Destination::PositionA1))
+                            menu.getRootMenu()->addSectionHeader("Individual WT players");
                         String name = choices[i];
                         if (String(spec.id).endsWith("slope"))
                             name = i == 0 ? "12 dB" : "24 dB";
@@ -493,9 +511,9 @@ class LogisthEditor::Console : public Component,
             onClick = [this] { owner.setRack(index); };
         }
         void paintButton(Graphics &g, bool hover, bool) override {
-            bool selected = owner.rack == index;
-            g.setColour(selected ? Colour(0xff3d5146)
-                        : hover  ? Colour(0xff2d4037)
+            bool selected = owner.rack == index && !owner.settingsOpen;
+            g.setColour(selected ? owner.screenLine.brighter(.1f)
+                        : hover  ? owner.screenLine
                                  : Colours::transparentBlack);
             g.fillRoundedRectangle(getLocalBounds().toFloat(), 4);
             drawCaption(g, name, getLocalBounds().withTrimmedLeft(21), 10,
@@ -669,19 +687,21 @@ class LogisthEditor::Console : public Component,
             applyTheme();
         }
         void applyTheme() {
-            setColour(whiteNoteColourId, owner.darkTheme ? Colour(0xffb9c5b7) : Colour(0xfff8f7f1));
-            setColour(blackNoteColourId, owner.darkTheme ? Colour(0xff1d2822) : owner.ink);
+            setColour(whiteNoteColourId, owner.darkTheme
+                                             ? owner.ink.interpolatedWith(owner.body, .22f)
+                                             : Colour(0xfff8f7f1));
+            setColour(blackNoteColourId, owner.darkTheme ? owner.body.darker(.3f) : owner.ink);
             setColour(keySeparatorLineColourId, owner.line);
             setColour(mouseOverKeyOverlayColourId, owner.mint.withAlpha(.4f));
             setColour(keyDownOverlayColourId, owner.green.withAlpha(.55f));
-            setColour(textLabelColourId, owner.darkTheme ? Colour(0xff435347) : owner.muted);
+            setColour(textLabelColourId, owner.darkTheme ? owner.line : owner.muted);
             setColour(shadowColourId, Colours::transparentBlack);
         }
         void drawBlackNote(int, Graphics &g, Rectangle<float> b, bool down, bool over,
                            Colour) override {
             g.setColour(down              ? owner.green
-                        : over            ? Colour(0xff48574d)
-                        : owner.darkTheme ? Colour(0xff1d2822)
+                        : over            ? owner.line.brighter(.15f)
+                        : owner.darkTheme ? owner.body.darker(.3f)
                                           : owner.ink);
             g.fillRoundedRectangle(b.withTrimmedBottom(4), 2);
             g.setColour(Colours::white.withAlpha(.08f));
@@ -736,6 +756,7 @@ class LogisthEditor::Console : public Component,
             if (selected >= 1 && selected <= 10) {
                 processor.loadPreset(selected - 1);
                 readout = "Factory sound / " + presets.getText();
+                syncPresetNotes();
             } else if (selected >= 1000 && selected - 1000 < userPresets.size())
                 processor.loadPresetAsync(userPresets[selected - 1000]);
             repaint();
@@ -776,11 +797,54 @@ class LogisthEditor::Console : public Component,
         pitch.onValueChange = [this] { processor.setUiWheel(true, float(pitch.getValue())); };
         pitch.onDragEnd = [this] { pitch.setValue(0); };
         mod.onValueChange = [this] { processor.setUiWheel(false, float(mod.getValue())); };
-        theme.setComponentID("ui.theme");
-        theme.setName("Colour theme");
-        theme.setTooltip("Light / dark appearance");
-        theme.onClick = [this] { setDarkTheme(theme.getToggleState()); };
-        addAndMakeVisible(theme);
+        settings.setComponentID("ui.settings");
+        settings.setButtonText("SETTINGS");
+        settings.setTooltip("Appearance and About logisth");
+        settings.onClick = [this] {
+            settingsOpen = !settingsOpen;
+            layout();
+            repaint();
+        };
+        addAndMakeVisible(settings);
+        presetNotes.setComponentID("preset.comment");
+        presetNotes.setName("Preset comment");
+        presetNotes.setFont(font(10));
+        presetNotes.setTextToShowWhenEmpty("Preset comment - click to edit", muted);
+        presetNotes.setInputRestrictions(4096);
+        presetNotes.onTextChange = [this] {
+            if (notesRevision != processor.presetRevision.load()) {
+                syncPresetNotes();
+                return;
+            }
+            processor.setPresetComment(presetNotes.getText());
+        };
+        syncPresetNotes();
+        presetNotes.onEscapeKey = [this] { presetNotes.giveAwayKeyboardFocus(); };
+        addAndMakeVisible(presetNotes);
+        settingsPanel.setComponentID("settings.panel");
+        addChildComponent(settingsPanel);
+        themeChoice.setComponentID("settings.theme");
+        themeChoice.setName("Colour theme");
+        themeChoice.addItemList({"Light", "Midnight Blue", "Cobalt", "Graphite", "Forest"}, 1);
+        themeChoice.getProperties().set("dark", true);
+        themeChoice.onChange = [this] { setTheme(themeChoice.getSelectedId() - 1); };
+        settingsPanel.addAndMakeVisible(themeChoice);
+        settingsPanel.addAndMakeVisible(themeLabel);
+        themeLabel.setText("COLOUR THEME", dontSendNotification);
+        themeLabel.setFont(font(10));
+        settingsPanel.addAndMakeVisible(themeHelp);
+        themeHelp.setFont(font(10));
+        themeHelp.setText("Saved for new instances. Changing presets keeps your theme.",
+                          dontSendNotification);
+        settingsPanel.addAndMakeVisible(aboutLabel);
+        aboutLabel.setFont(font(11, true));
+        aboutLabel.setText("ABOUT", dontSendNotification);
+        settingsPanel.addAndMakeVisible(aboutInfo);
+        aboutInfo.setFont(font(11));
+        aboutInfo.setText("logisth  " + String(JucePlugin_VersionString) +
+                              "\nPolyphonic instrument / VST3, CLAP, Standalone\nBuilt with JUCE, "
+                              "CLAP extensions and Open Sans.",
+                          dontSendNotification);
         for (int i = 0; i < 4; ++i) {
             auto &view = sourceViews[size_t(i)];
             view.setComponentID("source.view." + String(i));
@@ -941,10 +1005,12 @@ class LogisthEditor::Console : public Component,
             note.getProperties().set("dark", true);
         refreshChord();
         readout = "Ready  /  Choose a sound or play a note";
-        setDarkTheme(int(processor.state.state.getProperty("uiDark", 0)) != 0, false);
+        setTheme(ThemeSettings::reload(), false);
+        ThemeSettings::addListener(this);
         startTimerHz(24);
     }
     ~Console() override {
+        ThemeSettings::removeListener(this);
         stopTimer();
         for (auto &c : controls)
             c.reset();
@@ -975,26 +1041,46 @@ class LogisthEditor::Console : public Component,
         processor.loadSourceAsync(slot, file, frameSizeForImport(slot), true);
     }
     void setDarkTheme(bool enabled, bool persist = true) {
-        choosePalette(enabled);
-        look.setDarkTheme(enabled);
-        theme.setToggleState(enabled, dontSendNotification);
-        theme.setButtonText(enabled ? "DARK" : "LIGHT");
+        setTheme(enabled ? 1 : 0, persist);
+    }
+    void themeChanged(int selected) override {
+        setTheme(selected, false);
+    }
+    void setTheme(int selected, bool persist = true) {
+        if (persist && !ThemeSettings::choose(selected, this))
+            readout = "Theme changed; user settings could not be saved.";
+        preferenceRevision = ThemeSettings::revision();
+        choosePalette(selected);
+        look.setTheme(selected);
+        themeChoice.setSelectedId(themeId + 1, dontSendNotification);
         keyboard.applyTheme();
         waveSlot.setColour(ComboBox::textColourId, screenText);
         for (ComboBox *box : {&patternSlot, &chordTrigger, &chordType})
             box->setColour(ComboBox::textColourId, screenText);
         for (TextButton *button : {&patternSave, &patternRandom, &chordLearn, &chordCopy}) {
-            button->setColour(TextButton::buttonColourId, Colour(0xff30443b));
+            button->setColour(TextButton::buttonColourId, screenLine);
             button->setColour(TextButton::textColourOffId, screenText);
         }
+        for (Label *label : {&themeLabel, &themeHelp, &aboutLabel, &aboutInfo})
+            label->setColour(Label::textColourId, screenText);
+        presetNotes.setColour(TextEditor::backgroundColourId, panel);
+        presetNotes.applyColourToAllText(ink, true);
+        presetNotes.setColour(TextEditor::outlineColourId, line);
+        presetNotes.setTextToShowWhenEmpty("Preset comment - click to edit", muted);
         sendLookAndFeelChange();
         layout();
-        if (persist)
-            processor.state.state.setProperty("uiDark", enabled, nullptr);
         repaint();
     }
     bool isDarkTheme() const {
         return darkTheme;
+    }
+    void showSettings(bool enabled) {
+        settingsOpen = enabled;
+        layout();
+        repaint();
+    }
+    bool showingSettings() const {
+        return settingsOpen;
     }
     void setPart(int part) {
         selectedPart = jlimit(0, 1, part);
@@ -1002,6 +1088,7 @@ class LogisthEditor::Console : public Component,
         repaint();
     }
     void setRack(int page) {
+        settingsOpen = false;
         rack = jlimit(0, 9, page);
         layout();
         repaint();
@@ -1045,6 +1132,8 @@ class LogisthEditor::Console : public Component,
         repaint();
     }
     String validate() {
+        const bool oldSettings = settingsOpen;
+        settingsOpen = false;
         const int oldPart = selectedPart, oldRack = rack, oldStep = stepPage;
         std::array<int, 4> views;
         for (int i = 0; i < 4; ++i)
@@ -1115,6 +1204,7 @@ class LogisthEditor::Console : public Component,
         for (size_t i = 0; i < controls.size(); ++i)
             if (!visited.count(i))
                 error = "Unreachable: " + String(parameterSpecs[i].id);
+        settingsOpen = oldSettings;
         selectedPart = oldPart;
         rack = oldRack;
         stepPage = oldStep;
@@ -1165,7 +1255,7 @@ class LogisthEditor::Console : public Component,
         int previousId = presets.getSelectedId();
         presets.clear(dontSendNotification);
         presets.addSectionHeading("FACTORY");
-        presets.addItemList({"Init / analog", "Wide supersaw", "Sub bass", "Slow atmosphere",
+        presets.addItemList({"Init / saw", "Wide supersaw", "Sub bass", "Slow atmosphere",
                              "Pulse pluck", "Step sequence", "Morph glass", "Sample keys",
                              "Grain cloud", "Chord pulse"},
                             1);
@@ -1190,7 +1280,16 @@ class LogisthEditor::Console : public Component,
             presets.setSelectedId(0, dontSendNotification);
         presetRevision = processor.presetRevision.load();
     }
+    void syncPresetNotes() {
+        presetNotes.setText(processor.presetComment(), false);
+        notesRevision = processor.presetRevision.load();
+        commentStamp = processor.commentRevision.load();
+    }
     void presetMenu() {
+        if (notesRevision == processor.presetRevision.load())
+            processor.setPresetComment(presetNotes.getText());
+        else
+            syncPresetNotes();
         PopupMenu menu;
         menu.addItem(1, "Save as...");
         auto current = processor.currentPresetFile();
@@ -1489,6 +1588,17 @@ class LogisthEditor::Console : public Component,
             if (i < 9)
                 controls[size_t(enables[size_t(i)])]->toFront(false);
         }
+        settingsPanel.setVisible(settingsOpen);
+        if (settingsOpen) {
+            settingsPanel.setBounds(414, 289, 520, 234);
+            themeLabel.setBounds(0, 31, 145, 26);
+            themeChoice.setBounds(157, 31, 227, 28);
+            themeHelp.setBounds(0, 73, 515, 32);
+            aboutLabel.setBounds(0, 116, 515, 23);
+            aboutInfo.setBounds(0, 145, 515, 76);
+            settingsPanel.toFront(false);
+            return;
+        }
         if (rack == 9) {
             waveSlot.setBounds(414, 289, 110, 23);
             waveSlot.setVisible(true);
@@ -1673,10 +1783,11 @@ class LogisthEditor::Console : public Component,
             w->setVisible(false);
         for (auto &w : chordNotes)
             w.setVisible(false);
-        presets.setBounds(364, 25, 306, 32);
-        previous.setBounds(332, 25, 26, 32);
-        next.setBounds(676, 25, 26, 32);
-        presetFiles.setBounds(708, 25, 70, 32);
+        presets.setBounds(364, 24, 306, 26);
+        previous.setBounds(332, 24, 26, 26);
+        next.setBounds(676, 24, 26, 26);
+        presetFiles.setBounds(708, 24, 70, 26);
+        presetNotes.setBounds(332, 54, 446, 23);
         for (int i = 0; i < 2; ++i) {
             parts[size_t(i)].setBounds(834 + i * 40, 28, 34, 24);
             parts[size_t(i)].setToggleState(i == selectedPart, dontSendNotification);
@@ -1684,7 +1795,8 @@ class LogisthEditor::Console : public Component,
         put(Param::solo, {927, 28, 68, 24}, Style::Menu);
         put(Param::polyphony, {1010, 16, 60, 38}, Style::Number, "POLY");
         put(Param::sync, {1085, 28, 64, 24}, Style::Toggle, "SYNC");
-        theme.setBounds(1162, 28, 62, 24);
+        settings.setBounds(1162, 28, 62, 24);
+        settings.setToggleState(settingsOpen, dontSendNotification);
         put(Param::arpout, {225, 29, 82, 24}, Style::Toggle, "MIDI OUT");
         put(Param::midionly, {225, 55, 82, 19}, Style::Toggle, "MIDI ONLY");
         const int first = selectedPart * 2 + 1;
@@ -1760,12 +1872,19 @@ class LogisthEditor::Console : public Component,
         }
         if (presetRevision != processor.presetRevision.load()) {
             refreshPresets();
-            setDarkTheme(int(processor.state.state.getProperty("uiDark", 0)) != 0, false);
+            syncPresetNotes();
             int scope = jlimit(0, 2, int(processor.state.state.getProperty("uiScope", 2)));
             scopeView.setSource(scope);
             for (int i = 0; i < 3; ++i)
                 scopeSources[size_t(i)].setToggleState(i == scope, dontSendNotification);
             patternSlot.setSelectedId(processor.activePattern() + 1, dontSendNotification);
+        }
+        if (preferenceRevision != ThemeSettings::revision())
+            setTheme(ThemeSettings::current(), false);
+        if (commentStamp != processor.commentRevision.load()) {
+            if (presetNotes.getText() != processor.presetComment())
+                presetNotes.setText(processor.presetComment(), false);
+            commentStamp = processor.commentRevision.load();
         }
         if (rack == 9) {
             waveView.setMode(
@@ -1813,7 +1932,7 @@ class LogisthEditor::Console : public Component,
         drawCaption(g, "SOUND LIBRARY", {364, 9, 280, 13}, 8, muted);
         drawCaption(g, "PART", {795, 30, 33, 20}, 8.5f, muted);
         drawCaption(g, "SOLO", {927, 12, 68, 13}, 8, muted);
-        drawCaption(g, "THEME", {1162, 12, 62, 13}, 8, muted);
+        drawCaption(g, "OPTIONS", {1162, 12, 62, 13}, 8, muted);
         String part = selectedPart == 0 ? "A" : "B";
         shell(g, {16, 82, 460, 184}, "OSCILLATOR " + part + "1", {});
         shell(g, {764, 82, 460, 184}, "OSCILLATOR " + part + "2", {});
@@ -1850,20 +1969,19 @@ class LogisthEditor::Console : public Component,
             }
         auto curveBounds = Rectangle<float>(508, 116, 224, 22);
         size_t ampBase = size_t(Param::p1ampa) + size_t(selectedPart) * 10;
-        const float attack = .05f + .45f * std::sqrt(value(Param(ampBase)) / 8.f);
-        const float decay = .05f + .45f * std::sqrt(value(Param(ampBase + 1)) / 8.f);
-        const float release = .05f + .45f * std::sqrt(value(Param(ampBase + 3)) / 12.f);
-        const float norm = curveBounds.getWidth() / (attack + decay + release + .2f);
-        const float sustainY =
-            curveBounds.getBottom() - value(Param(ampBase + 2)) * curveBounds.getHeight();
+        auto points = envelopePlot({value(Param(ampBase)), value(Param(ampBase + 1)),
+                                    value(Param(ampBase + 2)), value(Param(ampBase + 3))});
         Path curve;
-        curve.startNewSubPath(curveBounds.getX(), curveBounds.getBottom());
-        curve.lineTo(curveBounds.getX() + attack * norm, curveBounds.getY());
-        curve.lineTo(curveBounds.getX() + (attack + decay) * norm, sustainY);
-        curve.lineTo(curveBounds.getRight() - release * norm, sustainY);
-        curve.lineTo(curveBounds.getRight(), curveBounds.getBottom());
-        g.setColour(green.withAlpha(.4f));
-        g.strokePath(curve, PathStrokeType(1.2f));
+        for (size_t i = 0; i < points.size(); ++i) {
+            float x = curveBounds.getX() + points[i].x * curveBounds.getWidth();
+            float y = curveBounds.getBottom() - points[i].level * curveBounds.getHeight();
+            if (i == 0)
+                curve.startNewSubPath(x, y);
+            else
+                curve.lineTo(x, y);
+        }
+        g.setColour(green.withAlpha(.7f));
+        g.strokePath(curve, PathStrokeType(1.5f));
         shell(g, {16, 278, 252, 144}, "FILTER " + part, "INPUT / TYPE / SLOPE");
         shell(g, {16, 434, 252, 102}, "FILTER CONTROL", "A + B");
         shell(g, {956, 278, 268, 258}, "MIXER",
@@ -1878,7 +1996,7 @@ class LogisthEditor::Console : public Component,
                 g.setColour(j < lit     ? (level > 1 && j >= 14 ? Colour(0xffd35f55)
                                            : j > 13             ? Colour(0xffbb7c46)
                                                                 : green)
-                            : darkTheme ? Colour(0xff354138)
+                            : darkTheme ? line
                                         : Colour(0xffdee2d8));
                 g.fillRoundedRectangle(float(x + 3), float(506 - j * 4), 9, 3, 1);
             }
@@ -1900,10 +2018,15 @@ class LogisthEditor::Console : public Component,
         drawCaption(g, "SIGNAL RACK", {292, 290, 108, 16}, 8, mint.withAlpha(.5f));
         StringArray titles{"ARPEGGIATOR", "DISTORTION", "PHASER",     "CHORUS", "EQUALIZER",
                            "REVERB",      "DELAY",      "COMPRESSOR", "CHORDS", "SAMPLE"};
-        drawCaption(g, (rack == 9) ? String{} : titles[rack], {414, 289, 350, 20}, 12, screenText,
-                    Justification::centredLeft, true);
+        drawCaption(g,
+                    settingsOpen  ? "SETTINGS"
+                    : (rack == 9) ? String{}
+                                  : titles[rack],
+                    {414, 289, 350, 20}, 12, screenText, Justification::centredLeft, true);
 
-        if (rack == 9) {
+        if (settingsOpen) {
+            // The settings labels and selector draw inside the central rack.
+        } else if (rack == 9) {
             int mode =
                 int(value(Param(size_t(Param::o1engine) + size_t(waveView.selectedSlot()) * 16)));
             drawCaption(g, mode == 1 ? "WAVETABLE / WT POS" : "SAMPLE / PLAYBACK",
@@ -1977,7 +2100,14 @@ class LogisthEditor::Console : public Component,
     std::unique_ptr<FileChooser> sourceChooser;
     int previewSource = -1, previewPattern = -1, previewGran = -1;
     ComboBox presets;
-    ToggleButton theme;
+    TextButton settings;
+    TextEditor presetNotes;
+    Component settingsPanel;
+    ComboBox themeChoice;
+    Label themeLabel, themeHelp, aboutLabel, aboutInfo;
+    bool settingsOpen = false;
+    uint64_t preferenceRevision = 0;
+    int commentStamp = -1, notesRevision = -1;
     TextButton previous, next;
     Keys keyboard;
     PatternCanvas patternCanvas;
@@ -2027,12 +2157,28 @@ Image LogisthEditor::snapshotPage(int scenario) {
     console->showScenario(scenario);
     return createComponentSnapshot(getLocalBounds());
 }
+Image LogisthEditor::snapshotTheme(int selected) {
+    int oldTheme = console->themeId;
+    bool oldSettings = console->showingSettings();
+    console->setTheme(selected, false);
+    console->showSettings(true);
+    auto result = createComponentSnapshot(getLocalBounds());
+    console->setTheme(oldTheme, false);
+    console->showSettings(oldSettings);
+    return result;
+}
 String LogisthEditor::validateLayout() {
     return console->validate();
 }
 
 void LogisthEditor::setDarkTheme(bool enabled) {
     console->setDarkTheme(enabled);
+}
+void LogisthEditor::setTheme(int selected) {
+    console->setTheme(selected);
+}
+int LogisthEditor::selectedTheme() const {
+    return console->themeId;
 }
 bool LogisthEditor::isDarkTheme() const {
     return console->isDarkTheme();

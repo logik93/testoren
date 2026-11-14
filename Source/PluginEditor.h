@@ -6,13 +6,15 @@ struct LogisthColours {
         muted{0xff667268}, green{0xff406f5d}, mint{0xffbdd8bb}, screen{0xff243430},
         screenLine{0xff41514b}, screenText{0xffe6ece1};
     bool darkTheme = false;
-    void choosePalette(bool);
+    int themeId = 0;
+    void choosePalette(int);
 };
 
 class LogisthLook : public juce::LookAndFeel_V4, public LogisthColours {
   public:
     LogisthLook();
     void setDarkTheme(bool);
+    void setTheme(int);
     juce::Typeface::Ptr getTypefaceForFont(const juce::Font &) override;
     void drawRotarySlider(juce::Graphics &, int, int, int, int, float, float, float,
                           juce::Slider &) override;
@@ -40,8 +42,11 @@ class LogisthEditor : public juce::AudioProcessorEditor {
     ~LogisthEditor() override;
     void resized() override;
     juce::Image snapshotPage(int scenario);
+    juce::Image snapshotTheme(int theme);
     juce::String validateLayout();
     void setDarkTheme(bool);
+    void setTheme(int);
+    int selectedTheme() const;
     bool isDarkTheme() const;
 
   private:

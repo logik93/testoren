@@ -1,4 +1,4 @@
-# logisth 0.7.1 — User Manual
+# logisth 0.8.0 — User Manual
 
 A two-part polyphonic subtractive synthesizer for VST3, CLAP and standalone use.
 This manual describes logisth's own controls and behaviour. logisth is an independent
@@ -34,7 +34,10 @@ scanned by your DAW. Keep the internal structure of bundles intact.
 
 If your DAW does not scan these user directories, add them to its scan paths or
 use its documented system directory. Rescan plug-ins, insert logisth on a MIDI
-instrument track, select Init / analog from SOUND LIBRARY, and play a note.
+instrument track and play a note. A fresh instance automatically selects Init /
+saw: one classic saw oscillator, both filters bypassed, no effects, arp or
+modulation, and Main at 65%. Saved presets/projects restore their stored Main
+value rather than replacing it with the new-instance default.
 The on-screen keyboard also generates notes. Start at a moderate listening level.
 
 For Standalone, launch the executable or app and choose audio and MIDI devices
@@ -59,14 +62,24 @@ rack name. The small square beside each name independently enables that section.
 Selecting a rack page does not enable or disable its processing.
 
 The upper row contains the preset selector, previous/next preset buttons, A/B,
-SOLO, POLY, SYNC and THEME. Filters are on the left, the rack in the centre, and
+SOLO, POLY, SYNC and SETTINGS. Filters are on the left, the rack in the centre, and
 the mixer on the right. Mod Env, LFO and Misc routing remain visible below them.
 The bottom row contains wheels, the keyboard and mono/portamento controls.
 
 Drag the bottom-right resize handle to scale the console from 80% to 150%.
 The nominal size is 1240 by 860 pixels. Initial size adapts to the display.
-THEME switches between LIGHT and DARK. Each instance saves its own theme with
-the plug-in state. The theme changes appearance without changing audio parameters.
+SETTINGS opens appearance and About inside the central rack. Choose Light,
+Midnight Blue, Cobalt, Graphite or Forest. The latter four are dark palettes;
+Midnight Blue is the default black/blue theme. Appearance is saved as a user
+preference and recalled by new instances. Existing instances follow changes in
+the same host process. Loading a preset or project keeps the selected colour;
+appearance does not alter audio parameters. User settings are stored in
+`logisth/appearance.json` under the system user application-data directory.
+
+The editable comment box below SOUND LIBRARY belongs to the sound. Type a note
+there, then save the user preset or DAW project. Comments support Unicode and up
+to 4096 characters. Loading a preset replaces its comment; Init starts with an
+empty comment. The About section lists the current version and framework credits.
 
 Drag knobs and faders to adjust values. Numeric fields can be dragged or edited.
 Examples of accepted values include 2.5k for 2500 Hz, 350ms and 65%.
@@ -96,6 +109,10 @@ The amplitude envelope for each part has attack, decay, sustain and release.
 Attack rises from silence, decay approaches sustain, and release fades after
 note-off. Sustain is a level; the other three are times. The line above the
 faders illustrates the current envelope. Amp Env A and B remain independent.
+The preview uses a proportional time axis, with a 0.5-second illustrative held
+segment. Zero-millisecond attack draws a vertical rise; a larger attack time
+makes the rise take longer. Zero decay/release also draw vertical transitions.
+There is no artificial minimum width added to these segments.
 
 ## 3.1 Four source engines
 
@@ -182,8 +199,9 @@ Shift-wheel pans. The display is a view of playback, not a sample editor.
 
 Enable OSC ENVELOPE in ENV to give a slot an additional attack, decay, sustain
 and release. A part's shared envelope still limits its final output. New
-WT Pos / Start A/B/A+B and Grain size A/B/A+B modulation destinations scan frames
-or sample locations and scale grain duration. Position changes are smoothed.
+WT Pos / Start A1/A2/B1/B2 targets individual players; A/B/A+B target groups.
+These destinations scan wavetable frames or sample locations. Grain size A/B/A+B
+scales grain duration. Position changes are smoothed.
 
 IMPORT accepts WAV, AIFF and FLAC at 8–96 kHz, without a fixed duration limit.
 The four imported sources share a 512 MiB decoded-stereo-PCM budget. Temporary
@@ -248,9 +266,12 @@ Gain scales its output; Offset shifts it. The global fallback tempo is 120 BPM
 when no host tempo is available.
 
 To modulate wavetable position, set the oscillator to Wavetable and place WT POS
-near 50%. In LFO 1 or LFO 2 choose **WT Pos / Start A**, **B** or **A+B** and raise
-its amount knob, for example to +5. A controls A1/A2, B controls B1/B2 and A+B
-controls all four. Both destination/amount pairs of either LFO support this route.
+near 50%. In LFO 1 or LFO 2 choose **WT Pos / Start A1**, **A2**, **B1**, **B2**,
+**A**, **B** or **A+B**, then raise
+its amount knob, for example to +5. Individual targets A1, A2, B1 and B2 affect
+only that player. A controls A1/A2, B controls B1/B2 and A+B controls all four.
+Individual and grouped routes can be combined; their offsets add before the
+result is limited to the bank range. Both destination/amount pairs of either LFO support this route.
 Set LFO Gain above zero, then choose a waveform and a free Hz rate or synced
 division. Positive and negative amounts scan in opposite directions; a centred
 WT POS allows a bipolar LFO to move both ways without clipping at the bank edges.
@@ -367,7 +388,7 @@ after effects. Reset starts its smoothing at the chosen Main value, so an
 instant attack is not reduced by a hidden startup fade. Knob changes remain
 smoothed. Distortion and compressor thresholds therefore respond to the actual
 source-bus level. Levels and effect drive have been retuned together; older
-patches can sound different. Factory Main trims provide headroom; the initial Main default is 38%. Reduce Main
+patches can sound different. Factory Main trims provide headroom; new instances start with Main at 65%. Reduce Main
 for louder layered edits.
 
 The test reference for factory presets is a six-second C3/G3/C4/E4 chord (MIDI
@@ -407,7 +428,7 @@ also update these controls. The keyboard covers five octaves.
 
 ## 9. Presets, automation and project recall
 
-The ten factory sounds are Init / analog, Wide supersaw, Sub bass, Slow atmosphere,
+The ten factory sounds are Init / saw, Wide supersaw, Sub bass, Slow atmosphere,
 Pulse pluck, Step sequence, Morph glass, Sample keys, Grain cloud and Chord pulse.
 The sound selector lists factory sounds and user presets from the current folder.
 Its arrows step through that list. Loading replaces the current patch.
@@ -422,8 +443,9 @@ Save/load run on a worker, with completion/errors in the footer. Wait for the
 completion message before closing the instance or moving a newly saved file.
 
 Presets contain all 575 audio parameters, routing, compressed audio for all four
-slots, WAV regions, chord mappings, twelve named patterns, theme and scope
-selection. The original sample files are unnecessary on recall. Saving uses a
+slots, WAV regions, chord mappings, twelve named patterns, the preset comment and
+scope selection. The colour theme is a separate user preference and is retained
+when sounds change. The original sample files are unnecessary on recall. Saving uses a
 temporary file and atomic replacement. Invalid files leave the current patch
 intact. State/preset files are limited to 1 GiB. These are logisth's own files;
 renaming another format to .logisth does not convert it.
@@ -434,8 +456,9 @@ follow them; the former Graphs parameter block is removed. A/B views, rack pages
 theme and scope source do not change the patch's audio settings. DAW state
 contains the same embedded material and pattern data as a user preset. Restoring
 older states automatically selects the corresponding earlier granular/arp engines.
-The 0.4 destination expansion still affects normalized destination automation
-from earlier releases; inspect such automation when importing an older project.
+Destination menus now have four additional individual-player targets appended
+after the existing entries. Numeric destination IDs are retained, but normalized
+host automation may need review after a destination-list expansion.
 
 There is no Sylenth1 bank import or MIDI Learn menu. Legacy prototype states
 receive a best-effort migration of filter and modulation settings; changes to
@@ -447,7 +470,7 @@ For a wide lead, load Wide supersaw. Raise unison detune gradually, open shared
 CUTOFF, and add a little Delay. Use MONO / LEGATO with a short GLIDE for connected
 melodies. Lower MAIN if the combined voices become too loud.
 
-For an envelope sweep, load Init / analog, lower Filter A cutoff, select Cutoff A
+For an envelope sweep, load Init / saw, lower Filter A cutoff, select Cutoff A
 as Mod Env 1's first destination, and add a small positive amount. Set attack
 near zero, moderate decay, low sustain and short release. Increase the amount
 until the filter opens sufficiently at the start of each note.

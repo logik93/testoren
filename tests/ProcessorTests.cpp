@@ -1,6 +1,7 @@
 #include "GainCalibration.h"
 #include "PluginEditor.h"
 #include "PluginProcessor.h"
+#include "ThemeSettings.h"
 #include <iostream>
 #include <stdexcept>
 #include <thread>
@@ -541,6 +542,135 @@ void checkWavetableRoutingAndDetune() {
     std::cout << "PASS LFO/WT routing and detune: both LFO route menus, all four oscillators, "
                  "100-cent audio sidebands and state round-trip\n";
 }
+void checkStartupCommentsAndThemes() {
+    using namespace juce;
+    using namespace logisth;
+    LogisthProcessor p;
+    auto get = [&](const String &id) { return p.state.getRawParameterValue(id)->load(); };
+    check(p.currentPresetName() == "Init / saw" && get("master") == .65f,
+          "new instances select the clean saw preset at Main 65 percent");
+    check(get("o1wave") == 1 && get("o1engine") == 0 && get("o1voices") == 1 &&
+              get("o2level") == 0 && get("o3level") == 0 && get("o4level") == 0,
+          "startup has exactly one classic saw oscillator");
+    for (auto id : {"arpon", "chordon", "diston", "phaseron", "choruson", "eqon", "reverbon",
+                    "delayon", "compon", "env1amt1", "env2amt1"})
+        check(get(id) == 0, "startup saw is free of FX, arp and modulation");
+    check(get("p1type") == 3 && get("p2type") == 3, "startup filters are bypassed");
+    AudioBuffer<float> tone;
+    gain_test::measure(p, 48000, {69}, 1, 2, &tone);
+    auto magnitude = [&](int harmonic) {
+        double real = 0, imaginary = 0;
+        for (int i = 48000; i < 96000; ++i) {
+            double phase = 2 * pi * 440 * harmonic * i / 48000;
+            real += tone.getSample(0, i) * std::cos(phase);
+            imaginary += tone.getSample(0, i) * std::sin(phase);
+        }
+        return std::hypot(real, imaginary);
+    };
+    double fundamental = magnitude(1);
+    check(fundamental > 100 && std::abs(magnitude(2) / fundamental - .5) < .02 &&
+              std::abs(magnitude(3) / fundamental - 1. / 3) < .02,
+          "startup audio retains the unfiltered saw harmonic spectrum");
+    std::unique_ptr<AudioProcessorEditor> ui(p.createEditor());
+    auto *editor = dynamic_cast<LogisthEditor *>(ui.get());
+    auto *console = ui->getChildComponent(0);
+    auto *notes = dynamic_cast<TextEditor *>(console->findChildWithID("preset.comment"));
+    check(notes != nullptr, "editable preset comment field is present");
+    const String comment =
+        String::fromUTF8("A1 scan / b\xc5\x82\xc4\x99kit / \xce\xa9 / \xf0\x9f\x8e\xb9");
+    struct MetadataProbe : AudioProcessorListener {
+        int audioChanges = 0, metadataChanges = 0;
+        void audioProcessorParameterChanged(AudioProcessor *, int, float) override {
+            ++audioChanges;
+        }
+        void audioProcessorChanged(AudioProcessor *, const ChangeDetails &details) override {
+            metadataChanges += details.nonParameterStateChanged;
+        }
+    } probe;
+    p.addListener(&probe);
+    notes->setText(comment, false);
+    notes->onTextChange();
+    p.removeListener(&probe);
+    check(p.presetComment() == comment, "editing the comment updates preset metadata");
+    check(probe.metadataChanges == 1 && probe.audioChanges == 0,
+          "comment edits notify the DAW about project changes without generating audio automation");
+    gain_test::set(p, "master", .29f);
+    gain_test::set(p, "lfo1dest1", float(Destination::PositionB2));
+    TemporaryFile preset(".logisth");
+    check(p.savePresetFile(preset.getFile()).wasOk(), "commented user preset saves");
+    p.setPresetComment("different");
+    gain_test::set(p, "master", .9f);
+    check(p.loadPresetFile(preset.getFile()).wasOk() && p.presetComment() == comment &&
+              std::abs(get("master") - .29f) < .00001 &&
+              get("lfo1dest1") == float(Destination::PositionB2),
+          "user preset round-trip retains comment, Main and individual WT routing");
+    MemoryBlock project;
+    p.getStateInformation(project);
+    LogisthProcessor restored;
+    restored.setStateInformation(project.getData(), int(project.getSize()));
+    check(restored.presetComment() == comment &&
+              std::abs(restored.state.getRawParameterValue("master")->load() - .29f) < .00001,
+          "project restoration keeps saved Main rather than applying the new-instance default");
+    p.setPresetComment(String::repeatedString("x", 6000));
+    check(p.presetComment().length() == 4096, "preset comments have a bounded size");
+    p.loadPreset(0);
+    notes->onTextChange();
+    check(p.presetComment().isEmpty(),
+          "a delayed previous-preset comment callback cannot replace new preset notes");
+    check(p.presetComment().isEmpty() && get("master") == .65f,
+          "Init resets its own notes and Main without carrying another preset's comment");
+    auto *settings = dynamic_cast<Button *>(console->findChildWithID("ui.settings"));
+    check(settings != nullptr, "settings button exists");
+    settings->onClick();
+    auto *panel = console->findChildWithID("settings.panel");
+    auto *theme = dynamic_cast<ComboBox *>(panel->findChildWithID("settings.theme"));
+    check(panel->isVisible() && theme && theme->getNumItems() == 5,
+          "five themes share the settings panel");
+    notes->setText("Readable preset comment", false);
+    notes->onTextChange();
+    for (int choice = 0; choice < 5; ++choice) {
+        const float before = get("master");
+        theme->setSelectedId(choice + 1, sendNotificationSync);
+        check(editor->selectedTheme() == choice && ThemeSettings::current() == choice,
+              "every theme is selectable through the settings widget");
+        check(ThemeSettings::reload() == choice && get("master") == before,
+              "theme persists on disk without modifying audio settings");
+        auto textImage = notes->createComponentSnapshot(notes->getLocalBounds());
+        int readable = 0;
+        for (int y = 3; y < textImage.getHeight() - 3; ++y)
+            for (int x = 5; x < textImage.getWidth() - 5; ++x) {
+                float brightness = textImage.getPixelAt(x, y).getBrightness();
+                readable += choice == 0 ? brightness < .5f : brightness > .6f;
+            }
+        check(readable > 40, "existing preset-comment text keeps contrast when switching between "
+                             "dark and light themes");
+        auto image = editor->snapshotTheme(choice);
+        check(image.isValid() && editor->selectedTheme() == choice,
+              "every theme and About panel renders without changing the selection");
+        LogisthProcessor next;
+        std::unique_ptr<AudioProcessorEditor> fresh(next.createEditor());
+        auto *other = dynamic_cast<LogisthEditor *>(fresh.get());
+        check(other && other->selectedTheme() == choice &&
+                  next.state.getRawParameterValue("master")->load() == .65f,
+              "a fresh instance recalls the chosen theme and independently starts at Main 65");
+        p.loadPreset(1);
+        check(editor->selectedTheme() == choice && ThemeSettings::current() == choice,
+              "loading a sound does not overwrite the appearance preference");
+        check(p.loadPresetFile(preset.getFile()).wasOk() && ThemeSettings::current() == choice,
+              "user-preset loading also keeps the current theme");
+    }
+    {
+        LogisthProcessor peer;
+        std::unique_ptr<AudioProcessorEditor> peerUi(peer.createEditor());
+        auto *peerEditor = dynamic_cast<LogisthEditor *>(peerUi.get());
+        editor->setTheme(2);
+        check(peerEditor && peerEditor->selectedTheme() == 2,
+              "changing the shared appearance updates existing editors immediately");
+    }
+    std::cout
+        << "PASS startup/comments/themes: clean saw spectrum, Main defaults/restoration, "
+           "Unicode preset notes, individual routing, five persistent themes and Settings/About\n";
+}
 void checkPointerInteraction() {
     using namespace juce;
     LogisthProcessor p;
@@ -743,6 +873,12 @@ void checkLongSourceAndDrop() {
 int main(int argc, char **argv) {
     try {
         juce::ScopedJuceInitialiser_GUI gui;
+        juce::TemporaryFile themePreferences(".json");
+        logisth::ThemeSettings::useStorageFileForTests(themePreferences.getFile());
+        if (argc > 1 && juce::String(argv[1]) == "--customization-check") {
+            checkStartupCommentsAndThemes();
+            return 0;
+        }
         if (argc > 2 &&
             (juce::String(argv[1]) == "--gain-report" || juce::String(argv[1]) == "--gain-check")) {
             gain_test::run(juce::String(argv[1]) == "--gain-check",
@@ -756,6 +892,7 @@ int main(int argc, char **argv) {
         checkPointerInteraction();
         checkWavetableAndModeViews();
         checkWavetableRoutingAndDetune();
+        checkStartupCommentsAndThemes();
         checkLongSourceAndDrop();
         LogisthProcessor p;
         p.setRateAndBufferSizeDetails(48000, 512);
@@ -811,7 +948,8 @@ int main(int argc, char **argv) {
         legacyParam("p1cutoff", 99999);
         juce::AudioProcessor::copyXmlToBinary(*legacy.createXml(), saved);
         restored.setStateInformation(saved.getData(), int(saved.getSize()));
-        check(restored.state.getRawParameterValue("misc1dest1")->load() == 33 &&
+        check(restored.state.getRawParameterValue("misc1dest1")->load() ==
+                      int(logisth::Destination::Count) - 1 &&
                   restored.state.getRawParameterValue("p1cutoff")->load() == 20000,
               "state values are validated");
         for (int preset = 0; preset < 10; ++preset) {
@@ -850,15 +988,20 @@ int main(int argc, char **argv) {
             juce::MemoryBlock darkState;
             p.getStateInformation(darkState);
             restored.setStateInformation(darkState.getData(), int(darkState.getSize()));
-            check(int(restored.state.state.getProperty("uiDark", 0)) == 1,
-                  "theme is saved in plugin state");
+            check(logisth::ThemeSettings::current() == 1,
+                  "theme is saved independently of the audio preset");
             {
                 std::unique_ptr<juce::AudioProcessorEditor> second(restored.createEditor());
                 auto *other = dynamic_cast<LogisthEditor *>(second.get());
-                check(other && other->isDarkTheme(), "restored editor opens in dark theme");
+                check(other && other->isDarkTheme(),
+                      "restored editor follows the selected user theme");
                 compact->setDarkTheme(false);
-                check(!compact->isDarkTheme() && other->isDarkTheme(),
-                      "themes are independent across plugin instances");
+                for (int attempt = 0; attempt < 40 && other->isDarkTheme(); ++attempt) {
+                    juce::Thread::sleep(25);
+                    juce::Timer::callPendingTimersSynchronously();
+                }
+                check(!compact->isDarkTheme() && !other->isDarkTheme(),
+                      "appearance preference propagates to existing plugin instances");
             }
             check(compact->validateLayout().isEmpty(), "light theme layout after switching");
             ui->setSize(992, 688);
@@ -995,6 +1138,20 @@ int main(int argc, char **argv) {
                 juce::PNGImageFormat format;
                 check(format.writeImageToStream(dark, out), "dark theme image");
             }
+            previewAudio(0);
+            p.setPresetComment("Clean saw / build your sound here, then save your own notes.");
+            std::unique_ptr<juce::AudioProcessorEditor> gallery(p.createEditor());
+            auto *galleryEditor = dynamic_cast<LogisthEditor *>(gallery.get());
+            check(galleryEditor != nullptr, "theme gallery editor");
+            for (int theme = 0; theme < 5; ++theme) {
+                auto preview = galleryEditor->snapshotTheme(theme);
+                juce::FileOutputStream out(
+                    folder.getChildFile("logisth-theme-" + juce::String(theme) + ".png"));
+                out.setPosition(0);
+                out.truncate();
+                juce::PNGImageFormat format;
+                check(format.writeImageToStream(preview, out), "theme gallery image");
+            }
             juce::FileOutputStream imageOut(folder.getChildFile("logisth.png"));
             check(imageOut.openedOk(), "image file");
             imageOut.setPosition(0);
@@ -1030,8 +1187,8 @@ int main(int argc, char **argv) {
             check(writer->writeFromAudioSampleBuffer(demo, 0, demo.getNumSamples()), "WAV render");
         }
         std::cout << "PASS compact UI: all parameters reachable, no overlaps, clickable controls, "
-                     "80-125% scale, view state preserved, parameter bindings, independent "
-                     "light/dark themes saved in state, pattern drawing and inline entry\n";
+                     "80-125% scale, view state preserved, parameter bindings, persistent shared "
+                     "themes, pattern drawing and inline entry\n";
         std::cout << "PASS processor: MIDI offsets, state, malformed state, ten presets and FX\n";
         return 0;
     } catch (const std::exception &e) {

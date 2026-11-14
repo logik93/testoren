@@ -1,7 +1,7 @@
-# logisth output calibration — 0.7.1
+# logisth output calibration — 0.8.0
 
-The gain staging introduced in 0.6 is retained in 0.7.1. These measurements are
-regenerated with the 100-cent detune parameter range and explicit LFO/WT routing.
+The gain staging introduced in 0.6 is retained in 0.8. These measurements are
+regenerated with individual WT routing and the new clean-saw Init at Main 65%.
 
 The reference is one full-scale 440 Hz sine, centred, at source Volume = Mix =
 Main = 1, velocity 127, sustain 1, one unison voice, no modulation, filters bypassed
@@ -10,7 +10,7 @@ including envelopes, panning, FX bypass and output gain. One second of settling
 is followed by a one-second measurement. Peak and RMS use full scale = 1; RMS
 is not AES17-offset.
 
-| Sample rate | 0.5.1 peak dBFS | 0.7.1 peak dBFS | 0.7.1 RMS dBFS |
+| Sample rate | 0.5.1 peak dBFS | 0.8.0 peak dBFS | 0.8.0 RMS dBFS |
 | --- | --- | --- | --- |
 | 44,100 Hz | -19.4886 | 0.0000 | -3.0103 |
 | 48,000 Hz | -19.4886 | 0.0000 | -3.0103 |
@@ -40,7 +40,7 @@ measurements, not LUFS matching or guarantees for every chord or patch edit.
 
 | Factory sound | Before, peak dBFS | After, peak dBFS at 48 kHz |
 | --- | --- | --- |
-| Init / analog | -21.67 | -5.94 |
+| Init / saw | -21.67 | -1.24 |
 | Wide supersaw | -25.19 | -6.00 |
 | Sub bass | -4.60 | -13.98 |
 | Slow atmosphere | -21.43 | -6.01 |
@@ -51,12 +51,14 @@ measurements, not LUFS matching or guarantees for every chord or patch edit.
 | Grain cloud | -30.07 | -6.84 |
 | Chord pulse | -31.93 | -8.57 |
 
-All ten sounds are additionally tested at 44.1 and 96 kHz with a minimum 3 dB
-reference-chord headroom requirement. Saved user presets keep their old values,
-but gain staging and FX drive have
-changed. Check Main when revisiting hot patches. A dense distorted bass needs
+All ten sounds are additionally tested at 44.1 and 96 kHz. Nine authored sounds
+retain a minimum 3 dB of reference-chord headroom. Init is now a single raw saw
+at the requested Main 65% and is checked below full scale rather than against the
+3 dB authored-preset trim. Its earlier measurement belongs to the previous
+Init / analog sound, so that row compares different starting patches. Saved user
+presets keep their old values, but gain staging and FX drive have changed. Check Main when revisiting hot patches. A dense distorted bass needs
 a lower peak trim to keep its sustained RMS level sensible. The fresh-instance
-Main default is 38%.
+Main default is 65%. Saved projects and presets retain their stored Main value.
 
 ## Regression checks
 

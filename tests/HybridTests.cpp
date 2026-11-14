@@ -99,9 +99,59 @@ void checkLfoWavetable() {
         }
     }
 }
+void checkIndividualWavetableRouting() {
+    auto bank = SourceData::factory();
+    const Destination targets[] = {Destination::PositionA1, Destination::PositionA2,
+                                   Destination::PositionB1, Destination::PositionB2,
+                                   Destination::PositionA,  Destination::PositionB,
+                                   Destination::PositionAB};
+    const int masks[] = {1, 2, 4, 8, 3, 12, 15};
+    for (int lfo = 0; lfo < 2; ++lfo)
+        for (int route = 0; route < 2; ++route)
+            for (int target = 0; target < 7; ++target) {
+                Params p;
+                p.sync = false;
+                for (auto &part : p.part) {
+                    part.filterType = 3;
+                    part.amp = {0, 0, 1, .01f};
+                }
+                for (auto &osc : p.osc) {
+                    osc.level = .2f;
+                    osc.engine = 1;
+                    osc.data = bank.get();
+                    osc.position = .5f;
+                }
+                p.lfo[size_t(lfo)].rate = 8;
+                p.lfo[size_t(lfo)].routes[size_t(route)] = {targets[target], 5};
+                Engine engine;
+                engine.prepare(48000);
+                engine.noteOn(60, 1, 1, p);
+                std::array<int, 4> low{128, 128, 128, 128}, high{-1, -1, -1, -1};
+                float left[128]{}, right[128]{};
+                for (int block = 0; block < 100; ++block) {
+                    engine.render(left, right, 128, p);
+                    for (int slot = 0; slot < 4; ++slot) {
+                        auto view = engine.playbackPictures()[size_t(slot)];
+                        check(view.active, "all four WT players report live positions");
+                        int frame = bank->frameIndex(view.position);
+                        low[size_t(slot)] = std::min(low[size_t(slot)], frame);
+                        high[size_t(slot)] = std::max(high[size_t(slot)], frame);
+                    }
+                }
+                for (int slot = 0; slot < 4; ++slot) {
+                    bool active = (masks[target] & (1 << slot)) != 0;
+                    check(active ? low[size_t(slot)] < 32 && high[size_t(slot)] > 95
+                                 : low[size_t(slot)] == bank->frameIndex(.5f) &&
+                                       low[size_t(slot)] == high[size_t(slot)],
+                          "individual and grouped WT targets affect exactly the selected players "
+                          "through either LFO/route");
+                }
+            }
+}
 int main() {
     try {
         checkLfoWavetable();
+        checkIndividualWavetableRouting();
         auto data = SourceData::factory();
         Params p;
         for (auto &o : p.osc) {
@@ -211,8 +261,8 @@ int main() {
         p.osc[0].position = 0;
         p.osc[0].warp = .6f;
         check(difference(wavetable, render(p)) > 1, "phase warp changes timbre");
-        for (int destination = int(Destination::PositionA); destination < int(Destination::Count);
-             ++destination) {
+        for (int destination = int(Destination::PositionA);
+             destination <= int(Destination::GrainSizeAB); ++destination) {
             Params q = p;
             q.osc[0].warp = 0;
             q.osc[2] = q.osc[0];

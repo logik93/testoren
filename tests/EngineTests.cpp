@@ -1,4 +1,5 @@
 #include "Engine.h"
+#include "EnvelopePlot.h"
 #include <iostream>
 #include <stdexcept>
 #include <vector>
@@ -17,6 +18,16 @@ float energy(const std::vector<float> &a) {
 }
 int main() {
     try {
+        auto instant = envelopePlot({0, .2f, .7f, .3f});
+        require(instant[0].x == instant[1].x && instant[0].level == 0 && instant[1].level == 1,
+                "zero-ms ADSR attack is vertical with no artificial diagonal segment");
+        auto slow = envelopePlot({8, .2f, .7f, .3f});
+        require(slow[1].x > .8f && slow[1].x > instant[1].x,
+                "long ADSR attack occupies proportionally more time");
+        auto zeroDecayRelease = envelopePlot({0, 0, .5f, 0});
+        require(zeroDecayRelease[1].x == zeroDecayRelease[2].x &&
+                    zeroDecayRelease[3].x == zeroDecayRelease[4].x,
+                "zero decay/release draw vertical transitions at their true times");
         for (double sr : {44100., 48000., 96000.}) {
             Engine engine;
             engine.prepare(sr);

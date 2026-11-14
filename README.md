@@ -1,10 +1,27 @@
-# logisth 0.7.1
+# logisth 0.8.0
 
 **A two-part polyphonic subtractive synthesizer with a compact single-window console.**
 VST3, CLAP and Standalone for Windows, macOS and Linux. Built with JUCE and an
 independent synthesis engine; not affiliated with LennarDigital.
 
 ![logisth dark interface](docs/images/logisth-dark.png)
+
+## New in 0.8.0
+
+- WT Pos / Start targets A1, A2, B1 and B2 individually, plus A, B and A+B groups.
+- Fresh instances open Init / saw: one classic saw, bypassed filters, no effects
+  or modulation, and Main at 65%. Saved project/preset Main values remain intact.
+- Editable preset comments under the sound selector are embedded in .logisth files
+  and host state (up to 4096 characters).
+- SETTINGS contains five themes and About. Midnight Blue, Cobalt, Graphite and
+  Forest are dark; Light remains available. The selected theme is a persistent
+  user preference shared by instances and independent of the loaded sound.
+- The ADSR preview uses actual segment times: 0 ms attack is vertical, and longer
+  attack values occupy more of the time axis.
+
+[Midnight Blue](docs/images/logisth-dark.png) · [Cobalt](docs/images/logisth-cobalt.png) ·
+[Graphite](docs/images/logisth-graphite.png) · [Forest](docs/images/logisth-forest.png) ·
+[Light](docs/images/logisth-light.png)
 
 ## New in 0.7.1
 
@@ -71,7 +88,7 @@ sounds. Parameter IDs remain stable; preserving old sound is not the objective.
 
 [English manual](docs/MANUAL.md) · [PDF manual](docs/logisth-Manual-English.pdf) ·
 [Implementation references](docs/STUDIO-0.5.md) ·
-[Download 0.7.1](https://github.com/logik93/logisth/releases/tag/v0.7.1)
+[Download 0.8.0](https://github.com/logik93/logisth/releases/tag/v0.8.0)
 
 Native archives are built and tested on Windows, macOS and Linux. Each package
 contains the English manual and build metadata. Publication requires all platform

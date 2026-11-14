@@ -36,6 +36,7 @@ LogisthProcessor::LogisthProcessor()
     for (int i = 0; i < 128; ++i)
         map->set(i, 1);
     publishChords(map);
+    loadPreset(0);
 }
 Params LogisthProcessor::snapshot() const {
     Params p;
@@ -467,6 +468,7 @@ void LogisthProcessor::getStateInformation(MemoryBlock &dest) try {
     auto tree = state.copyState();
     tree.setProperty("schema", 4, nullptr);
     tree.setProperty("presetName", currentPresetName(), nullptr);
+    tree.setProperty("presetComment", presetComment(), nullptr);
     saveAssets(tree);
     copyXmlToBinary(*tree.createXml(), dest);
     if (dest.getSize() > size_t(stateMemoryLimit))
@@ -488,8 +490,6 @@ bool LogisthProcessor::applyState(const void *data, int size) try {
         safe.setProperty("schema", 4, nullptr);
         if (source.hasProperty("uiScope"))
             safe.setProperty("uiScope", jlimit(0, 2, int(source["uiScope"])), nullptr);
-        if (source.hasProperty("uiDark"))
-            safe.setProperty("uiDark", int(source["uiDark"]) != 0, nullptr);
         for (const auto &spec : parameterSpecs) {
             float value = (String(spec.id) == "arppattern" || String(spec.id).endsWith("gmodel"))
                               ? 0
@@ -515,6 +515,8 @@ bool LogisthProcessor::applyState(const void *data, int size) try {
         {
             const ScopedLock lock(assetLock);
             presetName = source.getProperty("presetName", "").toString().substring(0, 128);
+            comment = source.getProperty("presetComment", "").toString().substring(0, 4096);
+            ++commentRevision;
             activePresetFile = File{};
         }
         ++presetRevision;
@@ -573,7 +575,12 @@ void LogisthProcessor::loadPreset(int index) {
     }
     {
         const ScopedLock lock(assetLock);
-        presetName.clear();
+        static const char *names[] = {
+            "Init / saw",    "Wide supersaw", "Sub bass",    "Slow atmosphere", "Pulse pluck",
+            "Step sequence", "Morph glass",   "Sample keys", "Grain cloud",     "Chord pulse"};
+        presetName = names[jlimit(0, 9, index)];
+        comment.clear();
+        ++commentRevision;
         activePresetFile = File{};
         patterns = {};
         currentPattern = 0;
@@ -591,6 +598,39 @@ void LogisthProcessor::loadPreset(int index) {
         parameter->setValueNotifyingHost(parameter->convertTo0to1(value));
         parameter->endChangeGesture();
     };
+    if (index == 0) {
+        for (int i = 1; i <= 4; ++i) {
+            auto id = "o" + String(i);
+            set(id + "engine", 0);
+            set(id + "wave", 1);
+            set(id + "voices", 1);
+            set(id + "level", i == 1 ? .65f : 0);
+            set(id + "octave", 0);
+            set(id + "tune", 0);
+            set(id + "fine", 0);
+            set(id + "pan", 0);
+            set(id + "detune", 0);
+            set(id + "stereo", 0);
+            set(id + "envelope", 0);
+        }
+        for (int i = 1; i <= 2; ++i) {
+            auto id = "p" + String(i);
+            set(id + "type", 3);
+            set(id + "res", 0);
+            set(id + "ampa", 0);
+            set(id + "ampd", 0);
+            set(id + "amps", 1);
+            set(id + "ampr", .01f);
+        }
+        for (const auto &spec : parameterSpecs) {
+            String id(spec.id);
+            if (id.contains("dest") || id.contains("amt"))
+                set(id, 0);
+        }
+        for (auto id : {"arpon", "chordon", "diston", "phaseron", "choruson", "eqon", "reverbon",
+                        "delayon", "compon"})
+            set(id, 0);
+    }
     if (index == 1) {
         set("o1voices", 7);
         set("o1detune", 18);

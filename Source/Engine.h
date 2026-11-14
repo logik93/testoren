@@ -512,7 +512,9 @@ class Engine {
                     const float pitch = bend[size_t(v.channel - 1)] * p.bendRange +
                                         mods.pair(Destination::PitchA, part) * 48;
                     float targetPosition =
-                        clamp(op.position + mods.pair(Destination::PositionA, part), 0, 1);
+                        clamp(op.position + mods.pair(Destination::PositionA, part) +
+                                  mods.get(Destination(int(Destination::PositionA1) + osc)),
+                              0, 1);
                     auto &position = v.sourcePosition[size_t(osc)];
                     position += smoothing * (targetPosition - position);
                     for (int u = 0; u < n; ++u) {

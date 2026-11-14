@@ -205,6 +205,9 @@ def main():
         destination = stage / name
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source / name, destination)
+    images = source / 'docs' / 'images'
+    if images.is_dir():
+        shutil.copytree(images, stage / 'docs' / 'images', dirs_exist_ok=True)
     name = f'logisth-{version}-{args.platform}'
     if args.platform == 'linux-x86_64':
         archive_path = output / f'{name}.tar.gz'

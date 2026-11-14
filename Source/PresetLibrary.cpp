@@ -20,12 +20,32 @@ String LogisthProcessor::currentPresetName() const {
     const ScopedLock lock(assetLock);
     return presetName;
 }
+String LogisthProcessor::presetComment() const {
+    const ScopedLock lock(assetLock);
+    return comment;
+}
+void LogisthProcessor::setPresetComment(const String &text) {
+    bool changed = false;
+    {
+        const ScopedLock lock(assetLock);
+        auto limited = text.substring(0, 4096);
+        if (comment != limited) {
+            comment = std::move(limited);
+            ++commentRevision;
+            changed = true;
+        }
+    }
+    if (changed)
+        updateHostDisplay(
+            AudioProcessorListener::ChangeDetails{}.withNonParameterStateChanged(true));
+}
 Result LogisthProcessor::savePresetFile(const File &file) try {
     if (!file.hasFileExtension("logisth"))
         return Result::fail("Use the .logisth preset extension");
     auto tree = state.copyState();
     tree.setProperty("schema", 4, nullptr);
     tree.setProperty("presetName", file.getFileNameWithoutExtension(), nullptr);
+    tree.setProperty("presetComment", presetComment(), nullptr);
     saveAssets(tree);
     MemoryBlock data;
     copyXmlToBinary(*tree.createXml(), data);

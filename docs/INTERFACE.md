@@ -4,11 +4,13 @@ The complete console occupies one 1240 × 860 canvas, with no vertical scrolling
 Its initial size adapts to the monitor. Drag the lower-right corner to resize
 proportionally from 80% to 150%.
 
-THEME selects LIGHT or DARK. Menus, value editors, keyboard and controls follow
-the palette. The setting is saved per instance without changing audio parameters.
+SETTINGS opens in the central rack and offers Light, Midnight Blue, Cobalt,
+Graphite and Forest, plus About. Menus, editors, keyboard and controls follow the
+palette. The selected appearance persists as a shared user preference; changing
+sounds keeps it and audio settings remain untouched. Midnight Blue is the default.
 Vector drawing and embedded Open Sans keep the design consistent across systems.
 
-- Top: factory/user presets and PATCH file menu, part A/B, Solo, Poly, Sync and Theme; below, two oscillators
+- Top: factory/user presets and PATCH file menu, part A/B, Solo, Poly, Sync and Settings; below, two oscillators
   and the selected part's amplitude envelope.
 - Left: the selected part's filter and shared Filter Control A+B.
 - Centre: the arp and seven effects, selected by name, each with a separate enable square.
@@ -52,3 +54,10 @@ highlighted selected-slot destination. File decoding and peak preparation are
 performed on the import worker. The mixer includes a dBFS readout and red
 overload indication. The fixed 12-second sample limit is removed; active
 imported PCM uses a 512 MiB aggregate memory budget.
+
+The comment box below the preset selector edits up to 4096 characters of preset
+metadata and is saved with both .logisth presets and DAW state. New instances
+select Init / saw with Main 65%; restoring an existing sound keeps its saved level.
+WT Pos / Start targets include individual A1/A2/B1/B2 plus A, B and A+B groups.
+The ADSR curve uses actual attack/decay/release durations and a 0.5-second held
+segment; zero-length stages are vertical rather than forced to diagonal lines.
