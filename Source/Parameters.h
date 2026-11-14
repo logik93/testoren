@@ -599,7 +599,7 @@ inline const std::array<ParameterSpec, parameterCount> parameterSpecs{{
     {"o1tune", "Note", 0, "OSC A1", -12, 12, 0, 1, "", true},
     {"o1fine", "Fine / cents", 0, "OSC A1", -100, 100, 0, 1, "", false},
     {"o1phase", "Phase / deg", 0, "OSC A1", 0, 360, 0, 1, "", false},
-    {"o1detune", "Detune / cents", 0, "OSC A1", 0, 50, 12, 1, "", false},
+    {"o1detune", "Detune / cents", 0, "OSC A1", 0, 100, 12, 1, "", false},
     {"o1stereo", "Stereo", 0, "OSC A1", 0, 1, 0.6f, 1, "", false},
     {"o1pan", "Pan", 0, "OSC A1", -1, 1, 0, 1, "", false},
     {"o1retrig", "Retrigger", 0, "OSC A1", 0, 1, 0, 1, "Off|On", false},
@@ -612,7 +612,7 @@ inline const std::array<ParameterSpec, parameterCount> parameterSpecs{{
     {"o2tune", "Note", 0, "OSC A2", -12, 12, -12, 1, "", true},
     {"o2fine", "Fine / cents", 0, "OSC A2", -100, 100, 0, 1, "", false},
     {"o2phase", "Phase / deg", 0, "OSC A2", 0, 360, 0, 1, "", false},
-    {"o2detune", "Detune / cents", 0, "OSC A2", 0, 50, 12, 1, "", false},
+    {"o2detune", "Detune / cents", 0, "OSC A2", 0, 100, 12, 1, "", false},
     {"o2stereo", "Stereo", 0, "OSC A2", 0, 1, 0.6f, 1, "", false},
     {"o2pan", "Pan", 0, "OSC A2", -1, 1, 0, 1, "", false},
     {"o2retrig", "Retrigger", 0, "OSC A2", 0, 1, 0, 1, "Off|On", false},
@@ -625,7 +625,7 @@ inline const std::array<ParameterSpec, parameterCount> parameterSpecs{{
     {"o3tune", "Note", 0, "OSC B1", -12, 12, 0, 1, "", true},
     {"o3fine", "Fine / cents", 0, "OSC B1", -100, 100, 0, 1, "", false},
     {"o3phase", "Phase / deg", 0, "OSC B1", 0, 360, 0, 1, "", false},
-    {"o3detune", "Detune / cents", 0, "OSC B1", 0, 50, 12, 1, "", false},
+    {"o3detune", "Detune / cents", 0, "OSC B1", 0, 100, 12, 1, "", false},
     {"o3stereo", "Stereo", 0, "OSC B1", 0, 1, 0.6f, 1, "", false},
     {"o3pan", "Pan", 0, "OSC B1", -1, 1, 0, 1, "", false},
     {"o3retrig", "Retrigger", 0, "OSC B1", 0, 1, 0, 1, "Off|On", false},
@@ -638,7 +638,7 @@ inline const std::array<ParameterSpec, parameterCount> parameterSpecs{{
     {"o4tune", "Note", 0, "OSC B2", -12, 12, 0, 1, "", true},
     {"o4fine", "Fine / cents", 0, "OSC B2", -100, 100, 0, 1, "", false},
     {"o4phase", "Phase / deg", 0, "OSC B2", 0, 360, 0, 1, "", false},
-    {"o4detune", "Detune / cents", 0, "OSC B2", 0, 50, 12, 1, "", false},
+    {"o4detune", "Detune / cents", 0, "OSC B2", 0, 100, 12, 1, "", false},
     {"o4stereo", "Stereo", 0, "OSC B2", 0, 1, 0.6f, 1, "", false},
     {"o4pan", "Pan", 0, "OSC B2", -1, 1, 0, 1, "", false},
     {"o4retrig", "Retrigger", 0, "OSC B2", 0, 1, 0, 1, "Off|On", false},
@@ -687,7 +687,8 @@ inline const std::array<ParameterSpec, parameterCount> parameterSpecs{{
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
-     "Rate|LFO2 Gain|Distortion Amount|Position A|Position B|Position A and B|Grain size A|Grain "
+     "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
+     "B|Grain size A|Grain "
      "size B|Grain size A and B",
      false},
     {"env1amt1", "Amount 1", 1, "MOD ENV 1", -10, 10, 2, 1, "", false},
@@ -695,7 +696,8 @@ inline const std::array<ParameterSpec, parameterCount> parameterSpecs{{
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
-     "Rate|LFO2 Gain|Distortion Amount|Position A|Position B|Position A and B|Grain size A|Grain "
+     "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
+     "B|Grain size A|Grain "
      "size B|Grain size A and B",
      false},
     {"env1amt2", "Amount 2", 1, "MOD ENV 1", -10, 10, 0, 1, "", false},
@@ -707,7 +709,8 @@ inline const std::array<ParameterSpec, parameterCount> parameterSpecs{{
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
-     "Rate|LFO2 Gain|Distortion Amount|Position A|Position B|Position A and B|Grain size A|Grain "
+     "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
+     "B|Grain size A|Grain "
      "size B|Grain size A and B",
      false},
     {"env2amt1", "Amount 1", 1, "MOD ENV 2", -10, 10, 2, 1, "", false},
@@ -715,7 +718,8 @@ inline const std::array<ParameterSpec, parameterCount> parameterSpecs{{
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
-     "Rate|LFO2 Gain|Distortion Amount|Position A|Position B|Position A and B|Grain size A|Grain "
+     "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
+     "B|Grain size A|Grain "
      "size B|Grain size A and B",
      false},
     {"env2amt2", "Amount 2", 1, "MOD ENV 2", -10, 10, 0, 1, "", false},
@@ -731,7 +735,8 @@ inline const std::array<ParameterSpec, parameterCount> parameterSpecs{{
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
-     "Rate|LFO2 Gain|Distortion Amount|Position A|Position B|Position A and B|Grain size A|Grain "
+     "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
+     "B|Grain size A|Grain "
      "size B|Grain size A and B",
      false},
     {"lfo1amt1", "Amount 1", 1, "LFO 1", -10, 10, 0, 1, "", false},
@@ -739,7 +744,8 @@ inline const std::array<ParameterSpec, parameterCount> parameterSpecs{{
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
-     "Rate|LFO2 Gain|Distortion Amount|Position A|Position B|Position A and B|Grain size A|Grain "
+     "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
+     "B|Grain size A|Grain "
      "size B|Grain size A and B",
      false},
     {"lfo1amt2", "Amount 2", 1, "LFO 1", -10, 10, 0, 1, "", false},
@@ -755,7 +761,8 @@ inline const std::array<ParameterSpec, parameterCount> parameterSpecs{{
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
-     "Rate|LFO2 Gain|Distortion Amount|Position A|Position B|Position A and B|Grain size A|Grain "
+     "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
+     "B|Grain size A|Grain "
      "size B|Grain size A and B",
      false},
     {"lfo2amt1", "Amount 1", 1, "LFO 2", -10, 10, 0, 1, "", false},
@@ -763,7 +770,8 @@ inline const std::array<ParameterSpec, parameterCount> parameterSpecs{{
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
-     "Rate|LFO2 Gain|Distortion Amount|Position A|Position B|Position A and B|Grain size A|Grain "
+     "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
+     "B|Grain size A|Grain "
      "size B|Grain size A and B",
      false},
     {"lfo2amt2", "Amount 2", 1, "LFO 2", -10, 10, 0, 1, "", false},
@@ -775,7 +783,8 @@ inline const std::array<ParameterSpec, parameterCount> parameterSpecs{{
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
-     "Rate|LFO2 Gain|Distortion Amount|Position A|Position B|Position A and B|Grain size A|Grain "
+     "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
+     "B|Grain size A|Grain "
      "size B|Grain size A and B",
      false},
     {"misc1amt1", "Amount 1", 1, "MISC 1 / SOURCE 1", -10, 10, 0.10416667f, 1, "", false},
@@ -783,7 +792,8 @@ inline const std::array<ParameterSpec, parameterCount> parameterSpecs{{
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
-     "Rate|LFO2 Gain|Distortion Amount|Position A|Position B|Position A and B|Grain size A|Grain "
+     "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
+     "B|Grain size A|Grain "
      "size B|Grain size A and B",
      false},
     {"misc1amt2", "Amount 2", 1, "MISC 1 / SOURCE 1", -10, 10, 0, 1, "", false},
@@ -795,7 +805,8 @@ inline const std::array<ParameterSpec, parameterCount> parameterSpecs{{
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
-     "Rate|LFO2 Gain|Distortion Amount|Position A|Position B|Position A and B|Grain size A|Grain "
+     "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
+     "B|Grain size A|Grain "
      "size B|Grain size A and B",
      false},
     {"misc2amt1", "Amount 1", 1, "MISC 1 / SOURCE 2", -10, 10, 0, 1, "", false},
@@ -803,7 +814,8 @@ inline const std::array<ParameterSpec, parameterCount> parameterSpecs{{
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
-     "Rate|LFO2 Gain|Distortion Amount|Position A|Position B|Position A and B|Grain size A|Grain "
+     "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
+     "B|Grain size A|Grain "
      "size B|Grain size A and B",
      false},
     {"misc2amt2", "Amount 2", 1, "MISC 1 / SOURCE 2", -10, 10, 0, 1, "", false},
@@ -815,7 +827,8 @@ inline const std::array<ParameterSpec, parameterCount> parameterSpecs{{
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
-     "Rate|LFO2 Gain|Distortion Amount|Position A|Position B|Position A and B|Grain size A|Grain "
+     "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
+     "B|Grain size A|Grain "
      "size B|Grain size A and B",
      false},
     {"misc3amt1", "Amount 1", 1, "MISC 2 / SOURCE 1", -10, 10, 0, 1, "", false},
@@ -823,7 +836,8 @@ inline const std::array<ParameterSpec, parameterCount> parameterSpecs{{
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
-     "Rate|LFO2 Gain|Distortion Amount|Position A|Position B|Position A and B|Grain size A|Grain "
+     "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
+     "B|Grain size A|Grain "
      "size B|Grain size A and B",
      false},
     {"misc3amt2", "Amount 2", 1, "MISC 2 / SOURCE 1", -10, 10, 0, 1, "", false},
@@ -835,7 +849,8 @@ inline const std::array<ParameterSpec, parameterCount> parameterSpecs{{
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
-     "Rate|LFO2 Gain|Distortion Amount|Position A|Position B|Position A and B|Grain size A|Grain "
+     "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
+     "B|Grain size A|Grain "
      "size B|Grain size A and B",
      false},
     {"misc4amt1", "Amount 1", 1, "MISC 2 / SOURCE 2", -10, 10, 0, 1, "", false},
@@ -843,7 +858,8 @@ inline const std::array<ParameterSpec, parameterCount> parameterSpecs{{
      "None|Volume A|Volume B|Volume A and B|Pitch A|Pitch B|Pitch A and B|Phase A|Phase B|Phase A "
      "and B|Pan A|Pan B|Pan A and B|Cutoff A|Cutoff B|Cutoff A and B|Resonance A|Resonance "
      "B|Resonance A and B|Phaser Frequency|Mix A|Mix B|Mix A and B|LFO1 Rate|LFO1 Gain|LFO2 "
-     "Rate|LFO2 Gain|Distortion Amount|Position A|Position B|Position A and B|Grain size A|Grain "
+     "Rate|LFO2 Gain|Distortion Amount|WT Pos / Start A|WT Pos / Start B|WT Pos / Start A and "
+     "B|Grain size A|Grain "
      "size B|Grain size A and B",
      false},
     {"misc4amt2", "Amount 2", 1, "MISC 2 / SOURCE 2", -10, 10, 0, 1, "", false},

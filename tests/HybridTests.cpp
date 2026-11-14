@@ -33,8 +33,75 @@ double energy(const std::vector<float> &a) {
         n += x * x;
     return n;
 }
+void checkLfoWavetable() {
+    auto bank = SourceData::factory();
+    for (int slot = 0; slot < 4; ++slot) {
+        Params base;
+        for (auto &part : base.part) {
+            part.filterType = 3;
+            part.amp = {0, 0, 1, .01f};
+        }
+        for (auto &osc : base.osc)
+            osc.level = 0;
+        auto &osc = base.osc[size_t(slot)];
+        osc.engine = 1;
+        osc.data = bank.get();
+        osc.level = .7f;
+        osc.semitone = 0;
+        osc.retrigger = true;
+        osc.position = .5f;
+        const auto dry = render(base, 60, 8192);
+        for (int lfo = 0; lfo < 2; ++lfo)
+            for (int route = 0; route < 2; ++route)
+                for (int clock = 0; clock < 3; ++clock)
+                    for (int target = 0; target < 3; ++target)
+                        for (float amount : {-5.f, 5.f}) {
+                            Params modulated = base;
+                            modulated.sync = clock != 0;
+                            auto &source = modulated.lfo[size_t(lfo)];
+                            source.free = clock == 2;
+                            source.rate = 8;
+                            source.division = 4;
+                            source.routes[size_t(route)] = {
+                                Destination(int(Destination::PositionA) + target), amount};
+                            auto wet = render(modulated, 60, 8192);
+                            bool affected = target == 2 || target == slot / 2;
+                            check(affected ? difference(dry, wet) > 1
+                                           : difference(dry, wet) < .00001,
+                                  "both LFOs and route slots scan only the selected WT part in "
+                                  "Hz/sync/free modes");
+                            if (affected && clock == 0 && amount > 0)
+                                check(difference(wet, render(modulated, 60, 8192, 48000, 8192)) <
+                                          .00001,
+                                      "LFO wavetable scanning is independent of audio block size");
+                        }
+        for (int lfo = 0; lfo < 2; ++lfo) {
+            Params modulated = base;
+            modulated.sync = false;
+            modulated.lfo[size_t(lfo)].rate = 8;
+            modulated.lfo[size_t(lfo)].routes[0] = {Destination::PositionAB, 5};
+            Engine engine;
+            engine.prepare(48000);
+            engine.noteOn(60, 1, 1, modulated);
+            float left[128]{}, right[128]{};
+            int lowest = bank->frames, highest = -1;
+            for (int block = 0; block < 100; ++block) {
+                engine.render(left, right, 128, modulated);
+                auto picture = engine.playbackPictures()[size_t(slot)];
+                check(picture.active && picture.revision == bank->revision,
+                      "LFO-driven WT display refers to the playing bank");
+                int frame = bank->frameIndex(picture.position);
+                lowest = std::min(lowest, frame);
+                highest = std::max(highest, frame);
+            }
+            check(lowest < 32 && highest > 95 && modulated.osc[size_t(slot)].position == .5f,
+                  "WT display follows LFO in both directions while the base knob remains fixed");
+        }
+    }
+}
 int main() {
     try {
+        checkLfoWavetable();
         auto data = SourceData::factory();
         Params p;
         for (auto &o : p.osc) {

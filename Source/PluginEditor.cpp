@@ -300,6 +300,9 @@ class LogisthEditor::Console : public Component,
                                                                  : i == 13
                                                                      ? "Filters"
                                                                      : "Modulation / effects");
+                        if (String(spec.id).contains("dest") &&
+                            i == int(logisth::Destination::PositionA))
+                            menu.getRootMenu()->addSectionHeader("Source position / grains");
                         String name = choices[i];
                         if (String(spec.id).endsWith("slope"))
                             name = i == 0 ? "12 dB" : "24 dB";
@@ -444,7 +447,7 @@ class LogisthEditor::Console : public Component,
             if (name.contains("env") &&
                 (name.endsWith("enva") || name.endsWith("envd") || name.endsWith("envr")))
                 return v < 1 ? String(v * 1000, 0) + "ms" : String(v, 1) + "s";
-            if (name.endsWith("fine"))
+            if (name.endsWith("fine") || name.endsWith("detune"))
                 return String(v, 1) + "ct";
             if (String(spec.label).contains("/ ms"))
                 return String(v, std::abs(v) >= 10 ? 0 : 1) + "ms";

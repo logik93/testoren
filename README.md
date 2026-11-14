@@ -1,10 +1,17 @@
-# logisth 0.7.0
+# logisth 0.7.1
 
 **A two-part polyphonic subtractive synthesizer with a compact single-window console.**
 VST3, CLAP and Standalone for Windows, macOS and Linux. Built with JUCE and an
 independent synthesis engine; not affiliated with LennarDigital.
 
 ![logisth dark interface](docs/images/logisth-dark.png)
+
+## New in 0.7.1
+
+- Unison detune extends to 0–100 cents in A1/A2/B1/B2, displayed in ct.
+- LFO routing identifies wavetable scanning as WT Pos / Start A, B or A+B.
+  Both LFOs and both route slots support it; the wavetable view follows the
+  modulated frame. See the English manual for a step-by-step setup.
 
 ## New in 0.7.0
 
@@ -64,7 +71,7 @@ sounds. Parameter IDs remain stable; preserving old sound is not the objective.
 
 [English manual](docs/MANUAL.md) · [PDF manual](docs/logisth-Manual-English.pdf) ·
 [Implementation references](docs/STUDIO-0.5.md) ·
-[Download 0.7.0](https://github.com/logik93/logisth/releases/tag/v0.7.0)
+[Download 0.7.1](https://github.com/logik93/logisth/releases/tag/v0.7.1)
 
 Native archives are built and tested on Windows, macOS and Linux. Each package
 contains the English manual and build metadata. Publication requires all platform

@@ -1,4 +1,4 @@
-# logisth 0.7.0 — User Manual
+# logisth 0.7.1 — User Manual
 
 A two-part polyphonic subtractive synthesizer for VST3, CLAP and standalone use.
 This manual describes logisth's own controls and behaviour. logisth is an independent
@@ -87,7 +87,7 @@ fine tuning, phase, detune, stereo width, pan, retrigger and invert.
 | Volume | Sets its level before filtering and the part envelope. |
 | Octave / Note / Fine | Coarse octave, semitone and cent tuning. |
 | Phase / Retrig | Retrig starts notes at the selected phase; otherwise phase runs without this reset. |
-| Detune | Spreads unison pitches. Increase gradually for a wider ensemble. |
+| Detune | 0–100 cents of unison spread. At 100 ct the outer voices are one semitone below/above the note. With one voice, detune has no effect. |
 | Stereo | Spreads unison voices across the stereo field. |
 | Pan | Positions the oscillator output left or right. |
 | Invert | Inverts oscillator polarity; it can affect cancellation when sources mix. |
@@ -182,8 +182,8 @@ Shift-wheel pans. The display is a view of playback, not a sample editor.
 
 Enable OSC ENVELOPE in ENV to give a slot an additional attack, decay, sustain
 and release. A part's shared envelope still limits its final output. New
-Position A/B/A+B and Grain size A/B/A+B modulation destinations scan frames or
-sample locations and scale grain duration. Position changes are smoothed.
+WT Pos / Start A/B/A+B and Grain size A/B/A+B modulation destinations scan frames
+or sample locations and scale grain duration. Position changes are smoothed.
 
 IMPORT accepts WAV, AIFF and FLAC at 8–96 kHz, without a fixed duration limit.
 The four imported sources share a 512 MiB decoded-stereo-PCM budget. Temporary
@@ -227,11 +227,13 @@ Choose a destination, then move its small amount knob away from zero. Amount
 ranges from -10 to +10; negative values reverse the modulation. None or amount
 zero makes a route inactive. Routes to the same destination are added together.
 The destination popup groups oscillators, filters and modulation/effects into
-three columns.
+three columns. The Source position / grains section contains WT Pos / Start
+and grain-size destinations.
 
 Destinations include Volume, Pitch, Phase and Pan for A, B or A+B; Cutoff and
 Resonance for A, B or A+B; Mix A, B or A+B; Phaser Frequency; LFO 1/2 Rate and
-Gain; and Distortion Amount. Modulating A+B affects both parts together.
+Gain; Distortion Amount; WT Pos / Start; and Grain size. Modulating A+B affects
+both parts together.
 
 Misc sources include Velocity, Keytrack, Aftertouch, Mod Wheel, Pitch Wheel,
 Amp Env A/B, Mod Env 1/2, LFO 1/2, Step Velocity and random sources. Polyphonic
@@ -244,6 +246,18 @@ off, RATE is a rhythmic division at the host tempo. With FREE enabled it uses
 its Hz rate and does not restart on each note. Otherwise notes restart the LFO.
 Gain scales its output; Offset shifts it. The global fallback tempo is 120 BPM
 when no host tempo is available.
+
+To modulate wavetable position, set the oscillator to Wavetable and place WT POS
+near 50%. In LFO 1 or LFO 2 choose **WT Pos / Start A**, **B** or **A+B** and raise
+its amount knob, for example to +5. A controls A1/A2, B controls B1/B2 and A+B
+controls all four. Both destination/amount pairs of either LFO support this route.
+Set LFO Gain above zero, then choose a waveform and a free Hz rate or synced
+division. Positive and negative amounts scan in opposite directions; a centred
+WT POS allows a bipolar LFO to move both ways without clipping at the bank edges.
+The central wavetable view follows the modulated frame; the WT POS knob retains
+its base position. With Sampler or Granular this same destination modulates the
+sample start/scanner position. Use a bank with multiple distinct frames to hear
+wavetable scanning; a single-cycle, one-frame file has no other frame to select.
 
 Modulation depth is specific to logisth. At amount +10 and source value +1,
 pitch adds 48 semitones, cutoff adds 120 semitones, phase adds one cycle, and

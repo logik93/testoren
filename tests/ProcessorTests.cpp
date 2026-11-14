@@ -449,6 +449,98 @@ void checkWavetableAndModeViews() {
           "only Legacy and Pattern arp remain available");
     std::cout << "PASS wavetable: 128-frame WAV/CLM import, frame selection, mode-specific menus\n";
 }
+void checkWavetableRoutingAndDetune() {
+    using namespace juce;
+    using namespace logisth;
+    LogisthProcessor p;
+    std::unique_ptr<AudioProcessorEditor> editor(p.createEditor());
+    auto *console = editor->getChildComponent(0);
+    auto widget = [&](const String &id, bool menu) -> Component * {
+        auto *field = console->findChildWithID(id);
+        check(field != nullptr, "oscillator/routing field exists");
+        for (auto *child : field->getChildren())
+            if (menu ? dynamic_cast<ComboBox *>(child) != nullptr
+                     : dynamic_cast<Slider *>(child) != nullptr)
+                return child;
+        throw std::runtime_error("missing parameter widget");
+    };
+    for (int slot = 0; slot < 4; ++slot) {
+        gain_test::cleanSine(p);
+        String prefix = "o" + String(slot + 1);
+        gain_test::set(p, "o1level", 0);
+        gain_test::set(p, prefix + "level", 1);
+        gain_test::set(p, prefix + "voices", 2);
+        auto *slider = static_cast<Slider *>(widget(prefix + "detune", false));
+        slider->setValue(100, sendNotificationSync);
+        check(slider->getTextFromValue(100).contains("ct"), "detune value identifies cents");
+        AudioBuffer<float> audio;
+        gain_test::measure(p, 48000, {69}, 1, 2, &audio);
+        auto magnitude = [&](double frequency) {
+            double real = 0, imaginary = 0;
+            for (int i = 48000; i < 96000; ++i) {
+                double phase = 2 * pi * frequency * i / 48000;
+                double value = audio.getSample(0, i);
+                real += value * std::cos(phase);
+                imaginary += value * std::sin(phase);
+            }
+            return std::hypot(real, imaginary) * 2 / 48000;
+        };
+        for (int side : {-1, 1}) {
+            auto full = magnitude(440 * std::exp2(side / 12.));
+            auto half = magnitude(440 * std::exp2(side / 24.));
+            check(full > .65 && full > half * 8,
+                  "setting detune to 100 ct in the GUI renders voices at plus/minus one semitone "
+                  "in every oscillator");
+        }
+        for (int lfo = 1; lfo <= 2; ++lfo)
+            for (int route = 1; route <= 2; ++route) {
+                gain_test::cleanSine(p);
+                gain_test::set(p, "o1level", 0);
+                gain_test::set(p, prefix + "level", 1);
+                gain_test::set(p, prefix + "engine", 1);
+                gain_test::set(p, prefix + "position", .5f);
+                gain_test::set(p, "sync", 0);
+                String source = "lfo" + String(lfo);
+                gain_test::set(p, source + "rate", 8);
+                gain_test::set(p, source + "amt" + String(route), 5);
+                auto *menu = static_cast<ComboBox *>(widget(source + "dest" + String(route), true));
+                const int target = int(Destination::PositionA) + slot / 2;
+                const int item = target + 1;
+                check(
+                    menu->getItemText(menu->indexOfItemId(item)).startsWith("WT Pos / Start"),
+                    "LFO menu explicitly identifies WT position without changing destination IDs");
+                menu->setSelectedId(item, sendNotificationSync);
+                p.prepareToPlay(48000, 128);
+                AudioBuffer<float> block(2, 128);
+                MidiBuffer midi;
+                midi.addEvent(MidiMessage::noteOn(1, 60, 1.f), 0);
+                int lowest = 128, highest = -1;
+                for (int i = 0; i < 100; ++i) {
+                    p.processBlock(block, midi);
+                    midi.clear();
+                    auto picture = p.playback[size_t(slot)].read();
+                    check(picture.active, "LFO route produces active wavetable playback");
+                    int frame = p.sourceData(slot)->frameIndex(picture.position);
+                    lowest = std::min(lowest, frame);
+                    highest = std::max(highest, frame);
+                }
+                check(lowest < 32 && highest > 95, "choosing either LFO route in the GUI scans the "
+                                                   "playing WT frames in every oscillator");
+            }
+    }
+    for (int slot = 1; slot <= 4; ++slot)
+        static_cast<Slider *>(widget("o" + String(slot) + "detune", false))
+            ->setValue(100, sendNotificationSync);
+    MemoryBlock saved;
+    p.getStateInformation(saved);
+    LogisthProcessor restored;
+    restored.setStateInformation(saved.getData(), int(saved.getSize()));
+    for (int slot = 1; slot <= 4; ++slot)
+        check(restored.state.getRawParameterValue("o" + String(slot) + "detune")->load() == 100,
+              "100-cent detune survives project/preset state restoration without truncation");
+    std::cout << "PASS LFO/WT routing and detune: both LFO route menus, all four oscillators, "
+                 "100-cent audio sidebands and state round-trip\n";
+}
 void checkPointerInteraction() {
     using namespace juce;
     LogisthProcessor p;
@@ -663,6 +755,7 @@ int main(int argc, char **argv) {
         checkStudioProcessor();
         checkPointerInteraction();
         checkWavetableAndModeViews();
+        checkWavetableRoutingAndDetune();
         checkLongSourceAndDrop();
         LogisthProcessor p;
         p.setRateAndBufferSizeDetails(48000, 512);

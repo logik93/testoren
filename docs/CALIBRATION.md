@@ -1,7 +1,7 @@
-# logisth output calibration — 0.7.0
+# logisth output calibration — 0.7.1
 
-The gain staging introduced in 0.6 is retained in 0.7. These measurements are
-regenerated for the 0.7 wavetable bank and position smoothing.
+The gain staging introduced in 0.6 is retained in 0.7.1. These measurements are
+regenerated with the 100-cent detune parameter range and explicit LFO/WT routing.
 
 The reference is one full-scale 440 Hz sine, centred, at source Volume = Mix =
 Main = 1, velocity 127, sustain 1, one unison voice, no modulation, filters bypassed
@@ -10,7 +10,7 @@ including envelopes, panning, FX bypass and output gain. One second of settling
 is followed by a one-second measurement. Peak and RMS use full scale = 1; RMS
 is not AES17-offset.
 
-| Sample rate | 0.5.1 peak dBFS | 0.7.0 peak dBFS | 0.7.0 RMS dBFS |
+| Sample rate | 0.5.1 peak dBFS | 0.7.1 peak dBFS | 0.7.1 RMS dBFS |
 | --- | --- | --- | --- |
 | 44,100 Hz | -19.4886 | 0.0000 | -3.0103 |
 | 48,000 Hz | -19.4886 | 0.0000 | -3.0103 |
