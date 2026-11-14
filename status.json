@@ -3,5 +3,303 @@
   "automation_commit": "7e82c68ad6af12ded8c94150e990d7c45b7b6e66",
   "run_id": "43603304078",
   "run_url": "https://github.com/logik93/logisth/actions/runs/43603304078",
-  "phase": "building"
+  "phase": "published",
+  "jobs": {
+    "started": {
+      "result": "success",
+      "outputs": {}
+    },
+    "plugins": {
+      "result": "success",
+      "outputs": {}
+    },
+    "publish": {
+      "result": "success",
+      "outputs": {}
+    }
+  },
+  "release_url": "https://github.com/logik93/logisth/releases/tag/v0.9.1",
+  "release_commit": "7e82c68ad6af12ded8c94150e990d7c45b7b6e66",
+  "platforms": [
+    {
+      "version": "0.9.1",
+      "platform": "linux-x86_64",
+      "source_commit": "7e82c68ad6af12ded8c94150e990d7c45b7b6e66",
+      "source_fingerprint": {
+        "Source": "7e868d633e00672bff428d6df5bdb1823a4e593a",
+        "CMakeLists.txt": "bec9765372e8e3c9e190a2e288774287930109d0",
+        "tests": "0a0c86a5afd988abfd4b01701b40c6767d8f8e49",
+        "assets": "f1b9f03e6d6098bd3b1e6e76d40e5ac5bdbe6e48"
+      },
+      "tests": {
+        "passed": 9,
+        "failed": 0,
+        "skipped": 0
+      },
+      "binaries": [
+        {
+          "path": "VST3/logisth.vst3/Contents/x86_64-linux/logisth.so",
+          "architectures": [
+            "x86_64"
+          ],
+          "sha256": "bf56cfe127052509d2404304b1f53d25819e15e7baa13ed16397812765e4410a"
+        },
+        {
+          "path": "CLAP/logisth.clap",
+          "architectures": [
+            "x86_64"
+          ],
+          "sha256": "1258127a95e1347a0d38c053f218324c3ec2955bc701a692a17ab509803a47ee"
+        },
+        {
+          "path": "Standalone/logisth",
+          "architectures": [
+            "x86_64"
+          ],
+          "sha256": "a32043d1de090923d160837c586fbdfe3725b7d94519f41e07ab3b3b2b05691b"
+        }
+      ],
+      "formats": [
+        "VST3",
+        "CLAP",
+        "Standalone"
+      ],
+      "run_url": "https://github.com/logik93/logisth/actions/runs/43603304078",
+      "signing": "unsigned",
+      "minimum_glibc": "2.35",
+      "archive": "logisth-0.9.1-linux-x86_64.tar.gz",
+      "archive_sha256": "cbedcf0f44e9392e91991385a0261175b520307905afd35361977f69f0826801"
+    },
+    {
+      "version": "0.9.1",
+      "platform": "windows-x86_64",
+      "source_commit": "7e82c68ad6af12ded8c94150e990d7c45b7b6e66",
+      "source_fingerprint": {
+        "Source": "7e868d633e00672bff428d6df5bdb1823a4e593a",
+        "CMakeLists.txt": "bec9765372e8e3c9e190a2e288774287930109d0",
+        "tests": "0a0c86a5afd988abfd4b01701b40c6767d8f8e49",
+        "assets": "f1b9f03e6d6098bd3b1e6e76d40e5ac5bdbe6e48"
+      },
+      "tests": {
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0
+      },
+      "binaries": [
+        {
+          "path": "VST3/logisth.vst3/Contents/x86_64-win/logisth.vst3",
+          "architectures": [
+            "x86_64"
+          ],
+          "sha256": "5efc60b7879c854c84f5a5605a71f2f1fa7b1b29d85bd7db2122fe055704af66"
+        },
+        {
+          "path": "CLAP/logisth.clap",
+          "architectures": [
+            "x86_64"
+          ],
+          "sha256": "e26444776ca4f13903aafe59ec0f153f746ff751a7f738ca1b83e9f5b7b6fdbb"
+        },
+        {
+          "path": "Standalone/logisth.exe",
+          "architectures": [
+            "x86_64"
+          ],
+          "sha256": "8af9c73f112f41fe6ab6f598bbeb2a2f845d2dd36801776abf566564ca4db195"
+        }
+      ],
+      "formats": [
+        "VST3",
+        "CLAP",
+        "Standalone"
+      ],
+      "run_url": "https://github.com/logik93/logisth/actions/runs/43603304078",
+      "signing": "unsigned",
+      "archive": "logisth-0.9.1-windows-x86_64.zip",
+      "archive_sha256": "a2576829b8db15f9ec22592446987e504d6c3e1350fee50e8ac23ce1ec9aef3d"
+    },
+    {
+      "version": "0.9.1",
+      "platform": "macos-universal",
+      "source_commit": "7e82c68ad6af12ded8c94150e990d7c45b7b6e66",
+      "source_fingerprint": {
+        "Source": "7e868d633e00672bff428d6df5bdb1823a4e593a",
+        "CMakeLists.txt": "bec9765372e8e3c9e190a2e288774287930109d0",
+        "tests": "0a0c86a5afd988abfd4b01701b40c6767d8f8e49",
+        "assets": "f1b9f03e6d6098bd3b1e6e76d40e5ac5bdbe6e48"
+      },
+      "tests": {
+        "passed": 7,
+        "failed": 0,
+        "skipped": 0
+      },
+      "binaries": [
+        {
+          "path": "VST3/logisth.vst3/Contents/MacOS/logisth",
+          "architectures": [
+            "arm64",
+            "x86_64"
+          ],
+          "sha256": "1d4f0dce700a69083fe9c206af7a6145b8fa2d7e8fc83788d621b9f14f855378"
+        },
+        {
+          "path": "CLAP/logisth.clap/Contents/MacOS/logisth",
+          "architectures": [
+            "arm64",
+            "x86_64"
+          ],
+          "sha256": "977e20607f26f5e9af9d545c40b8c1222c936f1f2de3cb38fad13e819ef6bc3d"
+        },
+        {
+          "path": "Standalone/logisth.app/Contents/MacOS/logisth",
+          "architectures": [
+            "arm64",
+            "x86_64"
+          ],
+          "sha256": "3ce6919da4e5037d5e53c8705673d9a940bd368263632ebc452d8e94d61b1838"
+        }
+      ],
+      "formats": [
+        "VST3",
+        "CLAP",
+        "Standalone"
+      ],
+      "run_url": "https://github.com/logik93/logisth/actions/runs/43603304078",
+      "signing": "ad-hoc, not notarized",
+      "archive": "logisth-0.9.1-macos-universal.zip",
+      "archive_sha256": "7205cd06c5a98eca8d4edda592de5de8e4639e52b67e77787f53746981b27d16"
+    }
+  ],
+  "assets": [
+    {
+      "name": "SHA256SUMS",
+      "size": 2273,
+      "url": "https://github.com/logik93/logisth/releases/download/v0.9.1/SHA256SUMS"
+    },
+    {
+      "name": "build-info-linux-x86_64.json",
+      "size": 1383,
+      "url": "https://github.com/logik93/logisth/releases/download/v0.9.1/build-info-linux-x86_64.json"
+    },
+    {
+      "name": "build-info-macos-universal.json",
+      "size": 1463,
+      "url": "https://github.com/logik93/logisth/releases/download/v0.9.1/build-info-macos-universal.json"
+    },
+    {
+      "name": "build-info-windows-x86_64.json",
+      "size": 1409,
+      "url": "https://github.com/logik93/logisth/releases/download/v0.9.1/build-info-windows-x86_64.json"
+    },
+    {
+      "name": "logisth-0.9.1-calibration.zip",
+      "size": 26028,
+      "url": "https://github.com/logik93/logisth/releases/download/v0.9.1/logisth-0.9.1-calibration.zip"
+    },
+    {
+      "name": "logisth-0.9.1-linux-x86_64.tar.gz",
+      "size": 17216241,
+      "url": "https://github.com/logik93/logisth/releases/download/v0.9.1/logisth-0.9.1-linux-x86_64.tar.gz"
+    },
+    {
+      "name": "logisth-0.9.1-macos-universal.zip",
+      "size": 26632116,
+      "url": "https://github.com/logik93/logisth/releases/download/v0.9.1/logisth-0.9.1-macos-universal.zip"
+    },
+    {
+      "name": "logisth-0.9.1-source.tar.gz",
+      "size": 2406060,
+      "url": "https://github.com/logik93/logisth/releases/download/v0.9.1/logisth-0.9.1-source.tar.gz"
+    },
+    {
+      "name": "logisth-0.9.1-themes.zip",
+      "size": 3849,
+      "url": "https://github.com/logik93/logisth/releases/download/v0.9.1/logisth-0.9.1-themes.zip"
+    },
+    {
+      "name": "logisth-0.9.1-windows-x86_64.zip",
+      "size": 13340182,
+      "url": "https://github.com/logik93/logisth/releases/download/v0.9.1/logisth-0.9.1-windows-x86_64.zip"
+    },
+    {
+      "name": "logisth-GainCalibration.md",
+      "size": 5289,
+      "url": "https://github.com/logik93/logisth/releases/download/v0.9.1/logisth-GainCalibration.md"
+    },
+    {
+      "name": "logisth-LICENSE-MIT.txt",
+      "size": 1066,
+      "url": "https://github.com/logik93/logisth/releases/download/v0.9.1/logisth-LICENSE-MIT.txt"
+    },
+    {
+      "name": "logisth-Manual-English.md",
+      "size": 36684,
+      "url": "https://github.com/logik93/logisth/releases/download/v0.9.1/logisth-Manual-English.md"
+    },
+    {
+      "name": "logisth-Manual-English.pdf",
+      "size": 273329,
+      "url": "https://github.com/logik93/logisth/releases/download/v0.9.1/logisth-Manual-English.pdf"
+    },
+    {
+      "name": "logisth-ThirdPartyNotices.md",
+      "size": 1151,
+      "url": "https://github.com/logik93/logisth/releases/download/v0.9.1/logisth-ThirdPartyNotices.md"
+    },
+    {
+      "name": "logisth-about.png",
+      "size": 157691,
+      "url": "https://github.com/logik93/logisth/releases/download/v0.9.1/logisth-about.png"
+    },
+    {
+      "name": "logisth-cobalt.png",
+      "size": 222204,
+      "url": "https://github.com/logik93/logisth/releases/download/v0.9.1/logisth-cobalt.png"
+    },
+    {
+      "name": "logisth-dark.png",
+      "size": 222203,
+      "url": "https://github.com/logik93/logisth/releases/download/v0.9.1/logisth-dark.png"
+    },
+    {
+      "name": "logisth-demo.wav",
+      "size": 1440104,
+      "url": "https://github.com/logik93/logisth/releases/download/v0.9.1/logisth-demo.wav"
+    },
+    {
+      "name": "logisth-forest.png",
+      "size": 218541,
+      "url": "https://github.com/logik93/logisth/releases/download/v0.9.1/logisth-forest.png"
+    },
+    {
+      "name": "logisth-graphite.png",
+      "size": 221376,
+      "url": "https://github.com/logik93/logisth/releases/download/v0.9.1/logisth-graphite.png"
+    },
+    {
+      "name": "logisth-light.png",
+      "size": 222154,
+      "url": "https://github.com/logik93/logisth/releases/download/v0.9.1/logisth-light.png"
+    },
+    {
+      "name": "logisth-reverb-shimmer.png",
+      "size": 155884,
+      "url": "https://github.com/logik93/logisth/releases/download/v0.9.1/logisth-reverb-shimmer.png"
+    },
+    {
+      "name": "logisth-theme-editor.png",
+      "size": 160884,
+      "url": "https://github.com/logik93/logisth/releases/download/v0.9.1/logisth-theme-editor.png"
+    },
+    {
+      "name": "logisth-waveform.png",
+      "size": 235780,
+      "url": "https://github.com/logik93/logisth/releases/download/v0.9.1/logisth-waveform.png"
+    },
+    {
+      "name": "logisth.png",
+      "size": 222203,
+      "url": "https://github.com/logik93/logisth/releases/download/v0.9.1/logisth.png"
+    }
+  ]
 }
